@@ -223,6 +223,11 @@ class BaseModel( object ):
         self.Print_Log( "BaseModel::Initialize_GPU() - Checking For GPU/CUDA Compatibility" )
 
         if self.use_gpu:
+            # Check
+            if re.search( r'/[Cc][Pp][Uu]:', self.device_name ):
+                self.Print_Log( "BaseModel::Initialize_GPU() - Warning: 'use_gpu == True' and 'device_name = /cpu:xx' / Auto-Detecting Available GPU", force_print = True )
+                enable_gpu_polling = True
+
             # Is Tensorflow Built With CUDA / CUDA Supported
             if tf.test.is_built_with_cuda():
                 available_gpus     = []
@@ -277,7 +282,7 @@ class BaseModel( object ):
                     available_gpus       = [physical_gpus[id] for id in available_device_ids]
 
                     # Get Numerical ID Value Of Desired GPU Device
-                    desired_device_ids.append( int( self.device_name.split( ":" )[-1] ) if re.search( r'/gpu:', self.device_name ) else int( self.device_name ) )
+                    desired_device_ids.append( int( self.device_name.split( ":" )[-1] ) if re.search( r'/[Gg][Pp][Uu]:', self.device_name ) else int( self.device_name ) )
 
                 self.Print_Log( "BaseModel::Initialize_GPU() - GPU Device List: " + str( physical_gpus ) )
                 self.Print_Log( "BaseModel::Initialize_GPU() - Available GPU Device List: " + str( available_gpus ) )

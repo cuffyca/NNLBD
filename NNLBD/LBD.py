@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 03/15/2021                                                                   #
+#    Revised: 03/18/2021                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -1489,6 +1489,10 @@ class LBD:
         self.Print_Log( "LBD::Load_Model() - Fetching Network Model Type From Settings File" )
         network_model = self.Get_Setting_Value_From_Model_Settings( model_path + model_name + "_settings.cfg", "NetworkModelMode" )
 
+        # Get Current Specified Device (GPU/CPU)
+        use_gpu     = self.model.Get_Use_GPU()
+        device_name = self.model.Get_Device_Name()
+
         # Check If Previous Model Utilized Embeddings To Train
         if self.Get_Setting_Value_From_Model_Settings( model_path + model_name + "_settings.cfg", "EmbeddingsLoaded" ) == "True":
             self.Get_Data_Loader().Set_Simulate_Embeddings_Loaded_Mode( True )
@@ -1502,15 +1506,16 @@ class LBD:
             self.model.Set_Debug_Log_File_Handle( None )
 
             if network_model == "hinton" or network_model == "rumelhart":
-                self.model = RumelhartHintonModel( debug_log_file_handle = self.debug_log_file_handle, network_model = network_model )
+                self.model = RumelhartHintonModel( debug_log_file_handle = self.debug_log_file_handle,
+                                                   network_model = network_model, use_gpu = use_gpu, device_name = device_name )
             elif network_model == "bilstm":
-                self.model = BiLSTMModel( debug_log_file_handle = self.debug_log_file_handle )
+                self.model = BiLSTMModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
             elif network_model == "simple":
-                self.model = SimpleModel( debug_log_file_handle = self.debug_log_file_handle )
+                self.model = SimpleModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
             elif network_model == "cosface":
-                self.model = CosFaceModel( debug_log_file_handle = self.debug_log_file_handle )
+                self.model = CosFaceModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
             elif network_model == "cnn":
-                self.model = CNNModel( debug_log_file_handle = self.debug_log_file_handle )
+                self.model = CNNModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
 
             # Load The Model From File & Model Settings To Model Object
             self.Print_Log( "LBD::Load_Model() - Loading Model", force_print = True )

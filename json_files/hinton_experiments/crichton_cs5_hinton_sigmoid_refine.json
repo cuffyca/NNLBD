@@ -26,7 +26,7 @@
             "embedding_path": "../vectors/test_modified_cs5.embeddings",
             "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators_mod",
             "model_load_path": "../cs5_crichton_hinton_sigmoid_model",
-            "model_save_path": "../cs5_crichton_hinton_sigmoid_model_cnt",
+            "model_save_path": "../cs5_crichton_hinton_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
