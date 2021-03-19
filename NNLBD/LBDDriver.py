@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 03/17/2021                                                                   #
+#    Revised: 03/19/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -26,7 +26,6 @@
 import json, os, re, sys, time
 import matplotlib.pyplot as plt
 import subprocess as sp
-from threading import Thread
 sys.path.insert( 0, "../" )
 
 # Custom Modules
@@ -475,7 +474,7 @@ class NNLBD_Driver:
 
     ############################################################################################
     #                                                                                          #
-    #    Threaded GPU Wait Function                                                            #
+    #    GPU Polling Function                                                                  #
     #                                                                                          #
     ############################################################################################
 

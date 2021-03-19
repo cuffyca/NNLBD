@@ -8,7 +8,7 @@
             "number_of_iterations": 1
         }
     ],
-    "train_1": [
+    "refine_1": [
         {
             "_comment": "Crichton CS1 Rumelhart Sigmoid: Closed Discovery",
             "print_debug_log": "False",
@@ -25,7 +25,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs1_crichton_rumelhart_sigmoid_model",
+            "model_load_path": "../cs1_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs1_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -33,7 +34,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_2": [
+    "refine_2": [
         {
             "_comment": "Crichton CS2 Rumelhart Sigmoid: Closed Discovery",
             "print_debug_log": "False",
@@ -50,7 +51,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs2.embeddings",
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs2_crichton_hinton_sigmoid_model",
+            "model_load_path": "../cs2_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs2_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -58,7 +60,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_3": [
+    "refine_3": [
         {
             "_comment": "Crichton CS3 Rumelhart Sigmoid: Closed Discovery",
             "print_debug_log": "False",
@@ -75,7 +77,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs3.embeddings",
             "train_data_path": "../data/train_cs3_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs3_crichton_hinton_sigmoid_model",
+            "model_load_path": "../cs3_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs3_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -83,7 +86,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_4": [
+    "refine_4": [
         {
             "_comment": "Crichton CS4 Rumelhart Sigmoid: Closed Discovery",
             "print_debug_log": "False",
@@ -100,7 +103,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs4.embeddings",
             "train_data_path": "../data/train_cs4_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs4_crichton_hinton_sigmoid_model",
+            "model_load_path": "../cs4_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs4_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -108,7 +112,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_5": [
+    "refine_5": [
         {
             "_comment": "Crichton CS5 Rumelhart Sigmoid: Closed Discovery",
             "print_debug_log": "False",
@@ -125,7 +129,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs5.embeddings",
             "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs5_crichton_hinton_sigmoid_model",
+            "model_load_path": "../cs5_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs5_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -133,7 +138,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_6": [
+    "refine_6": [
         {
             "_comment": "Crichton CS1 Rumelhart Softplus: Closed Discovery",
             "print_debug_log": "False",
@@ -150,7 +155,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs1_crichton_rumelhart_softplus_model",
+            "model_load_path": "../cs1_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs1_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -158,7 +164,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_7": [
+    "refine_7": [
         {
             "_comment": "Crichton CS2 Rumelhart Softplus: Closed Discovery",
             "print_debug_log": "False",
@@ -175,7 +181,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs2.embeddings",
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs2_crichton_hinton_softplus_model",
+            "model_load_path": "../cs2_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs2_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -183,7 +190,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_8": [
+    "refine_8": [
         {
             "_comment": "Crichton CS3 Rumelhart Softplus: Closed Discovery",
             "print_debug_log": "False",
@@ -200,7 +207,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs3.embeddings",
             "train_data_path": "../data/train_cs3_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs3_crichton_hinton_softplus_model",
+            "model_load_path": "../cs3_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs3_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -208,7 +216,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_9": [
+    "refine_9": [
         {
             "_comment": "Crichton CS4 Rumelhart Softplus: Closed Discovery",
             "print_debug_log": "False",
@@ -225,7 +233,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs4.embeddings",
             "train_data_path": "../data/train_cs4_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs4_crichton_hinton_softplus_model",
+            "model_load_path": "../cs4_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs4_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -233,7 +242,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_10": [
+    "refine_10": [
         {
             "_comment": "Crichton CS5 Rumelhart Softplus: Closed Discovery",
             "print_debug_log": "False",
@@ -250,7 +259,8 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs5.embeddings",
             "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs5_crichton_hinton_softplus_model",
+            "model_load_path": "../cs5_crichton_rumelhart_sigmoid_model",
+            "model_save_path": "../cs5_crichton_rumelhart_sigmoid_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -258,7 +268,7 @@
 	        "dropout": 0.0
         }
     ],
-    "train_11": [
+    "train_1": [
         {
             "_comment": "Hold GPU Model",
             "print_debug_log": "False",

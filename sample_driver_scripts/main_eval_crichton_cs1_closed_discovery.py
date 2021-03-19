@@ -34,7 +34,7 @@ def Main():
     model = LBD()
 
     # Load Model
-    model.Load_Model( "../trained_models/cs5_crichton_hinton_softplus_model" )
+    model.Load_Model( "../trained_models/cs1_crichton_hinton_softplus_model" )
 
     # Evaluate Model
     # Crichton Experimental A-B-C Links Per Data-set

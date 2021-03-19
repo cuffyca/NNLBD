@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 03/17/2021                                                                   #
+#    Revised: 03/19/2021                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -133,6 +133,7 @@ class BaseModel( object ):
         self.use_csr_format                  = use_csr_format                  # Options: True, False
         self.use_gpu                         = use_gpu                         # Options: True (Use GPU/CUDA), False (Use CPU)
         self.device_name                     = device_name                     # Options: "/cpu:0", "/gpu:0"
+        self.printed_gpu_polling_message     = False                           # Debug Statement Printing Which Notifies User The Model Is Polling For Available GPU(s)
         self.checkpoint_directory            = checkpoint_directory            # Path (String)
         self.callback_list                   = []                              # Keras Model Callback List - Set During Model 'Build_Model()' Call.
 
@@ -249,13 +250,21 @@ class BaseModel( object ):
                 # Wait For GPU To Become Available #
                 ####################################
                 if enable_gpu_polling:
-                    polling_counter        = 0
-                    polling_timer_exceeded = False
+                    polling_counter         = 0
+                    polling_timer_exceeded  = False
+                    silence_warning_message = True
 
                     # Wait For Number Of Desired GPUs To Become Available
                     while len( desired_device_ids ) != number_of_desired_gpus:
+                        # Set Warning Polling (Print Warning Message Every 10 Minutes)
+                        silence_warning_message = False if polling_counter == 0 or polling_counter % 600 == 0 else True
+
                         # Check For GPUs To Become Available
-                        desired_device_ids = self.Get_Next_Available_CUDA_GPUs( acceptable_available_memory = acceptable_available_memory, number_of_desired_gpus = number_of_desired_gpus )
+                        desired_device_ids = self.Get_Next_Available_CUDA_GPUs( acceptable_available_memory = acceptable_available_memory,
+                                                                                number_of_desired_gpus = number_of_desired_gpus,
+                                                                                silence_warning_message = silence_warning_message )
+
+                        # Copy Desired Device IDs
                         available_gpus     = desired_device_ids
 
                         # Wait For One Second And Then Check Again
@@ -264,7 +273,7 @@ class BaseModel( object ):
                         # Increment Polling Counter
                         polling_counter += 1
 
-                        # If Polling For Over 1 Week, End Polling
+                        # If Polling For Over 2 Weeks, End Polling
                         if polling_counter >= polling_counter_limit:
                             polling_timer_exceeded = True
                             break
@@ -333,13 +342,14 @@ class BaseModel( object ):
         Inputs:
             acceptable_available_memory : Number Of Memory Necessary To Determine If A GPU Is Available (MBs) (Integer)
             number_of_desired_gpus      : Number Of Desired GPUs (Integer)
+            silence_warning_message     : Silences The Warning Message When No Usable GPUs Are Found (Bool)
 
         Outputs:
             visible_device_ids          : List Of Available GPU Device IDs (Integer)
 
         Modification Of Source: https://stackoverflow.com/questions/40069883/how-to-set-specific-gpu-in-tensorflow
     """
-    def Get_Next_Available_CUDA_GPUs( self, acceptable_available_memory = 4096, number_of_desired_gpus = 1 ):
+    def Get_Next_Available_CUDA_GPUs( self, acceptable_available_memory = 4096, number_of_desired_gpus = 1, silence_warning_message = False ):
         COMMAND = "nvidia-smi --query-gpu=memory.free --format=csv"
 
         try:
@@ -348,14 +358,14 @@ class BaseModel( object ):
             memory_free_values = [int( x.split()[0] ) for i, x in enumerate( memory_free_info )]
             available_gpus     = [i for i, x in enumerate( memory_free_values ) if x > acceptable_available_memory]
 
-            if len( available_gpus ) < number_of_desired_gpus:
-                self.Print_Log( "BaseModel::Get_Next_Available_CUDA_GPU() - Warning: Found Only " + str( len( available_gpus ) ) + " Usable GPUs In The System", force_print = True )
+            if silence_warning_message == False and len( available_gpus ) < number_of_desired_gpus:
+                self.Print_Log( "BaseModel::Get_Next_Available_CUDA_GPU() - Warning: Found " + str( len( available_gpus ) ) + " Usable GPUs In The System", force_print = True )
                 self.Print_Log( "BaseModel::Get_Next_Available_CUDA_GPU() -          Desired Available Memory: " + str( acceptable_available_memory ) )
                 self.Print_Log( "                                         -          Desired Number Of GPUs: " + str( number_of_desired_gpus ) )
 
             visible_device_ids = [id for id in available_gpus[:number_of_desired_gpus]]
 
-            if len( available_gpus ):
+            if silence_warning_message == False and len( available_gpus ):
                 self.Print_Log( "BaseModel::Get_Next_Available_CUDA_GPU() - Available GPU IDs: " + str( visible_device_ids ) )
 
             return visible_device_ids
