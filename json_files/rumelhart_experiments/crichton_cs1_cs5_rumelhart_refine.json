@@ -31,7 +31,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_2": [
@@ -57,7 +57,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_3": [
@@ -83,7 +83,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_4": [
@@ -109,7 +109,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_5": [
@@ -135,7 +135,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_6": [
@@ -161,7 +161,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_7": [
@@ -187,7 +187,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_8": [
@@ -213,7 +213,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_9": [
@@ -239,7 +239,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "refine_10": [
@@ -265,7 +265,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ],
     "train_1": [
@@ -289,7 +289,7 @@
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
-	        "dropout": 0.0
+            "dropout": 0.0
         }
     ]
 }
