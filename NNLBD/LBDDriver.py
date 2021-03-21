@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 03/19/2021                                                                   #
+#    Revised: 03/20/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -220,6 +220,7 @@ class NNLBD_Driver:
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
                         model.Generate_Model_Metric_Plots( model_save_path )
+
                 # Evaluate Model
                 elif re.match( r"^[Ee]val_\d+", run_id ):
                     if model_load_path != "":
@@ -231,6 +232,7 @@ class NNLBD_Driver:
                                                        embedding_path = embedding_path, verbose = verbose )
 
                         model.Evaluate( training_file_path = train_data_path )
+
                 # Evaluate Model For Prediction
                 elif re.match( r"^[Ee]val_[Pp]rediction_\d+", run_id ):
                     if model_load_path != "":
@@ -242,6 +244,7 @@ class NNLBD_Driver:
                                                        embedding_path = embedding_path, verbose = verbose )
 
                         model.Evaluate_Prediction( training_file_path = train_data_path )
+
                 # Evaluate Model For Ranking
                 elif re.match( r"^[Ee]val_[Rr]anking_\d+", run_id ):
                     if model_load_path != "":
@@ -253,6 +256,7 @@ class NNLBD_Driver:
                                                        embedding_path = embedding_path, verbose = verbose )
 
                         model.Evaluate_Prediction( training_file_path = train_data_path )
+
                 # Train Model And Evaluate
                 elif re.match( r"^[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
                     model.Fit( training_file_path = train_data_path )
@@ -261,6 +265,7 @@ class NNLBD_Driver:
                         model.Save_Model( model_save_path )
                         model.Generate_Model_Metric_Plots( model_save_path )
                         model.Evaluate( test_file_path = eval_data_path )
+
                 # Train Model And Evaluate Prediction
                 elif re.match( r"^[Tt]rain_[Aa]nd_[Ee]val_[Pp]rediction_\d+", run_id ):
                     model.Fit( training_file_path = train_data_path )
@@ -269,6 +274,7 @@ class NNLBD_Driver:
                         model.Save_Model( model_save_path )
                         model.Generate_Model_Metric_Plots( model_save_path )
                         model.Evaluate_Prediction( test_file_path = eval_data_path )
+
                 # Train Model And Evaluate Ranking
                 elif re.match( r"^[Tt]rain_[Aa]nd_[Ee]val_[Rr]anking_\d+", run_id ):
                     model.Fit( training_file_path = train_data_path )
@@ -277,6 +283,7 @@ class NNLBD_Driver:
                         model.Save_Model( model_save_path )
                         model.Generate_Model_Metric_Plots( model_save_path )
                         model.Evaluate_Ranking( test_file_path = eval_data_path )
+
                 # Refine Existing Model
                 elif re.match( r"^[Rr]efine_\d+", run_id ):
                     if model_load_path != "":
@@ -292,182 +299,18 @@ class NNLBD_Driver:
                         if model_save_path != "":
                             model.Save_Model( model_save_path )
                             model.Generate_Model_Metric_Plots( model_save_path )
+
                 # Run Crichton CS1-CS5 Re-implementation
                 elif re.match( r"^[Cc]richton_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_term is None or gold_b_instance is None:
                         print( " Error: Not Gold B Term or Gold B Instance Defined" )
                         continue
 
-                    # Training/Evaluation Variables (Do Not Modify)
-                    ranking_per_epoch        = []
-                    ranking_per_epoch_value  = []
-                    number_of_ties_per_epoch = []
-                    loss_per_epoch           = []
-                    accuracy_per_epoch       = []
-                    precision_per_epoch      = []
-                    recall_per_epoch         = []
-                    f1_score_per_epoch       = []
-                    number_of_ties           = 0
-                    best_number_of_ties      = 0
-                    best_ranking             = sys.maxsize
-                    eval_data                = model.Get_Data_Loader().Read_Data( eval_data_path, keep_in_memory = False )
+                    self.Crichton_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
+                                                  learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
+                                                  train_data_path = train_data_path, eval_data_path = eval_data_path, model_save_path = model_save_path,
+                                                  embedding_path = embedding_path, gold_b_instance = gold_b_instance, gold_b_term = gold_b_term )
 
-                    print( "Preparing Evaluation Data" )
-
-                    model.Get_Data_Loader().Load_Embeddings( embedding_path )
-                    model.Get_Data_Loader().Generate_Token_IDs()
-
-                    # Vectorize Gold B Term And Entire Evaluation Data-set
-                    gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Vectorize_Model_Data( data_list = [gold_b_instance], model_type = model_type,
-                                                                                                    use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
-                    eval_input_1, eval_input_2, eval_input_3, _       = model.Vectorize_Model_Data( data_list = eval_data, model_type = model_type,
-                                                                                                    use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
-
-                    # Checks
-                    if gold_b_input_1 is None or gold_b_input_2 is None or gold_b_input_3 is None:
-                        print( "Error Occurred During Data Vectorization (Gold B)" )
-                        continue
-                    if eval_input_1 is None or eval_input_2 is None or eval_input_3 is None:
-                        print( "Error Occurred During Data Vectorization (Evaluation Data)" )
-                        continue
-
-                    model.Get_Data_Loader().Clear_Data()
-
-                    # Create Directory
-                    model.utils.Create_Path( model_save_path )
-
-                    print( "Beginning Model Data Prepatation/Model Training" )
-
-                    # Set Correct Number Of Epochs Versus Number Of Epochs To Run Before Evaluation Is Performed
-                    epochs = epochs // run_eval_number_epoch
-
-                    for iteration in range( epochs ):
-                        # Train Model Over Data: "../data/train_cs1_closed_discovery_without_aggregators"
-                        model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose )
-
-                        history = model.Get_Model().model_history.history
-                        loss_per_epoch.append( history['loss'][-1] )
-                        accuracy_per_epoch.append( history['accuracy'][-1] )
-                        precision_per_epoch.append( history['Precision'][-1] )
-                        recall_per_epoch.append( history['Recall'][-1] )
-                        f1_score_per_epoch.append( history['F1_Score'][-1] )
-
-                        # Ranking/Evaluation Variables
-                        b_prediction_dictionary = {}
-                        rank                    = 1
-                        number_of_ties          = 0
-
-                        # Get Prediction For Gold B Term
-                        gold_b_prediction_score = model.Predict( primary_input_matrix = gold_b_input_1, secondary_input_matrix = gold_b_input_2,
-                                                                 tertiary_input_matrix = gold_b_input_3, return_vector = True, return_raw_values = True )
-
-                        # Perform Prediction Over The Entire Evaluation Data-set (Model Inference)
-                        predictions = model.Predict( primary_input_matrix = eval_input_1, secondary_input_matrix = eval_input_2,
-                                                     tertiary_input_matrix = eval_input_3, return_vector = True, return_raw_values = True )
-
-                        print( "Performing Inference For Testing Instance Predictions" )
-
-                        # Perform Model Evaluation (Ranking Of Gold B Term)
-                        if isinstance( predictions, list ) and len( predictions ) == 0:
-                            print( "Error Occurred During Model Inference" )
-                            continue
-
-                        for instance, instance_prediction in zip( eval_data, predictions ):
-                            instance_tokens = instance.split()
-                            a_term = instance_tokens[0] # Not Used
-                            b_term = instance_tokens[1]
-                            c_term = instance_tokens[2] # Not Used
-
-                            if b_term not in b_prediction_dictionary:
-                                b_prediction_dictionary[b_term] = [instance_prediction]
-                            else:
-                                b_prediction_dictionary[b_term].append( instance_prediction )
-
-                        # Ranking Gold B Term Among All B Terms
-                        for b_term in b_prediction_dictionary:
-                            if b_term == gold_b_term: continue
-                            if b_prediction_dictionary[b_term] > gold_b_prediction_score:
-                                rank += 1
-                            elif b_prediction_dictionary[b_term] == gold_b_prediction_score:
-                                number_of_ties += 1
-
-                        number_of_ties_per_epoch.append( number_of_ties )
-
-                        ranking_per_epoch.append( rank )
-                        ranking_per_epoch_value.append( gold_b_prediction_score )
-
-                        # Keep Track Of The Best Rank
-                        if rank < best_ranking:
-                            best_ranking        = rank
-                            best_number_of_ties = number_of_ties
-
-                        print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( rank ) +
-                            " Of " + str( len( eval_data ) ) + " Number Of B Terms" + " - Score: " + str( gold_b_prediction_score ) +
-                            " - Number Of Ties: " + str( number_of_ties ) )
-
-                    # Print Ranking Information Per Epoch
-                    print( "" )
-
-                    for epoch in range( len( ranking_per_epoch ) ):
-                        print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
-                            " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
-
-                    print( "\nGenerating Model Metric Charts" )
-                    if not re.search( r"\/$", model_save_path ): model_save_path += "/"
-
-                    plt.plot( range( len( ranking_per_epoch ) ), ranking_per_epoch )
-                    plt.title( "Training: Rank vs Epoch" )
-                    plt.xlabel( "Epoch" )
-                    plt.ylabel( "Rank" )
-                    plt.savefig( str( model_save_path ) + "training_epoch_vs_rank.png" )
-                    plt.clf()
-
-                    plt.plot( range( len( number_of_ties_per_epoch ) ), number_of_ties_per_epoch )
-                    plt.title( "Training: Ties vs Epoch" )
-                    plt.xlabel( "Epoch" )
-                    plt.ylabel( "Ties" )
-                    plt.savefig( str( model_save_path ) + "training_epoch_vs_ties.png" )
-                    plt.clf()
-
-                    plt.plot( range( len( loss_per_epoch ) ), loss_per_epoch )
-                    plt.title( "Training: Loss vs Epoch" )
-                    plt.xlabel( "Epoch" )
-                    plt.ylabel( "Loss" )
-                    plt.savefig( str( model_save_path ) + "training_epoch_vs_loss.png" )
-                    plt.clf()
-
-                    plt.plot( range( len( accuracy_per_epoch ) ), accuracy_per_epoch )
-                    plt.title( "Training: Epoch vs Accuracy" )
-                    plt.xlabel( "Epoch" )
-                    plt.ylabel( "Accuracy" )
-                    plt.savefig( str( model_save_path ) + "training_epoch_vs_accuracy.png" )
-                    plt.clf()
-
-                    plt.plot( range( len( precision_per_epoch ) ), precision_per_epoch )
-                    plt.title( "Training: Epoch vs Precision" )
-                    plt.xlabel( "Epoch" )
-                    plt.ylabel( "Precision" )
-                    plt.savefig( str( model_save_path ) + "training_epoch_vs_precision.png" )
-                    plt.clf()
-
-                    plt.plot( range( len( recall_per_epoch ) ), recall_per_epoch )
-                    plt.title( "Training: Epoch vs Recall" )
-                    plt.xlabel( "Epoch" )
-                    plt.ylabel( "Recall" )
-                    plt.savefig( str( model_save_path ) + "training_epoch_vs_recall.png" )
-                    plt.clf()
-
-                    plt.plot( range( len( f1_score_per_epoch ) ), f1_score_per_epoch )
-                    plt.title( "Training: Epoch vs F1-Score" )
-                    plt.xlabel( "Epoch" )
-                    plt.ylabel( "F1-Score" )
-                    plt.savefig( str( model_save_path ) + "training_epoch_vs_f1.png" )
-                    plt.clf()
-
-                    print( "\nBest Rank: " + str( best_ranking ) )
-                    print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) )
-
-                    print( "\n\n" )
 
                 # Clean-Up
                 model = None
@@ -517,6 +360,201 @@ class NNLBD_Driver:
             print( "LBDDriver::Get_Next_Available_CUDA_GPU() - Error: Unable To Secure Available GPU Within A 2 Week Period / Terminating Program" )
 
         return available_device_id
+
+
+    ############################################################################################
+    #                                                                                          #
+    #    Training And Evaluation (Ranking) Functions                                           #
+    #                                                                                          #
+    ############################################################################################
+
+    def Crichton_Train_And_Eval( self, model, model_type, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
+                                 train_data_path, eval_data_path, model_save_path, embedding_path, gold_b_instance, gold_b_term ):
+        # Training/Evaluation Variables (Do Not Modify)
+        ranking_per_epoch        = []
+        ranking_per_epoch_value  = []
+        number_of_ties_per_epoch = []
+        loss_per_epoch           = []
+        accuracy_per_epoch       = []
+        precision_per_epoch      = []
+        recall_per_epoch         = []
+        f1_score_per_epoch       = []
+        number_of_ties           = 0
+        best_number_of_ties      = 0
+        best_ranking             = sys.maxsize
+        eval_data                = model.Get_Data_Loader().Read_Data( eval_data_path, keep_in_memory = False )
+
+        # Check
+        if eval_data == [] or len( eval_data ) == 0:
+            print( "Error Loading Evaluation Data" )
+            return
+
+        print( "Preparing Evaluation Data" )
+
+        model.Get_Data_Loader().Load_Embeddings( embedding_path )
+        model.Get_Data_Loader().Generate_Token_IDs()
+
+        # Check
+        if model.Get_Data_Loader().Get_Number_Of_Embeddings() == 0:
+            print( "Error Loading Embeddings Or No Embeddings Specified" )
+            return
+
+        # Vectorize Gold B Term And Entire Evaluation Data-set
+        gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Vectorize_Model_Data( data_list = [gold_b_instance], model_type = model_type,
+                                                                                        use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
+        eval_input_1, eval_input_2, eval_input_3, _       = model.Vectorize_Model_Data( data_list = eval_data, model_type = model_type,
+                                                                                        use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
+
+        # Checks
+        if gold_b_input_1 is None or gold_b_input_2 is None or gold_b_input_3 is None:
+            print( "Error Occurred During Data Vectorization (Gold B)" )
+            return
+        if eval_input_1 is None or eval_input_2 is None or eval_input_3 is None:
+            print( "Error Occurred During Data Vectorization (Evaluation Data)" )
+            return
+
+        model.Get_Data_Loader().Clear_Data()
+
+        # Create Directory
+        model.utils.Create_Path( model_save_path )
+
+        print( "Beginning Model Data Prepatation/Model Training" )
+
+        # Set Correct Number Of Epochs Versus Number Of Epochs To Run Before Evaluation Is Performed
+        epochs = epochs // run_eval_number_epoch
+
+        for iteration in range( epochs ):
+            # Train Model Over Data: "../data/train_cs1_closed_discovery_without_aggregators"
+            model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose )
+
+            # Check
+            if model.Get_Model().model_history == None:
+                print( "Error Model Contains No History / Model Failed To Train" )
+                return
+
+            history = model.Get_Model().model_history.history
+            loss_per_epoch.append( history['loss'][-1] )
+            accuracy_per_epoch.append( history['accuracy'][-1] )
+            precision_per_epoch.append( history['Precision'][-1] )
+            recall_per_epoch.append( history['Recall'][-1] )
+            f1_score_per_epoch.append( history['F1_Score'][-1] )
+
+            # Ranking/Evaluation Variables
+            b_prediction_dictionary = {}
+            rank                    = 1
+            number_of_ties          = 0
+
+            # Get Prediction For Gold B Term
+            gold_b_prediction_score = model.Predict( primary_input_matrix = gold_b_input_1, secondary_input_matrix = gold_b_input_2,
+                                                        tertiary_input_matrix = gold_b_input_3, return_vector = True, return_raw_values = True )
+
+            # Perform Prediction Over The Entire Evaluation Data-set (Model Inference)
+            predictions = model.Predict( primary_input_matrix = eval_input_1, secondary_input_matrix = eval_input_2,
+                                            tertiary_input_matrix = eval_input_3, return_vector = True, return_raw_values = True )
+
+            print( "Performing Inference For Testing Instance Predictions" )
+
+            # Perform Model Evaluation (Ranking Of Gold B Term)
+            if isinstance( predictions, list ) and len( predictions ) == 0:
+                print( "Error Occurred During Model Inference" )
+                continue
+
+            for instance, instance_prediction in zip( eval_data, predictions ):
+                instance_tokens = instance.split()
+                a_term = instance_tokens[0] # Not Used
+                b_term = instance_tokens[1]
+                c_term = instance_tokens[2] # Not Used
+
+                if b_term not in b_prediction_dictionary:
+                    b_prediction_dictionary[b_term] = [instance_prediction]
+                else:
+                    b_prediction_dictionary[b_term].append( instance_prediction )
+
+            # Ranking Gold B Term Among All B Terms
+            for b_term in b_prediction_dictionary:
+                if b_term == gold_b_term: continue
+                if b_prediction_dictionary[b_term] > gold_b_prediction_score:
+                    rank += 1
+                elif b_prediction_dictionary[b_term] == gold_b_prediction_score:
+                    number_of_ties += 1
+
+            number_of_ties_per_epoch.append( number_of_ties )
+
+            ranking_per_epoch.append( rank )
+            ranking_per_epoch_value.append( gold_b_prediction_score )
+
+            # Keep Track Of The Best Rank
+            if rank < best_ranking:
+                best_ranking        = rank
+                best_number_of_ties = number_of_ties
+
+            print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( rank ) +
+                " Of " + str( len( eval_data ) ) + " Number Of B Terms" + " - Score: " + str( gold_b_prediction_score ) +
+                " - Number Of Ties: " + str( number_of_ties ) )
+
+        # Print Ranking Information Per Epoch
+        print( "" )
+
+        for epoch in range( len( ranking_per_epoch ) ):
+            print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
+                " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
+
+        print( "\nGenerating Model Metric Charts" )
+        if not re.search( r"\/$", model_save_path ): model_save_path += "/"
+
+        plt.plot( range( len( ranking_per_epoch ) ), ranking_per_epoch )
+        plt.title( "Training: Rank vs Epoch" )
+        plt.xlabel( "Epoch" )
+        plt.ylabel( "Rank" )
+        plt.savefig( str( model_save_path ) + "training_epoch_vs_rank.png" )
+        plt.clf()
+
+        plt.plot( range( len( number_of_ties_per_epoch ) ), number_of_ties_per_epoch )
+        plt.title( "Training: Ties vs Epoch" )
+        plt.xlabel( "Epoch" )
+        plt.ylabel( "Ties" )
+        plt.savefig( str( model_save_path ) + "training_epoch_vs_ties.png" )
+        plt.clf()
+
+        plt.plot( range( len( loss_per_epoch ) ), loss_per_epoch )
+        plt.title( "Training: Loss vs Epoch" )
+        plt.xlabel( "Epoch" )
+        plt.ylabel( "Loss" )
+        plt.savefig( str( model_save_path ) + "training_epoch_vs_loss.png" )
+        plt.clf()
+
+        plt.plot( range( len( accuracy_per_epoch ) ), accuracy_per_epoch )
+        plt.title( "Training: Epoch vs Accuracy" )
+        plt.xlabel( "Epoch" )
+        plt.ylabel( "Accuracy" )
+        plt.savefig( str( model_save_path ) + "training_epoch_vs_accuracy.png" )
+        plt.clf()
+
+        plt.plot( range( len( precision_per_epoch ) ), precision_per_epoch )
+        plt.title( "Training: Epoch vs Precision" )
+        plt.xlabel( "Epoch" )
+        plt.ylabel( "Precision" )
+        plt.savefig( str( model_save_path ) + "training_epoch_vs_precision.png" )
+        plt.clf()
+
+        plt.plot( range( len( recall_per_epoch ) ), recall_per_epoch )
+        plt.title( "Training: Epoch vs Recall" )
+        plt.xlabel( "Epoch" )
+        plt.ylabel( "Recall" )
+        plt.savefig( str( model_save_path ) + "training_epoch_vs_recall.png" )
+        plt.clf()
+
+        plt.plot( range( len( f1_score_per_epoch ) ), f1_score_per_epoch )
+        plt.title( "Training: Epoch vs F1-Score" )
+        plt.xlabel( "Epoch" )
+        plt.ylabel( "F1-Score" )
+        plt.savefig( str( model_save_path ) + "training_epoch_vs_f1.png" )
+        plt.clf()
+
+        print( "\nBest Rank: " + str( best_ranking ) )
+        print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) )
+
+        print( "\n\n" )
 
 
 ############################################################################################
