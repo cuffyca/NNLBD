@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 03/18/2021                                                                   #
+#    Revised: 03/21/2021                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -622,10 +622,13 @@ class LBD:
         # Check(s)
         if training_file_path == "" and len( data_instances ) == 0:
             self.Print_Log( "LBD::Fit() - Error: No Training File Path Specified Or Training Instance List Given", force_print = True )
-            return
+            return False
         if self.utils.Check_If_File_Exists( training_file_path ) == False and len( data_instances ) == 0:
             self.Print_Log( "LBD::Fit() - Error: Training File Data Path Does Not Exist", force_print = True )
-            return
+            return False
+        if feature_scale_value is not None and feature_scale_value <= 0 or self.Get_Model().Get_Feature_Scaling_Value() <= 0:
+            self.Print_Log( "LBD::Fit() - Error: Feature Scaling Value Must Be >= 0", force_print = True )
+            return False
 
         # Check If Default Parameters Have Changed, If So Change Private Variables
         self.Update_Model_Parameters( learning_rate = learning_rate, epochs = epochs, batch_size = batch_size, momentum = momentum,
@@ -649,7 +652,7 @@ class LBD:
         # Check If Model Has Been Loaded/Created Prior To Continuing
         if self.Is_Model_Loaded() == False:
             self.Print_Log( "LBD::Fit() - Error: Model Has Not Been Created/Loaded", force_print = True )
-            return
+            return False
 
         #######################################################################
         #                                                                     #
@@ -747,6 +750,8 @@ class LBD:
         self.model.Print_Model_Training_Metrics()
 
         self.Print_Log( "LBD::Fit() - Complete" )
+
+        return True
 
     """
         Outputs Model's Prediction Vector Given Inputs
@@ -1618,7 +1623,7 @@ class LBD:
 
         history = self.model.model_history.history
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Epoch vs Loss" )
+        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Loss vs Epoch" )
         plt.plot( range( len( self.model.model_history.epoch ) ), history['loss'] )
         plt.title( "Training: Loss vs Epoch" )
         plt.xlabel( "Epoch" )
@@ -1626,33 +1631,33 @@ class LBD:
         plt.savefig( str( path ) + "training_epoch_vs_loss.png" )
         plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Epoch vs Accuracy" )
+        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Accuracy vs Epoch" )
         plt.plot( range( len( self.model.model_history.epoch ) ), history['accuracy'] if 'accuracy' in history else history['acc'] )
-        plt.title( "Training: Epoch vs Accuracy" )
+        plt.title( "Training: Accuracy vs Epoch" )
         plt.xlabel( "Epoch" )
         plt.ylabel( "Accuracy" )
         plt.savefig( str( path ) + "training_epoch_vs_accuracy.png" )
         plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Epoch vs Precision" )
+        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Precision vs Epoch" )
         plt.plot( range( len( self.model.model_history.epoch ) ), history['Precision'] )
-        plt.title( "Training: Epoch vs Precision" )
+        plt.title( "Training: Precision vs Epoch" )
         plt.xlabel( "Epoch" )
         plt.ylabel( "Precision" )
         plt.savefig( str( path ) + "training_epoch_vs_precision.png" )
         plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Epoch vs Recall" )
+        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Recall vs Epoch" )
         plt.plot( range( len( self.model.model_history.epoch ) ), history['Recall'] )
-        plt.title( "Training: Epoch vs Recall" )
+        plt.title( "Training: Recall vs Epoch" )
         plt.xlabel( "Epoch" )
         plt.ylabel( "Recall" )
         plt.savefig( str( path ) + "training_epoch_vs_recall.png" )
         plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Epoch vs F1-Score" )
+        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - F1-Score vs Epoch" )
         plt.plot( range( len( self.model.model_history.epoch ) ), history['F1_Score'] )
-        plt.title( "Training: Epoch vs F1-Score" )
+        plt.title( "Training: F1-Score vs Epoch" )
         plt.xlabel( "Epoch" )
         plt.ylabel( "F1-Score" )
         plt.savefig( str( path ) + "training_epoch_vs_f1.png" )

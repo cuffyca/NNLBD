@@ -8,7 +8,7 @@
             "number_of_iterations": 5
         }
     ],
-    "crichton_train_and_eval_1": [
+    "crichton_closed_discovery_train_and_eval_1": [
         {
             "_comment": "Crichton: CS3",
             "print_debug_log": "False",
@@ -28,7 +28,7 @@
             "embedding_path": "../vectors/test_modified_cs3.embeddings",
             "train_data_path": "../data/train_cs3_closed_discovery_without_aggregators.tsv",
             "eval_data_path": "../data/test_cs3_closed_discovery_without_aggregators.tsv",
-            "model_save_path": "../cs3_softplus_model_fs",
+            "model_save_path": "../cs3_softplus_model",
             "epochs": 300,
             "verbose": 2,
             "learning_rate": 0.0001,
@@ -37,10 +37,8 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "use_batch_normalization": "False",
-            "gold_b_term": "PR:000003107",
             "gold_b_instance": "PR:000001138\tPR:000003107\tPR:000006736\t0.0",
-            "set_per_iteration_model_path": "True",
-            "feature_scale_value": 10.0
+            "set_per_iteration_model_path": "True"
         }
     ]
 }

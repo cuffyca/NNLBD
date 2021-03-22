@@ -8,9 +8,9 @@
             "number_of_iterations": 5
         }
     ],
-    "crichton_train_and_eval_1": [
+    "crichton_closed_discovery_train_and_eval_1": [
         {
-            "_comment": "Crichton: CS1 Reduced",
+            "_comment": "Crichton: CS5",
             "print_debug_log": "False",
             "write_log_to_file": "False",
             "network_model": "simple",
@@ -25,10 +25,10 @@
             "loss_function": "binary_crossentropy",
             "use_csr_format": "True",
             "trainable_weights": "False",
-            "embedding_path": "../vectors/test_modified_cs1.embeddings",
-            "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators",
-            "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators",
-            "model_save_path": "../cs1_softplus_model_fs",
+            "embedding_path": "../vectors/test_modified_cs5.embeddings",
+            "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators.tsv",
+            "eval_data_path": "../data/test_cs5_closed_discovery_without_aggregators.tsv",
+            "model_save_path": "../cs5_softplus_model_fs",
             "epochs": 300,
             "verbose": 2,
             "learning_rate": 0.0001,
@@ -37,8 +37,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "use_batch_normalization": "False",
-            "gold_b_term": "PR:000002307",
-            "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
+            "gold_b_instance": "PR:000006066\tHOC:42\tMESH:D013964\t0.0",
             "set_per_iteration_model_path": "True",
             "feature_scale_value": 10.0
         }

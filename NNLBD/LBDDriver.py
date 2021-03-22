@@ -6,13 +6,13 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 03/20/2021                                                                   #
+#    Revised: 03/21/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
 #                                                                                          #
 #    How To Run:                                                                           #
-#                    "python LBDDriver.py experiment_setting.json"                         #
+#                    "python LBDDriver.py experiment_parameter_file.json"                  #
 #                                                                                          #
 #    Authors:                                                                              #
 #    --------                                                                              #
@@ -27,6 +27,10 @@ import json, os, re, sys, time
 import matplotlib.pyplot as plt
 import subprocess as sp
 sys.path.insert( 0, "../" )
+
+# Fixes Recursion Limit Issue
+#   Default = 10 ** 4
+sys.setrecursionlimit( 10**6 )
 
 # Custom Modules
 from NNLBD import *
@@ -63,10 +67,16 @@ class NNLBD_Driver:
     def Read_JSON_Data( self, json_file_path ):
         json_data = {}
 
-        with open( json_file_path ) as json_file:
-            json_data = json.load( json_file )
+        # Read JSON Data From File
+        if Utils().Check_If_File_Exists( json_file_path ):
+            with open( json_file_path ) as json_file:
+                json_data = json.load( json_file )
 
-        self.json_data = json_data
+            self.json_data = json_data
+
+        else:
+            print( "Error: Specified JSON File Does Not Exist" )
+
         return json_data
 
     """
@@ -106,6 +116,18 @@ class NNLBD_Driver:
             print( str( variable_name ) + " : " + str( data_dict[variable_name] ) )
 
     """
+        Saves Data Plots/Graphs
+    """
+    def Generate_Plot( self, data_list = [], title = "Title", x_label = "X_Label",
+                       y_label = "Y_Label", file_name = "file_name.png", save_path = "./" ):
+        plt.plot( range( len( data_list ) ), data_list )
+        plt.title( str( title ) )
+        plt.xlabel( str( x_label ) )
+        plt.ylabel( str( y_label ) )
+        plt.savefig( str( save_path ) + str( file_name ) )
+        plt.clf()
+
+    """
         Run Extracted Experiment Setups From JSON Data
     """
     def Run_Experiments( self, json_dict = None ):
@@ -125,14 +147,13 @@ class NNLBD_Driver:
 
         # Model Variables
         run_eval_number_epoch = 1
-        gold_b_term           = None
         gold_b_instance       = None
 
         # Run Experiments
         for iter in range( 1, self.number_of_iterations + 1 ):
             for run_id in json_dict:
                 # Skip Global Variable Dictionary
-                if re.search( 'global_settings', run_id ): continue
+                if re.search( r'[Gg]lobal_[Ss]ettings', run_id ): continue
 
                 print( "Building LBD Experiment Run ID: " + str( run_id ) + "\n" )
 
@@ -182,7 +203,6 @@ class NNLBD_Driver:
                 if "scale"                         in run_dict: scale                         = float( run_dict["scale"] )
                 if "embedding_modification"        in run_dict: embedding_modification        = run_dict["embedding_modification"]
                 if "run_eval_number_epoch"         in run_dict: run_eval_number_epoch         = run_dict["run_eval_number_epoch"]
-                if "gold_b_term"                   in run_dict: gold_b_term                   = run_dict["gold_b_term"]
                 if "gold_b_instance"               in run_dict: gold_b_instance               = run_dict["gold_b_instance"]
 
 
@@ -190,7 +210,11 @@ class NNLBD_Driver:
                 if self.enable_gpu_polling and self.available_device_name == "":
                     print( "*** Waiting For The Next Available GPU ***" )
                     self.available_device_name = self.Get_Next_Available_CUDA_GPU( self.acceptable_available_memory )
-                    print( "*** Using Available GPU Selected: '" + str( self.available_device_name ) + "' ***\n" )
+
+                    if re.search( r'[Gg][Pp][Uu]', self.available_device_name ):
+                        print( "*** Using Available GPU Selected: '" + str( self.available_device_name ) + "' ***\n" )
+                    else:
+                        print( "*** Warning: Unable To Allocate A GPU / Using CPU ***" )
 
                     # Check CUDA GPU Device Override Setting
                     if self.available_device_name != "": device_name = self.available_device_name
@@ -300,17 +324,58 @@ class NNLBD_Driver:
                             model.Save_Model( model_save_path )
                             model.Generate_Model_Metric_Plots( model_save_path )
 
-                # Run Crichton CS1-CS5 Re-implementation
-                elif re.match( r"^[Cc]richton_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
-                    if gold_b_term is None or gold_b_instance is None:
-                        print( " Error: Not Gold B Term or Gold B Instance Defined" )
+                # Run Crichton Closed Discovery Train And Eval - (Simple Model)
+                elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
+                    if gold_b_instance is None:
+                        print( " Error: No Gold B Instance Defined" )
                         continue
 
-                    self.Crichton_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
-                                                  learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
-                                                  train_data_path = train_data_path, eval_data_path = eval_data_path, model_save_path = model_save_path,
-                                                  embedding_path = embedding_path, gold_b_instance = gold_b_instance, gold_b_term = gold_b_term )
+                    self.Crichton_Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
+                                                                   learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
+                                                                   train_data_path = train_data_path, eval_data_path = eval_data_path, model_save_path = model_save_path,
+                                                                   embedding_path = embedding_path, gold_b_instance = gold_b_instance )
 
+                    if model_save_path != "":
+                        model.Save_Model( model_save_path )
+
+                # Run Crichton Closed Discovery Train And Eval - (Simple Model Refinement)
+                elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
+                    if gold_b_instance is None:
+                        print( " Error: No Gold B Instance Defined" )
+                        continue
+
+                    if model_load_path != "":
+                        if not model.Load_Model( model_load_path ): continue
+
+                        # Update Model Parameters
+                        model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
+                                                       batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
+                                                       embedding_path = embedding_path, verbose = verbose )
+
+                        self.Crichton_Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
+                                                                       learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
+                                                                       train_data_path = train_data_path, eval_data_path = eval_data_path, model_save_path = model_save_path,
+                                                                       embedding_path = embedding_path, gold_b_instance = gold_b_instance )
+
+                        if model_save_path != "":
+                            model.Save_Model( model_save_path )
+
+                    else:
+                        print( "Error: Unable To Load Model To Refine / No Model Path Specified" )
+
+                # Run Closed Discovery Train And Eval - (All Models Except 'Simple' Model)
+                elif re.match( r"^[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
+                    if gold_b_instance is None:
+                        print( " Error: No Gold B Instance Defined" )
+                        continue
+
+                    self.Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
+                                                          learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
+                                                          train_data_path = train_data_path, model_save_path = model_save_path,
+                                                          embedding_path = embedding_path, gold_b_instance = gold_b_instance )
+
+                    if model_save_path != "":
+                        model.Save_Model( model_save_path )
 
                 # Clean-Up
                 model = None
@@ -353,8 +418,11 @@ class NNLBD_Driver:
                     break
 
             except Exception as e:
-                print( "LBDDriver::Get_Next_Available_CUDA_GPU() - Warning: 'nvidia-smi' Not Detected In Path. GPUs Are Not Masked" )
+                print( "LBDDriver::Get_Next_Available_CUDA_GPU() - Warning: 'nvidia-smi' Not Detected In Path / Unable To Detect Available GPUs." )
+                print( "                                         - Setting Device Name To CPU" )
                 print( "                                         - " + str( e ) )
+                available_device_id = "/cpu:0"
+                break
 
         if polling_timer_exceeded:
             print( "LBDDriver::Get_Next_Available_CUDA_GPU() - Error: Unable To Secure Available GPU Within A 2 Week Period / Terminating Program" )
@@ -368,8 +436,19 @@ class NNLBD_Driver:
     #                                                                                          #
     ############################################################################################
 
-    def Crichton_Train_And_Eval( self, model, model_type, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
-                                 train_data_path, eval_data_path, model_save_path, embedding_path, gold_b_instance, gold_b_term ):
+    def Crichton_Closed_Discovery_Train_And_Eval( self, model, model_type, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
+                                                  train_data_path, eval_data_path, model_save_path, embedding_path, gold_b_instance ):
+        # Check(s)
+        if Utils().Check_If_File_Exists( train_data_path ) == False:
+            print( "Error: Specified Training File Does Not Exist" )
+            return
+        if Utils().Check_If_File_Exists( eval_data_path ) == False:
+            print( "Error: Specified Evaluation File Does Not Exist" )
+            return
+        if embedding_path != "" and Utils().Check_If_File_Exists( embedding_path ) == False:
+            print( "Error: Specified Embedding File Does Not Exist" )
+            return
+
         # Training/Evaluation Variables (Do Not Modify)
         ranking_per_epoch        = []
         ranking_per_epoch_value  = []
@@ -381,6 +460,7 @@ class NNLBD_Driver:
         f1_score_per_epoch       = []
         number_of_ties           = 0
         best_number_of_ties      = 0
+        gold_b_term              = gold_b_instance.split()[1]
         best_ranking             = sys.maxsize
         eval_data                = model.Get_Data_Loader().Read_Data( eval_data_path, keep_in_memory = False )
 
@@ -428,7 +508,7 @@ class NNLBD_Driver:
             model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose )
 
             # Check
-            if model.Get_Model().model_history == None:
+            if model.Get_Model() == None or model.Get_Model().model_history == None:
                 print( "Error Model Contains No History / Model Failed To Train" )
                 return
 
@@ -446,11 +526,11 @@ class NNLBD_Driver:
 
             # Get Prediction For Gold B Term
             gold_b_prediction_score = model.Predict( primary_input_matrix = gold_b_input_1, secondary_input_matrix = gold_b_input_2,
-                                                        tertiary_input_matrix = gold_b_input_3, return_vector = True, return_raw_values = True )
+                                                     tertiary_input_matrix = gold_b_input_3, return_vector = True, return_raw_values = True )
 
             # Perform Prediction Over The Entire Evaluation Data-set (Model Inference)
             predictions = model.Predict( primary_input_matrix = eval_input_1, secondary_input_matrix = eval_input_2,
-                                            tertiary_input_matrix = eval_input_3, return_vector = True, return_raw_values = True )
+                                         tertiary_input_matrix = eval_input_3, return_vector = True, return_raw_values = True )
 
             print( "Performing Inference For Testing Instance Predictions" )
 
@@ -502,54 +582,149 @@ class NNLBD_Driver:
         print( "\nGenerating Model Metric Charts" )
         if not re.search( r"\/$", model_save_path ): model_save_path += "/"
 
-        plt.plot( range( len( ranking_per_epoch ) ), ranking_per_epoch )
-        plt.title( "Training: Rank vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Rank" )
-        plt.savefig( str( model_save_path ) + "training_epoch_vs_rank.png" )
-        plt.clf()
+        self.Generate_Plot( data_list = ranking_per_epoch, title = "Evaluation: Rank vs Epoch", x_label = "Epoch",
+                            y_label = "Rank", file_name = "evaluation_rank_vs_epoch.png", save_path = model_save_path )
 
-        plt.plot( range( len( number_of_ties_per_epoch ) ), number_of_ties_per_epoch )
-        plt.title( "Training: Ties vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Ties" )
-        plt.savefig( str( model_save_path ) + "training_epoch_vs_ties.png" )
-        plt.clf()
+        self.Generate_Plot( data_list = number_of_ties_per_epoch, title = "Evaluation: Ties vs Epoch", x_label = "Epoch",
+                            y_label = "Ties", file_name = "evaluation_ties_vs_epoch.png", save_path = model_save_path )
 
-        plt.plot( range( len( loss_per_epoch ) ), loss_per_epoch )
-        plt.title( "Training: Loss vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Loss" )
-        plt.savefig( str( model_save_path ) + "training_epoch_vs_loss.png" )
-        plt.clf()
+        self.Generate_Plot( data_list = loss_per_epoch, title = "Training: Loss vs Epoch", x_label = "Epoch",
+                            y_label = "Loss", file_name = "training_loss_vs_epoch.png", save_path = model_save_path )
 
-        plt.plot( range( len( accuracy_per_epoch ) ), accuracy_per_epoch )
-        plt.title( "Training: Epoch vs Accuracy" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Accuracy" )
-        plt.savefig( str( model_save_path ) + "training_epoch_vs_accuracy.png" )
-        plt.clf()
+        self.Generate_Plot( data_list = accuracy_per_epoch, title = "Training: Accuracy vs Epoch", x_label = "Epoch",
+                            y_label = "Accuracy", file_name = "training_accuracy_vs_epoch.png", save_path = model_save_path )
 
-        plt.plot( range( len( precision_per_epoch ) ), precision_per_epoch )
-        plt.title( "Training: Epoch vs Precision" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Precision" )
-        plt.savefig( str( model_save_path ) + "training_epoch_vs_precision.png" )
-        plt.clf()
+        self.Generate_Plot( data_list = precision_per_epoch, title = "Training: Precision vs Epoch", x_label = "Epoch",
+                            y_label = "Precision", file_name = "training_precision_vs_epoch.png", save_path = model_save_path )
 
-        plt.plot( range( len( recall_per_epoch ) ), recall_per_epoch )
-        plt.title( "Training: Epoch vs Recall" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Recall" )
-        plt.savefig( str( model_save_path ) + "training_epoch_vs_recall.png" )
-        plt.clf()
+        self.Generate_Plot( data_list = recall_per_epoch, title = "Training: Recall vs Epoch", x_label = "Epoch",
+                            y_label = "Recall", file_name = "training_recall_vs_epoch.png", save_path = model_save_path )
 
-        plt.plot( range( len( f1_score_per_epoch ) ), f1_score_per_epoch )
-        plt.title( "Training: Epoch vs F1-Score" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "F1-Score" )
-        plt.savefig( str( model_save_path ) + "training_epoch_vs_f1.png" )
-        plt.clf()
+        self.Generate_Plot( data_list = f1_score_per_epoch, title = "Training: F1-Score vs Epoch", x_label = "Epoch",
+                            y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
+
+        print( "\nBest Rank: " + str( best_ranking ) )
+        print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) )
+
+        print( "\n\n" )
+
+    def Closed_Discovery_Train_And_Eval( self, model, model_type, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
+                                         train_data_path, model_save_path, embedding_path, gold_b_instance ):
+        # Check(s)
+        if Utils().Check_If_File_Exists( train_data_path ) == False:
+            print( "Error: Specified Training File Does Not Exist" )
+            return
+        if embedding_path != "" and Utils().Check_If_File_Exists( embedding_path ) == False:
+            print( "Error: Specified Embedding File Does Not Exist" )
+            return
+
+        # Training/Evaluation Variables (Do Not Modify)
+        ranking_per_epoch        = []
+        ranking_per_epoch_value  = []
+        number_of_ties_per_epoch = []
+        loss_per_epoch           = []
+        accuracy_per_epoch       = []
+        precision_per_epoch      = []
+        recall_per_epoch         = []
+        f1_score_per_epoch       = []
+        best_number_of_ties      = 0
+        a_term                   = gold_b_instance.split( '\t' )[0]
+        gold_b_term              = gold_b_instance.split( '\t' )[1]
+        c_term                   = gold_b_instance.split( '\t' )[2]
+        best_ranking             = sys.maxsize
+
+        # Create Directory
+        model.utils.Create_Path( model_save_path )
+
+        print( "Beginning Model Data Prepatation/Model Training" )
+
+        # Set Correct Number Of Epochs Versus Number Of Epochs To Run Before Evaluation Is Performed
+        epochs = epochs // run_eval_number_epoch
+
+        for iteration in range( epochs ):
+            # Train Model Over Data: "../data/train_cs1_closed_discovery_without_aggregators"
+            model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose )
+
+            # Check
+            if model.Get_Model() == None or model.Get_Model().model_history == None:
+                print( "Error Model Contains No History / Model Failed To Train" )
+                return
+
+            history = model.Get_Model().model_history.history
+            loss_per_epoch.append( history['loss'][-1] )
+            accuracy_per_epoch.append( history['accuracy'][-1] )
+            precision_per_epoch.append( history['Precision'][-1] )
+            recall_per_epoch.append( history['Recall'][-1] )
+            f1_score_per_epoch.append( history['F1_Score'][-1] )
+
+            # Perform Prediction Over The Entire Evaluation Data-set (Model Inference)
+            predictions = model.Predict( a_term, c_term, return_raw_values = True )[0]
+
+            # Fetch All Unique Terms From DataLoader Dictionary
+            unique_token_list = model.Get_Data_Loader().Get_Token_ID_Dictionary().keys()
+
+            print( "\nRank Unique Token Predictions Using Probabilities:\n" )
+
+            prob_dict = {}
+
+            # For Each Prediction From The Model, Store The Prediction Value And Unique Concept Token Within A Dictionary
+            for token, prediction in zip( unique_token_list, predictions ):
+                # print( str( token ) + "\t:\t" + str( prediction ) )
+                prob_dict[token] = prediction
+
+            # Sort Concept And Probability Dictionary In Reverse Order To Rank Concepts.
+            prob_dict  = { k: v for k, v in sorted( prob_dict.items(), key = lambda x: x[1], reverse = True ) }
+
+            # Get Index Of Desired Gold B
+            gold_b_rank  = list( prob_dict.keys() ).index( gold_b_term.lower() )
+            gold_b_value = prob_dict[gold_b_term.lower()]
+
+            # Get Number Of Ties With Gold B Prediction Value
+            gold_b_ties  = list( prob_dict.values() ).count( gold_b_value ) - 1
+
+            ranking_per_epoch.append( gold_b_rank )
+            ranking_per_epoch_value.append( gold_b_value )
+            number_of_ties_per_epoch.append( gold_b_ties )
+
+            # Keep Track Of The Best Rank
+            if gold_b_rank < best_ranking:
+                best_ranking        = gold_b_rank
+                best_number_of_ties = gold_b_ties
+
+            print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
+                   " Of " + str( len( prob_dict ) ) + " Number Of B Terms" + " - Score: " + str( gold_b_value ) + \
+                   " - Number Of Ties: " + str( gold_b_ties ) )
+
+        # Print Ranking Information Per Epoch
+        print( "" )
+
+        for epoch in range( len( ranking_per_epoch ) ):
+            print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
+                " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
+
+        print( "\nGenerating Model Metric Charts" )
+        if not re.search( r"\/$", model_save_path ): model_save_path += "/"
+
+        self.Generate_Plot( data_list = ranking_per_epoch, title = "Evaluation: Rank vs Epoch", x_label = "Epoch",
+                            y_label = "Rank", file_name = "evaluation_rank_vs_epoch.png", save_path = model_save_path )
+
+        self.Generate_Plot( data_list = number_of_ties_per_epoch, title = "Evaluation: Ties vs Epoch", x_label = "Epoch",
+                            y_label = "Ties", file_name = "evaluation_ties_vs_epoch.png", save_path = model_save_path )
+
+        self.Generate_Plot( data_list = loss_per_epoch, title = "Training: Loss vs Epoch", x_label = "Epoch",
+                            y_label = "Loss", file_name = "training_loss_vs_epoch.png", save_path = model_save_path )
+
+        self.Generate_Plot( data_list = accuracy_per_epoch, title = "Training: Accuracy vs Epoch", x_label = "Epoch",
+                            y_label = "Accuracy", file_name = "training_accuracy_vs_epoch.png", save_path = model_save_path )
+
+        self.Generate_Plot( data_list = precision_per_epoch, title = "Training: Precision vs Epoch", x_label = "Epoch",
+                            y_label = "Precision", file_name = "training_precision_vs_epoch.png", save_path = model_save_path )
+
+        self.Generate_Plot( data_list = recall_per_epoch, title = "Training: Recall vs Epoch", x_label = "Epoch",
+                            y_label = "Recall", file_name = "training_recall_vs_epoch.png", save_path = model_save_path )
+
+        self.Generate_Plot( data_list = f1_score_per_epoch, title = "Training: F1-Score vs Epoch", x_label = "Epoch",
+                            y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
 
         print( "\nBest Rank: " + str( best_ranking ) )
         print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) )
