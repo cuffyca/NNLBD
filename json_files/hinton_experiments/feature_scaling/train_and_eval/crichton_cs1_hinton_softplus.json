@@ -3,7 +3,7 @@
         {
             "_comment": "Global Variable Settings",
             "enable_gpu_polling": "True",
-            "acceptable_available_memory": 4096,
+            "acceptable_available_memory": 3000,
             "device_name": "/gpu:0",
             "number_of_iterations": 1
         }
@@ -34,7 +34,6 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
-            "set_per_iteration_model_path": "True",
             "feature_scale_value": 10.0
         }
     ]

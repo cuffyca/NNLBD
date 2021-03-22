@@ -336,11 +336,13 @@ class NNLBD_Driver:
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
                         continue
+                    if model_type != "closed_discovery":
+                        print( " Error: Only Closed Discovery Supported" )
+                        continue
 
-                    self.Crichton_Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
-                                                                   learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
-                                                                   train_data_path = train_data_path, eval_data_path = eval_data_path, model_save_path = model_save_path,
-                                                                   embedding_path = embedding_path, gold_b_instance = gold_b_instance )
+                    self.Crichton_Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose,
+                                                                   run_eval_number_epoch = run_eval_number_epoch, train_data_path = train_data_path, eval_data_path = eval_data_path,
+                                                                   model_save_path = model_save_path, embedding_path = embedding_path, gold_b_instance = gold_b_instance )
 
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
@@ -349,6 +351,9 @@ class NNLBD_Driver:
                 elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
+                        continue
+                    if model_type != "closed_discovery":
+                        print( " Error: Only Closed Discovery Supported" )
                         continue
 
                     if model_load_path != "":
@@ -359,10 +364,10 @@ class NNLBD_Driver:
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
                                                        embedding_path = embedding_path, verbose = verbose )
 
-                        self.Crichton_Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
-                                                                       learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
-                                                                       train_data_path = train_data_path, eval_data_path = eval_data_path, model_save_path = model_save_path,
-                                                                       embedding_path = embedding_path, gold_b_instance = gold_b_instance )
+                        self.Crichton_Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size, learning_rate = learning_rate,
+                                                                       verbose = verbose, run_eval_number_epoch = run_eval_number_epoch, train_data_path = train_data_path,
+                                                                       eval_data_path = eval_data_path, model_save_path = model_save_path, embedding_path = embedding_path,
+                                                                       gold_b_instance = gold_b_instance )
 
                         if model_save_path != "":
                             model.Save_Model( model_save_path )
@@ -375,9 +380,13 @@ class NNLBD_Driver:
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
                         continue
+                    if model_type != "closed_discovery":
+                        print( " Error: Only Closed Discovery Supported" )
+                        continue
 
-                    self.Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
-                                                          learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
+                    self.Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
+                                                          learning_rate = learning_rate, verbose = verbose,
+                                                          run_eval_number_epoch = run_eval_number_epoch,
                                                           train_data_path = train_data_path, model_save_path = model_save_path,
                                                           embedding_path = embedding_path, gold_b_instance = gold_b_instance )
 
@@ -389,6 +398,9 @@ class NNLBD_Driver:
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
                         continue
+                    if model_type != "closed_discovery":
+                        print( " Error: Only Closed Discovery Supported" )
+                        continue
 
                     if model_load_path != "":
                         if not model.Load_Model( model_load_path ): continue
@@ -398,8 +410,9 @@ class NNLBD_Driver:
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
                                                        embedding_path = embedding_path, verbose = verbose )
 
-                        self.Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
-                                                              learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
+                        self.Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
+                                                              learning_rate = learning_rate, verbose = verbose,
+                                                              run_eval_number_epoch = run_eval_number_epoch,
                                                               train_data_path = train_data_path, model_save_path = model_save_path,
                                                               embedding_path = embedding_path, gold_b_instance = gold_b_instance )
 
@@ -469,7 +482,7 @@ class NNLBD_Driver:
     #                                                                                          #
     ############################################################################################
 
-    def Crichton_Closed_Discovery_Train_And_Eval( self, model, model_type, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
+    def Crichton_Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
                                                   train_data_path, eval_data_path, model_save_path, embedding_path, gold_b_instance ):
         # Check(s)
         if Utils().Check_If_File_Exists( train_data_path ) == False:
@@ -513,9 +526,9 @@ class NNLBD_Driver:
             return
 
         # Vectorize Gold B Term And Entire Evaluation Data-set
-        gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Vectorize_Model_Data( data_list = [gold_b_instance], model_type = model_type,
+        gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Vectorize_Model_Data( data_list = [gold_b_instance], model_type = "closed_discovery",
                                                                                         use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
-        eval_input_1, eval_input_2, eval_input_3, _       = model.Vectorize_Model_Data( data_list = eval_data, model_type = model_type,
+        eval_input_1, eval_input_2, eval_input_3, _       = model.Vectorize_Model_Data( data_list = eval_data, model_type = "closed_discovery",
                                                                                         use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
 
         # Checks
@@ -546,8 +559,10 @@ class NNLBD_Driver:
                 return
 
             history = model.Get_Model().model_history.history
+            accuracy_score = history['accuracy'][-1] if 'accuracy' in history else history['acc'][-1]
+
             loss_per_epoch.append( history['loss'][-1] )
-            accuracy_per_epoch.append( history['accuracy'][-1] )
+            accuracy_per_epoch.append( accuracy_score )
             precision_per_epoch.append( history['Precision'][-1] )
             recall_per_epoch.append( history['Recall'][-1] )
             f1_score_per_epoch.append( history['F1_Score'][-1] )
@@ -641,7 +656,7 @@ class NNLBD_Driver:
 
         print( "\n\n" )
 
-    def Closed_Discovery_Train_And_Eval( self, model, model_type, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
+    def Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
                                          train_data_path, model_save_path, embedding_path, gold_b_instance ):
         # Check(s)
         if Utils().Check_If_File_Exists( train_data_path ) == False:
@@ -684,8 +699,10 @@ class NNLBD_Driver:
                 return
 
             history = model.Get_Model().model_history.history
+            accuracy_score = history['accuracy'][-1] if 'accuracy' in history else history['acc'][-1]
+
             loss_per_epoch.append( history['loss'][-1] )
-            accuracy_per_epoch.append( history['accuracy'][-1] )
+            accuracy_per_epoch.append( accuracy_score )
             precision_per_epoch.append( history['Precision'][-1] )
             recall_per_epoch.append( history['Recall'][-1] )
             f1_score_per_epoch.append( history['F1_Score'][-1] )
@@ -696,7 +713,9 @@ class NNLBD_Driver:
             # Fetch All Unique Terms From DataLoader Dictionary
             unique_token_list = model.Get_Data_Loader().Get_Token_ID_Dictionary().keys()
 
-            print( "\nRank Unique Token Predictions Using Probabilities:\n" )
+            ################################################################
+            # Rank Unique Token Predictions Using Their Probability Values #
+            ################################################################
 
             prob_dict = {}
 

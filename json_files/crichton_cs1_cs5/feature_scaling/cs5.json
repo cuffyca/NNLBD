@@ -3,7 +3,7 @@
         {
             "_comment": "Global Variable Settings",
             "enable_gpu_polling": "True",
-            "acceptable_available_memory": 4096,
+            "acceptable_available_memory": 3000,
             "device_name": "/gpu:0",
             "number_of_iterations": 5
         }

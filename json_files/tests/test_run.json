@@ -2,7 +2,7 @@
     "global_settings": [
         {
             "_comment": "Global Variable Settings",
-            "enable_gpu_polling": "False",
+            "enable_gpu_polling": "True",
             "acceptable_available_memory": 500,
             "device_name": "/gpu:0",
             "number_of_iterations": 1

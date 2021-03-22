@@ -3,7 +3,7 @@
         {
             "_comment": "Global Variable Settings",
             "enable_gpu_polling": "True",
-            "acceptable_available_memory": 4096,
+            "acceptable_available_memory": 3000,
             "device_name": "/gpu:0",
             "number_of_iterations": 1
         }
@@ -35,7 +35,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -66,7 +66,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011331\tHOC:42\tPR:000005308\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -97,7 +97,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001138\tPR:000003107\tPR:000006736\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -128,7 +128,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011170\tCHEBI:26523\tMESH:D010190\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -159,7 +159,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000006066\tHOC:42\tMESH:D013964\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -190,7 +190,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -221,7 +221,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011331\tHOC:42\tPR:000005308\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -252,7 +252,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001138\tPR:000003107\tPR:000006736\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -283,7 +283,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011170\tCHEBI:26523\tMESH:D010190\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
@@ -314,7 +314,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000006066\tHOC:42\tMESH:D013964\t0.0",
-            "set_per_iteration_model_path": "True",
+            "set_per_iteration_model_path": "False",
             "feature_scale_value": 10.0
         }
     ],
