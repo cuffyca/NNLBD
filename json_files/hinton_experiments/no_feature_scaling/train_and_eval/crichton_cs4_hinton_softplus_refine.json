@@ -8,7 +8,7 @@
             "number_of_iterations": 1
         }
     ],
-    "refine_1": [
+    "closed_discovery_refine_and_eval_1": [
         {
             "_comment": "Crichton CS4 Hinton Softplus: Closed Discovery",
             "print_debug_log": "False",

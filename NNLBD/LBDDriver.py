@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 03/21/2021                                                                   #
+#    Revised: 03/22/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -26,6 +26,8 @@
 import json, os, re, sys, time
 import matplotlib.pyplot as plt
 import subprocess as sp
+from shutil import copy2
+
 sys.path.insert( 0, "../" )
 
 # Fixes Recursion Limit Issue
@@ -54,6 +56,9 @@ class NNLBD_Driver:
         self.available_device_name       = ""
         self.acceptable_available_memory = 4096
 
+        # Private Variables (Do Not Modify)
+        self.json_file_path              = ""
+
 
     ############################################################################################
     #                                                                                          #
@@ -69,6 +74,8 @@ class NNLBD_Driver:
 
         # Read JSON Data From File
         if Utils().Check_If_File_Exists( json_file_path ):
+            self.json_file_path = json_file_path
+
             with open( json_file_path ) as json_file:
                 json_data = json.load( json_file )
 
@@ -338,7 +345,7 @@ class NNLBD_Driver:
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
 
-                # Run Crichton Closed Discovery Train And Eval - (Simple Model Refinement)
+                # Run Crichton Closed Discovery Refine And Eval - (Simple Model Refinement)
                 elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
@@ -376,6 +383,32 @@ class NNLBD_Driver:
 
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
+
+                # Run Closed Discovery Refine And Eval - (All Models Except 'Simple' Model)
+                elif re.match( r"^[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
+                    if gold_b_instance is None:
+                        print( " Error: No Gold B Instance Defined" )
+                        continue
+
+                    if model_load_path != "":
+                        if not model.Load_Model( model_load_path ): continue
+
+                        # Update Model Parameters
+                        model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
+                                                       batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
+                                                       embedding_path = embedding_path, verbose = verbose )
+
+                        self.Closed_Discovery_Train_And_Eval( model = model, model_type = model_type, epochs = epochs, batch_size = batch_size,
+                                                              learning_rate = learning_rate, verbose = verbose, run_eval_number_epoch = run_eval_number_epoch,
+                                                              train_data_path = train_data_path, model_save_path = model_save_path,
+                                                              embedding_path = embedding_path, gold_b_instance = gold_b_instance )
+
+                        if model_save_path != "":
+                            model.Save_Model( model_save_path )
+
+                # Copy JSON File To Model Save Path
+                if model_save_path != "":
+                    copy2( self.json_file_path, model_save_path )
 
                 # Clean-Up
                 model = None

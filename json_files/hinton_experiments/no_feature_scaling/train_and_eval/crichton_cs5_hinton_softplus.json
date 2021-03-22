@@ -8,7 +8,7 @@
             "number_of_iterations": 1
         }
     ],
-    "train_1": [
+    "closed_discovery_train_and_eval_1": [
         {
             "_comment": "Crichton CS5 Hinton Softplus: Closed Discovery",
             "print_debug_log": "False",
