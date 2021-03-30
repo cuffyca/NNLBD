@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    12/08/2020                                                                   #
-#    Revised: 02/19/2021                                                                   #
+#    Revised: 03/29/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -320,7 +320,8 @@ class CNNModel( BaseModel.BaseModel ):
 
             # Perform Feature Scaling Prior To Generating An Embedding Representation
             if self.feature_scale_value != 1.0:
-                embedding_layer = Lambda( lambda x: x * self.feature_scale_value )( embedding_layer )
+                feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+                embedding_layer = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
 
             convolution_layer_1 = Conv1D( filters = 24, kernel_size = 2, activation = 'relu', name = "Convolution_Layer_1" )( embedding_layer )
             batch_norm_layer_1  = BatchNormalization( name = "Batch_Norm_Layer_1" )( convolution_layer_1 )

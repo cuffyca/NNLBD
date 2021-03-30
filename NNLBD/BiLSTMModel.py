@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 03/15/2021                                                                   #
+#    Revised: 03/29/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -326,7 +326,8 @@ class BiLSTMModel( BaseModel.BaseModel ):
 
             # Perform Feature Scaling Prior To Generating An Embedding Representation
             if self.feature_scale_value != 1.0:
-                embedding_layer     = Lambda( lambda x: x * self.feature_scale_value )( embedding_layer )
+                feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variables When Used With Lambda Function)
+                embedding_layer     = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
 
             bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, return_sequences = True, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_1' )( embedding_layer )
             batch_norm_layer        = BatchNormalization( name = "Batch_Norm_Layer_1" )( bilstm_layer )
@@ -347,7 +348,8 @@ class BiLSTMModel( BaseModel.BaseModel ):
 
             # Perform Feature Scaling Prior To Generating An Embedding Representation
             if self.feature_scale_value != 1.0:
-                embedding_layer     = Lambda( lambda x: x * self.feature_scale_value )( embedding_layer )
+                feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variables When Used With Lambda Function)
+                embedding_layer     = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
 
             bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, return_sequences = True, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_1' )( embedding_layer )
             bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_2' )( bilstm_layer )

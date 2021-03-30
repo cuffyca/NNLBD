@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 03/15/2021                                                                   #
+#    Revised: 03/29/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -398,8 +398,9 @@ class CosFaceModel( BaseModel.BaseModel ):
 
             # Perform Feature Scaling Prior To Generating An Embedding Representation
             if self.feature_scale_value != 1.0:
-                primary_flatten_layer   = Lambda( lambda x: x * self.feature_scale_value )( primary_flatten_layer   )
-                secondary_flatten_layer = Lambda( lambda x: x * self.feature_scale_value )( secondary_flatten_layer )
+                feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+                primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer   )
+                secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
 
             if self.embedding_modification == "average":
                 embedding_input_layer = Average( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer] )

@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    08/05/2020                                                                   #
-#    Revised: 03/15/2021                                                                   #
+#    Revised: 03/29/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -368,7 +368,8 @@ class RumelhartHintonModel( BaseModel.BaseModel ):
 
             # Perform Feature Scaling On Embedding Representation (Selected Primary Embedding)
             if self.feature_scale_value != 1.0:
-                primary_flatten_layer = Lambda( lambda x: x * self.feature_scale_value )( primary_flatten_layer )
+                feature_scale_value   = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+                primary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer )
 
             primary_concept_layer   = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Concept_Representation' )( primary_flatten_layer )
 
@@ -382,7 +383,8 @@ class RumelhartHintonModel( BaseModel.BaseModel ):
 
             # Perform Feature Scaling On Embedding Representation (Selected Secondary Embedding)
             if self.feature_scale_value != 1.0:
-                secondary_flatten_layer = Lambda( lambda x: x * self.feature_scale_value )( secondary_flatten_layer )
+                feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+                secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
 
             if self.network_model == "hinton":
                 secondary_concept_layer = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Relation_Representation' )( secondary_flatten_layer )

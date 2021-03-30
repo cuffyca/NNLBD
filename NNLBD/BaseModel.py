@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 03/19/2021                                                                   #
+#    Revised: 03/29/2021                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -393,36 +393,40 @@ class BaseModel( object ):
             None
     """
     def Load_Model( self, model_path, load_new_model = True ):
-        if load_new_model:
-            self.Print_Log( "BaseModel::Load_Model() - Loading Pretrained Model" )
+        try:
+            if load_new_model:
+                self.Print_Log( "BaseModel::Load_Model() - Loading Pretrained Model" )
 
-            # Load Model
-            if self.utils.Check_If_File_Exists( model_path + ".h5" ):
-                self.model = keras.models.load_model( model_path + ".h5", custom_objects = { 'F1_Score' : self.F1_Score,
-                                                                                             'Precision': self.Precision,
-                                                                                             'Recall'   : self.Recall } )
+                # Load Model
+                if self.utils.Check_If_File_Exists( model_path + ".h5" ):
+                    self.model = keras.models.load_model( model_path + ".h5", custom_objects = { 'F1_Score' : self.F1_Score,
+                                                                                                'Precision': self.Precision,
+                                                                                                'Recall'   : self.Recall } )
+                else:
+                    self.Print_Log( "BaseModel::Load_Model() - Error: Model Does Not Exist", force_print = True )
+                    return False
             else:
-                self.Print_Log( "BaseModel::Load_Model() - Error: Model Does Not Exist", force_print = True )
-                return False
-        else:
-            self.Print_Log( "BaseModel::Load_Model() - Loading Model Configuration / Untrained Model / New Weights Per Layer" )
+                self.Print_Log( "BaseModel::Load_Model() - Loading Model Configuration / Untrained Model / New Weights Per Layer" )
 
-            # Load Model Configuration
-            if self.utils.Check_If_File_Exists( model_path + "_config.json" ):
-                with open( model_path + "_config.json", "r" ) as in_file:
-                    model_config = ""
-                    model_config = in_file.read()
-                    self.model   = keras.models.model_from_json( model_config )
-                in_file.close()
-            else:
-                self.Print_Log( "BaseModel::Load_Model() - Error: Model Configuration JSON Files Does Not Exist", force_print = True )
-                return False
+                # Load Model Configuration
+                if self.utils.Check_If_File_Exists( model_path + "_config.json" ):
+                    with open( model_path + "_config.json", "r" ) as in_file:
+                        model_config = ""
+                        model_config = in_file.read()
+                        self.model   = keras.models.model_from_json( model_config )
+                    in_file.close()
+                else:
+                    self.Print_Log( "BaseModel::Load_Model() - Error: Model Configuration JSON Files Does Not Exist", force_print = True )
+                    return False
+        except Exception as e:
+            self.Print_Log( "BaseModel::Load_Model() - Error: Unable To Load New Model Or Load Model From Configuration File" )
+            self.Print_Log( "                        - Error Message: " + str( e ) )
 
         # Load Model Settings
         if self.utils.Check_If_File_Exists( model_path + "_settings.cfg" ):
             self.Load_Model_Settings( model_path + "_settings.cfg" )
         else:
-            self.Print_Log( "BaseModel::Error: Model Settings File Does Not Exist", force_print = True )
+            self.Print_Log( "BaseModel::Load_Model() - Error: Model Settings File Does Not Exist", force_print = True )
 
         # Checks To See If The User Wants To Utilize The GPU or CPU For Training/Inference.
         if self.Initialize_GPU() == False:
@@ -449,13 +453,20 @@ class BaseModel( object ):
         # Save Model Configuration
         self.Print_Log( "BaseModel::Save_Model() - Saving Model Configuration To Path: " + str( model_path + "_config.json" ) )
 
-        with open( model_path + "_config.json", 'w' ) as out_file:
-            out_file.write( str( self.model.to_json() ) )
-        out_file.close()
+        try:
+            model_configuration = str( self.model.to_json() )
 
-        # Save Model
-        self.Print_Log( "BaseModel::Save_Model() - Saving Model To Path: " + str( model_path + ".h5" ) )
-        self.model.save( model_path + ".h5")
+            with open( model_path + "_config.json", 'w' ) as out_file:
+                out_file.write( model_configuration )
+            out_file.close()
+
+            # Save Model
+            self.Print_Log( "BaseModel::Save_Model() - Saving Model To Path: " + str( model_path + ".h5" ) )
+            self.model.save( model_path + ".h5")
+
+        except Exception as e:
+            self.Print_Log( "BaseModel::Save_Model() - Error: Unable To Generate Model Configuration File And/Or Save Model" )
+            self.Print_Log( "                        - Error Message: " + str( e ) )
 
         # Save Model Settings
         self.Print_Log( "BaseModel::Save_Model() - Saving Model Settings To Path: " + str( model_path + "_settings.cfg" ) )
