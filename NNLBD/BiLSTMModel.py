@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 03/29/2021                                                                   #
+#    Revised: 03/30/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -90,7 +90,7 @@ class BiLSTMModel( BaseModel.BaseModel ):
                           early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                           use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                           feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
-        self.version       = 0.12
+        self.version       = 0.13
         self.network_model = "bilstm"   # Force Setting Model To 'Bi-LSTM' Model.
 
 
@@ -164,8 +164,9 @@ class BiLSTMModel( BaseModel.BaseModel ):
         Outputs:
             None
     """
-    def Fit( self, train_inputs, train_outputs, epochs = 30, batch_size = 32, momentum = 0.05,
-             dropout = 0.01, verbose = 1, shuffle = True, use_csr_format = True, per_epoch_saving = False ):
+    def Fit( self, train_input_1 = None, train_input_2 = None, train_input_3 = None, train_outputs = None,
+             epochs = 30, batch_size = 32, momentum = 0.05, dropout = 0.01, verbose = 1, shuffle = True,
+             use_csr_format = True, per_epoch_saving = False ):
         # Update 'BaseModel' Class Variables
         if epochs           != 30:    self.Set_Epochs( epochs )
         if batch_size       != 32:    self.Set_Batch_Size( batch_size )
@@ -177,10 +178,10 @@ class BiLSTMModel( BaseModel.BaseModel ):
         if per_epoch_saving != False: self.Set_Per_Epoch_Saving( per_epoch_saving )
 
         if self.use_csr_format:
-            self.trained_instances           = train_inputs.shape[0]
+            self.trained_instances           = train_input_1.shape[0]
             number_of_train_output_instances = train_outputs.shape[0]
         else:
-            self.trained_instances           = len( train_inputs  )
+            self.trained_instances           = len( train_input_1 )
             number_of_train_output_instances = len( train_outputs )
 
         self.Print_Log( "BiLSTMModel::Fit() - Model Training Settings" )
@@ -211,10 +212,10 @@ class BiLSTMModel( BaseModel.BaseModel ):
 
         with tf.device( self.device_name ):
             if self.use_csr_format:
-                self.model_history = self.model.fit_generator( generator = self.Batch_Generator( train_inputs, train_outputs, batch_size = self.batch_size, steps_per_batch = steps_per_batch, shuffle = self.shuffle ),
+                self.model_history = self.model.fit_generator( generator = self.Batch_Generator( train_input_1, train_outputs, batch_size = self.batch_size, steps_per_batch = steps_per_batch, shuffle = self.shuffle ),
                                                                epochs = self.epochs, steps_per_epoch = steps_per_batch, verbose = self.verbose, callbacks = self.callback_list )
             else:
-                self.model_history = self.model.fit( train_inputs, train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                self.model_history = self.model.fit( train_input_1, train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
                                                      epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
 
         # Print Last Epoch Metrics

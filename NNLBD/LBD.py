@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 03/21/2021                                                                   #
+#    Revised: 03/30/2021                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -46,7 +46,7 @@ class LBD:
                   early_stopping_persistence = 3, use_batch_normalization = False, checkpoint_directory = "./ckpt_models",
                   trainable_weights = False, embedding_path = "", embedding_modification = "concatenate", final_layer_type = "dense",
                   feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
-        self.version                       = 0.17
+        self.version                       = 0.18
         self.model                         = None                            # Automatically Set After Calling 'LBD::Build_Model()' Function
         self.debug_log                     = print_debug_log                 # Options: True, False
         self.write_log                     = write_log_to_file               # Options: True, False
@@ -212,6 +212,12 @@ class LBD:
             self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Model Data Has Already Been Prepared" )
             return True
 
+        # CNN Network Model Check (Not Implemented)
+        if self.model.Get_Network_Model() == "cnn":
+            self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - CNN" )
+            self.Print_Log( "Error: CNN Model Is Not Implemented / Exiting Program", force_print = True )
+            exit()
+
         # Bug Fix: User Enabled 'per_epoch_saving' After Initially Disabled In __init__()
         if self.model.Get_Per_Epoch_Saving(): self.Create_Checkpoint_Directory()
 
@@ -256,357 +262,173 @@ class LBD:
 
         self.Save_Model_Keys( model_name = "last_" + self.model.Get_Network_Model() + "_model" )
 
-        #######################################################################
-        #                                                                     #
-        #   Rumelhart & Hinton Networks                                       #
-        #                                                                     #
-        #######################################################################
-        if self.model.Get_Network_Model() in ["hinton", "rumelhart", "cosface"]:
-            self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - " + str( self.model.Get_Network_Model() ) )
-
-            # Binarize Training Data For Keras Model
-            self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data", force_print = True )
-
-            # Train On Data Instances Passed By Parameter (Batch Training)
-            if len( data_instances ) == 0:
-                train_input_1, train_input_2, _, train_outputs = self.Vectorize_Model_Data( model_type = self.model.Get_Model_Type(),
-                                                                                            use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                            pad_inputs = True, pad_output = True )
-            # Train On Data Instances Within The DataLoader Class
-            else:
-                train_input_1, train_input_2, _, train_outputs = self.Vectorize_Model_Data( training_data, model_type = self.model.Get_Model_Type(),
-                                                                                            use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                            pad_inputs = True, pad_output = True )
-
-            # Check(s)
-            if train_input_1 is None or train_input_2 is None or train_outputs is None:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Error Occurred During Model Data Vectorization", force_print = True )
-                return False
-
-            if self.model.Get_Use_CSR_Format():
-                number_of_train_1_input_instances = train_input_1.shape[0]
-                number_of_train_2_input_instances = train_input_2.shape[0]
-                number_of_train_output_instances  = train_outputs.shape[0]
-                self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape  : " + str( train_input_1.shape ) )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape: " + str( train_input_2.shape ) )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape         : " + str( train_outputs.shape ) )
-            else:
-                number_of_train_1_input_instances = len( train_input_1 )
-                number_of_train_2_input_instances = len( train_input_2 )
-                number_of_train_output_instances  = len( train_outputs )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape     : (" + str( len( train_input_1 ) ) + ", " + str( len( train_input_1[0] ) ) + ")" )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape   : (" + str( len( train_input_2 ) ) + ", " + str( len( train_input_2[0] ) ) + ")" )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : (" + str( len( train_outputs ) ) + ", " + str( len( train_outputs[0] ) ) + ")" )
-
-            # Check(s)
-            if number_of_train_1_input_instances == 0 or number_of_train_2_input_instances == 0 or number_of_train_output_instances == 0:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Input/Output Data", force_print = True )
-                return False
-
-            if data_loader.Is_Embeddings_Loaded():
-                sparse_mode                       = False
-                number_of_features                = data_loader.Get_Number_Of_Embeddings()
-            else:
-                sparse_mode                       = True
-                number_of_features                = train_input_1[0:].shape[1] + train_input_2[0:].shape[1]
-
-            # More Checks
-            #   Check To See If Number Of Instances Is Divisible By Batch Size With No Remainder
-            #   (Used For Batch_Generator)
-            if self.model.Get_Use_CSR_Format() and number_of_train_1_input_instances % self.model.Get_Batch_Size() != 0:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Number Of Instances Not Divisible By Batch Size" )
-                self.Print_Log( "                          - Number Of Instances  : " + str( number_of_train_1_input_instances ) )
-                self.Print_Log( "                          - Batch Size           : " + str( self.model.Get_Batch_Size()       ) )
-                self.Print_Log( "                          - Batch_Generator Might Not Train Correctly / Change To Another Batch Size" )
-
-                possible_batch_sizes = [ str( i ) if number_of_train_1_input_instances % i == 0 else "" for i in range( 1, number_of_train_1_input_instances ) ]
-                possible_batch_sizes = " ".join( possible_batch_sizes )
-                possible_batch_sizes = re.sub( r'\s+', ' ', possible_batch_sizes )
-
-                self.Print_Log( "           - Possible Batch Sizes : " + possible_batch_sizes )
-
-            # Get Model Parameters From Training Data
-            self.Print_Log( "LBD::Prepare_Model_Data() - Fetching Model Parameters (Input/Output Sizes)" )
-            number_of_train_1_inputs = data_loader.Get_Number_Of_Primary_Elements()
-            number_of_train_2_inputs = number_of_train_1_inputs
-            number_of_outputs        = number_of_train_1_inputs
-
-            if data_loader.Get_Is_CUI_Data() or data_loader.Is_Data_Composed_Of_CUIs():
-                number_of_train_2_inputs = data_loader.Get_Number_Of_Secondary_Elements() if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Primary_Elements()
-                number_of_outputs        = data_loader.Get_Number_Of_Primary_Elements()   if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Secondary_Elements()
-
-            self.Print_Log( "                          - Number Of Features         : " + str( number_of_features          ) )
-            self.Print_Log( "                          - Number Of Primary Inputs   : " + str( number_of_train_1_inputs    ) )
-            self.Print_Log( "                          - Number Of Secondary Inputs : " + str( number_of_train_2_inputs    ) )
-            self.Print_Log( "                          - Number Of Hidden Dimensions: " + str( number_of_hidden_dimensions ) )
-            self.Print_Log( "                          - Number Of Outputs          : " + str( number_of_outputs           ) )
-
-            self.Print_Log( "LBD::Prepare_Model_Data() - Building Model" )
-
-            if self.Is_Model_Loaded() == False:
-                self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions, number_of_outputs, embeddings, sparse_mode = sparse_mode )
+        self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - " + str( self.model.Get_Network_Model() ) )
 
         #######################################################################
         #                                                                     #
-        #   BiLSTM Network                                                    #
+        #   Prepare Model Input/Output Data                                   #
         #                                                                     #
         #######################################################################
-        elif self.model.Get_Network_Model() == "bilstm":
-            self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - Bi-LSTM" )
 
-            # Binarize Training Data For Keras Model
-            self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data", force_print = True )
+        # Binarize Training Data For Keras Model
+        self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data", force_print = True )
 
-            # Train On Data Instances Passed By Parameter (Batch Training)
-            if len( data_instances ) == 0:
-                train_inputs, train_inputs_2, _, train_outputs = self.Vectorize_Model_Data( model_type = self.model.Get_Model_Type(),
-                                                                                            use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                            pad_inputs = False, pad_output = True, stack_inputs = True )
-            # Train On Data Instances Within The DataLoader Class
-            else:
-                train_inputs, train_inputs_2, _, train_outputs = self.Vectorize_Model_Data( training_data, model_type = self.model.Get_Model_Type(),
-                                                                                            use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                            pad_inputs = False, pad_output = True, stack_inputs = True )
+        train_input_1, train_input_2, train_input_3, train_outputs = None, None, None, None
 
-            # Check
-            if train_inputs is None or train_inputs_2 is None or train_outputs is None:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Error Occurred During Model Data Vectorization", force_print = True )
-                return False
+        # Model Specific DataLoader Parameters/Settings
+        pad_inputs         = True if self.model.Get_Network_Model() != "cnn"    else False
+        pad_output         = True if self.model.Get_Network_Model() != "simple" else False
+        stack_inputs       = True if self.model.Get_Network_Model() == "bilstm" else False
+        is_crichton_format = True if self.model.Get_Network_Model() == "simple" else False
 
-            self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape     : (" + str( len( train_inputs   ) ) + ", " + str( len( train_inputs[0]   ) ) + ")" )
-            self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape   : (" + str( len( train_inputs_2 ) ) + ", " + str( len( train_inputs_2[0] ) ) + ")" )
+        # Train On Data Instances Passed By Parameter (Batch Training)
+        if len( data_instances ) == 0:
+            train_input_1, train_input_2, train_input_3, train_outputs = self.Vectorize_Model_Data( model_type = self.model.Get_Model_Type(),
+                                                                                                    use_csr_format = self.model.Get_Use_CSR_Format(),
+                                                                                                    is_crichton_format = is_crichton_format,
+                                                                                                    pad_inputs = pad_inputs, pad_output = pad_output,
+                                                                                                    stack_inputs = stack_inputs )
+        # Train On Data Instances Within The DataLoader Class
+        else:
+            train_input_1, train_input_2, train_input_3, train_outputs = self.Vectorize_Model_Data( training_data, model_type = self.model.Get_Model_Type(),
+                                                                                                    use_csr_format = self.model.Get_Use_CSR_Format(),
+                                                                                                    is_crichton_format = is_crichton_format,
+                                                                                                    pad_inputs = pad_inputs, pad_output = pad_output,
+                                                                                                    stack_inputs = stack_inputs )
 
-            # Concatenate Inputs Across Columns
+        # Check(s)
+        if isinstance( train_input_1, list ) and len( train_input_1 ) == 0: train_input_1 = None
+        if isinstance( train_input_2, list ) and len( train_input_2 ) == 0: train_input_2 = None
+        if isinstance( train_input_3, list ) and len( train_input_3 ) == 0: train_input_3 = None
+        if isinstance( train_outputs, list ) and len( train_outputs ) == 0: train_outputs = None
+
+        if train_input_1 is None or train_input_2 is None or train_outputs is None:
+            self.Print_Log( "LBD::Prepare_Model_Data() - Error Occurred During Model Data Vectorization", force_print = True )
+            return False
+        if self.model.Get_Network_Model() == "simple" and train_input_3 is None:
+            self.Print_Log( "LBD::Prepare_Model_Data() - Error Occurred During Model Data Vectorization", force_print = True )
+            return False
+
+        # Concatenate Inputs Across Columns (Only Bi-LSTM Model)
+        if self.model.Get_Network_Model() == "bilstm":
+            self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape     : (" + str( len( train_input_1 ) ) + ", " + str( len( train_input_1[0] ) ) + ")" )
+            self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape   : (" + str( len( train_input_2 ) ) + ", " + str( len( train_input_2[0] ) ) + ")" )
+
             self.Print_Log( "LBD::Prepare_Model_Data() - Horizontal Stacking Primary And Secondary Inputs" )
-            train_inputs = np.hstack( ( train_inputs, train_inputs_2 ) )
+            train_input_1 = np.hstack( ( train_input_1, train_input_2 ) )
+            train_input_2 = None
 
-            self.Print_Log( "LBD::Prepare_Model_Data() - Train Inputs (H-Stacked): " + str( train_inputs.shape ) )
+            self.Print_Log( "LBD::Prepare_Model_Data() - Train Inputs (H-Stacked): " + str( train_input_1.shape ) )
 
-            if self.model.Get_Use_CSR_Format():
-                number_of_train_input_instances  = train_inputs.shape[0]
-                number_of_train_output_instances = train_outputs.shape[0]
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : " + str( train_outputs.shape ) )
-            else:
-                number_of_train_input_instances  = len( train_inputs  )
-                number_of_train_output_instances = len( train_outputs )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : (" + str( len( train_outputs ) ) + ", " + str( len( train_outputs[0] ) ) + ")" )
+        # CSR Matrix Format
+        if self.model.Get_Use_CSR_Format():
+            number_of_train_1_input_instances = train_input_1.shape[0]
+            number_of_train_2_input_instances = train_input_2.shape[0] if train_input_2 != None else -1
+            number_of_train_3_input_instances = train_input_3.shape[0] if train_input_3 != None else -1
+            number_of_train_output_instances  = train_outputs.shape[0] if train_outputs != None else -1
+            if train_input_1 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape  : " + str( train_input_1.shape ) )
+            if train_input_2 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape: " + str( train_input_2.shape ) )
+            if train_input_3 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Tertiary Input Shape : " + str( train_input_3.shape ) )
+            if train_outputs is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape         : " + str( train_outputs.shape ) )
+        # List/Array Format
+        else:
+            number_of_train_1_input_instances = len( train_input_1 )
+            number_of_train_2_input_instances = len( train_input_2 ) if train_input_2 is not None else -1
+            number_of_train_3_input_instances = len( train_input_3 ) if train_input_3 is not None else -1
+            number_of_train_output_instances  = len( train_outputs ) if train_outputs is not None else -1
 
-            # Check(s)
-            if number_of_train_input_instances == 0 or number_of_train_output_instances == 0:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Input/Output Data", force_print = True )
-                return False
-
-            # More Checks
-            #   Check To See If Number Of Instances Is Divisible By Batch Size With No Remainder
-            #   (Used For Batch_Generator)
-            if self.model.Get_Use_CSR_Format() and number_of_train_input_instances % self.model.Get_Batch_Size() != 0:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Number Of Instances Not Divisible By Batch Size" )
-                self.Print_Log( "                          - Number Of Instances  : " + str( number_of_train_input_instances ) )
-                self.Print_Log( "                          - Batch Size           : " + str( self.model.Get_Batch_Size()     ) )
-                self.Print_Log( "                          - Batch_Generator Might Not Train Correctly / Change To Another Batch Size" )
-
-                possible_batch_sizes = [ str( i ) if number_of_train_input_instances % i == 0 else "" for i in range( 1, number_of_train_input_instances ) ]
-                possible_batch_sizes = " ".join( possible_batch_sizes )
-                possible_batch_sizes = re.sub( r'\s+', ' ', possible_batch_sizes )
-
-                self.Print_Log( "           - Possible Batch Sizes : " + possible_batch_sizes )
-
-            # Get Model Parameters From Training Data
-            self.Print_Log( "LBD::Prepare_Model_Data() - Fetching Model Parameters (Input/Output Sizes)" )
-            number_of_outputs  = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "open_discovery"   else data_loader.Get_Number_Of_Secondary_Elements()
-            number_of_features = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "closed_discovery" else data_loader.Get_Number_Of_Primary_Elements() + data_loader.Get_Number_Of_Secondary_Elements()
-
-            self.Print_Log( "                          - Number Of Features         : " + str( number_of_features          ) )
-            self.Print_Log( "                          - Number Of Hidden Dimensions: " + str( number_of_hidden_dimensions ) )
-            self.Print_Log( "                          - Number Of Outputs          : " + str( number_of_outputs           ) )
-
-            self.Print_Log( "LBD::Prepare_Model_Data() - Building Model" )
-
-            if self.Is_Model_Loaded() == False:
-                self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs )
-
-        #######################################################################
-        #                                                                     #
-        #   Convolutional Neural Network                                      #
-        #                                                                     #
-        #######################################################################
-        elif self.model.Get_Network_Model() == "cnn":
-            self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - CNN" )
-            self.Print_Log( "Error: CNN Model Is Not Finished / Exiting Program", force_print = True )
-            exit()
-
-            # Binarize Training Data For Keras Model
-            self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data", force_print = True )
-
-            # Train On Data Instances Passed By Parameter (Batch Training)
-            if len( data_instances ) == 0:
-                train_inputs, train_inputs_2, _, train_outputs = self.Vectorize_Model_Data( model_type = self.model.Get_Model_Type(),
-                                                                                            use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                            pad_inputs = False, pad_output = True )
-            # Train On Data Instances Within The DataLoader Class
-            else:
-                train_inputs, train_inputs_2, _, train_outputs = self.Vectorize_Model_Data( training_data, model_type = self.model.Get_Model_Type(),
-                                                                                            use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                            pad_inputs = False, pad_output = True )
-
-            # Check
-            if train_inputs is None or train_inputs_2 is None or train_outputs is None:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Error Occurred During Model Data Vectorization", force_print = True )
-                return False
-
-            self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape     : (" + str( len( train_inputs   ) ) + ", " + str( len( train_inputs[0]   ) ) + ")" )
-            self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape   : (" + str( len( train_inputs_2 ) ) + ", " + str( len( train_inputs_2[0] ) ) + ")" )
-
-            # Concatenate Inputs Across Columns
-            self.Print_Log( "LBD::Prepare_Model_Data() - Horizontal Stacking Primary And Secondary Inputs" )
-            train_inputs = np.hstack( ( train_inputs, train_inputs_2 ) )
-
-            self.Print_Log( "LBD::Prepare_Model_Data() - Train Inputs (H-Stacked): " + str( train_inputs.shape  ) )
-
-            if self.model.Get_Use_CSR_Format():
-                number_of_train_input_instances  = train_inputs.shape[0]
-                number_of_train_output_instances = train_outputs.shape[0]
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : " + str( train_outputs.shape ) )
-            else:
-                number_of_train_input_instances  = len( train_inputs  )
-                number_of_train_output_instances = len( train_outputs )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : (" + str( len( train_outputs ) ) + ", " + str( len( train_outputs[0] ) ) + ")" )
-
-            # Check(s)
-            if number_of_train_input_instances == 0 or number_of_train_output_instances == 0:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Inputs/Output Data", force_print = True )
-                return False
-
-            # More Checks
-            #   Check To See If Number Of Instances Is Divisible By Batch Size With No Remainder
-            #   (Used For Batch_Generator)
-            if self.model.Get_Use_CSR_Format() and number_of_train_input_instances % self.model.Get_Batch_Size() != 0:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Number Of Instances Not Divisible By Batch Size" )
-                self.Print_Log( "                          - Number Of Instances  : " + str( number_of_train_input_instances ) )
-                self.Print_Log( "                          - Batch Size           : " + str( self.model.Get_Batch_Size()     ) )
-                self.Print_Log( "                          - Batch_Generator Might Not Train Correctly / Change To Another Batch Size" )
-
-                possible_batch_sizes = [ str( i ) if number_of_train_input_instances % i == 0 else "" for i in range( 1, number_of_train_input_instances ) ]
-                possible_batch_sizes = " ".join( possible_batch_sizes )
-                possible_batch_sizes = re.sub( r'\s+', ' ', possible_batch_sizes )
-
-                self.Print_Log( "           - Possible Batch Sizes : " + possible_batch_sizes )
-
-            # Get Model Parameters From Training Data
-            self.Print_Log( "LBD::Prepare_Model_Data() - Fetching Model Parameters (Input/Output Sizes)" )
-            number_of_outputs  = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "open_discovery"   else data_loader.Get_Number_Of_Secondary_Elements()
-            number_of_features = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "closed_discovery" else data_loader.Get_Number_Of_Primary_Elements() + data_loader.Get_Number_Of_Secondary_Elements()
-
-            self.Print_Log( "                          - Number Of Features         : " + str( number_of_features          ) )
-            self.Print_Log( "                          - Number Of Hidden Dimensions: " + str( number_of_hidden_dimensions ) )
-            self.Print_Log( "                          - Number Of Outputs          : " + str( number_of_outputs           ) )
-
-            self.Print_Log( "LBD::Prepare_Model_Data() - Building Model" )
-
-            if self.Is_Model_Loaded() == False:
-                self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs )
-
-            # @TODO: REMOVE ME
-            self.Print_Log( str( train_inputs   ) )
-            self.Print_Log( str( train_inputs_2 ) )
-            self.Print_Log( str( train_outputs  ) )
-
-        #######################################################################
-        #                                                                     #
-        #   Simple Network                                                    #
-        #                                                                     #
-        #######################################################################
-        elif self.model.Get_Network_Model() == "simple":
-            self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - " + str( self.model.Get_Network_Model() ) )
-
-            # Binarize Training Data For Keras Model
-            self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data", force_print = True )
-
-            # Train On Data Instances Passed By Parameter (Batch Training)
-            if len( data_instances ) == 0:
-                train_input_1, train_input_2, train_input_3, train_outputs = self.Vectorize_Model_Data( model_type = self.model.Get_Model_Type(),
-                                                                                                        use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                                        is_crichton_format = True, pad_inputs = False, pad_output = False )
-            # Train On Data Instances Within The DataLoader Class
-            else:
-                train_input_1, train_input_2, train_input_3, train_outputs = self.Vectorize_Model_Data( training_data, model_type = self.model.Get_Model_Type(),
-                                                                                                        use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                                        is_crichton_format = True, pad_inputs = False, pad_output = False )
-            # Check
-            if train_input_1 is None or train_input_2 is None or train_input_3 is None or train_outputs is None:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Error Occurred During Model Data Vectorization", force_print = True )
-                return False
-
-            if self.model.Get_Use_CSR_Format():
-                number_of_train_1_input_instances = train_input_1.shape[0]
-                number_of_train_2_input_instances = train_input_2.shape[0]
-                number_of_train_3_input_instances = train_input_3.shape[0]
-                number_of_train_output_instances  = train_outputs.shape[0]
-                self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape  : " + str( train_input_1.shape ) )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape: " + str( train_input_2.shape ) )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Tertiary Input Shape : " + str( train_input_3.shape ) )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape         : " + str( train_outputs.shape ) )
-            else:
-                number_of_train_1_input_instances = len( train_input_1 )
-                number_of_train_2_input_instances = len( train_input_2 )
-                number_of_train_3_input_instances = len( train_input_3 )
-                number_of_train_output_instances  = len( train_outputs )
+            if self.model.Get_Network_Model() == "simple":
                 train_input_1 = train_input_1.reshape( number_of_train_1_input_instances, 1 )
                 train_input_2 = train_input_2.reshape( number_of_train_2_input_instances, 1 )
                 train_input_3 = train_input_3.reshape( number_of_train_3_input_instances, 1 )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape     : (" + str( len( train_input_1 ) ) + ", " + str( len( train_input_1[0] ) ) + ")" )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape   : (" + str( len( train_input_2 ) ) + ", " + str( len( train_input_2[0] ) ) + ")" )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Tertiary Input Shape    : (" + str( len( train_input_3 ) ) + ", " + str( len( train_input_3[0] ) ) + ")" )
-                self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : (" + str( len( train_outputs ) ) + ")" )
 
-            # Check(s)
-            if number_of_train_1_input_instances == 0 or number_of_train_2_input_instances == 0 or number_of_train_3_input_instances == 0 or number_of_train_output_instances == 0:
+            if train_input_1 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape     : (" + str( len( train_input_1 ) ) + ", " + str( len( train_input_1[0] ) ) + ")" )
+            if train_input_2 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape   : (" + str( len( train_input_2 ) ) + ", " + str( len( train_input_2[0] ) ) + ")" )
+            if train_input_3 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Tertiary Input Shape    : (" + str( len( train_input_3 ) ) + ", " + str( len( train_input_3[0] ) ) + ")" )
+            if train_outputs is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : (" + str( len( train_outputs ) ) + ", " + str( len( train_outputs[0] ) ) + ")" )
+
+        # Check(s)
+        if self.model.Get_Network_Model() in ["rumelhart", "hinton", "cosface", "cnn"]:
+            if number_of_train_1_input_instances == 0 or number_of_train_2_input_instances == 0 or \
+                number_of_train_output_instances == 0:
+                self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Input/Output Data", force_print = True )
+                return False
+        elif self.model.Get_Network_Model() == "simple":
+            if number_of_train_1_input_instances == 0 or number_of_train_2_input_instances == 0 or \
+            number_of_train_3_input_instances == 0 or number_of_train_output_instances == 0:
                 self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Input/Output Data", force_print = True )
                 return False
 
-            if data_loader.Is_Embeddings_Loaded():
-                sparse_mode                       = False
-                number_of_features                = data_loader.Get_Number_Of_Embeddings()
-            else:
-                sparse_mode                       = True
-                number_of_features                = train_input_1[0:].shape[1] + train_input_2[0:].shape[1] + train_input_3[0:].shape[1]
+        if data_loader.Is_Embeddings_Loaded():
+            sparse_mode                       = False
+            number_of_features                = data_loader.Get_Number_Of_Embeddings()
+        else:
+            sparse_mode                       = True
+            number_of_features                = 0
 
-            # More Checks
-            #   Check To See If Number Of Instances Is Divisible By Batch Size With No Remainder
-            #   (Used For Batch_Generator)
-            if self.model.Get_Use_CSR_Format() and number_of_train_1_input_instances % self.model.Get_Batch_Size() != 0:
-                self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Number Of Instances Not Divisible By Batch Size" )
-                self.Print_Log( "                          - Number Of Instances  : " + str( number_of_train_1_input_instances ) )
-                self.Print_Log( "                          - Batch Size           : " + str( self.model.Get_Batch_Size()       ) )
-                self.Print_Log( "                          - Batch_Generator Might Not Train Correctly / Change To Another Batch Size" )
+            if self.model.Get_Network_Model() != "simple":      # Rumelhart, Hinton, Bi-LSTM, CosFace & CNN Models
+                number_of_features = train_input_1[0:].shape[1] + train_input_2[0:].shape[1]
+            else:                                               # Simple Model
+                number_of_features = train_input_1[0:].shape[1] + train_input_2[0:].shape[1] + train_input_3[0:].shape[1]
 
-                possible_batch_sizes = [ str( i ) if number_of_train_1_input_instances % i == 0 else "" for i in range( 1, number_of_train_1_input_instances ) ]
-                possible_batch_sizes = " ".join( possible_batch_sizes )
-                possible_batch_sizes = re.sub( r'\s+', ' ', possible_batch_sizes )
+        # More Checks
+        #   Check To See If Number Of Instances Is Divisible By Batch Size With No Remainder
+        #   (Used For Batch_Generator)
+        if self.model.Get_Use_CSR_Format() and number_of_train_1_input_instances % self.model.Get_Batch_Size() != 0:
+            self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Number Of Instances Not Divisible By Batch Size" )
+            self.Print_Log( "                          - Number Of Instances  : " + str( number_of_train_1_input_instances ) )
+            self.Print_Log( "                          - Batch Size           : " + str( self.model.Get_Batch_Size()       ) )
+            self.Print_Log( "                          - Batch_Generator Might Not Train Correctly / Change To Another Batch Size" )
 
-                self.Print_Log( "           - Possible Batch Sizes : " + possible_batch_sizes )
+            possible_batch_sizes = [ str( i ) if number_of_train_1_input_instances % i == 0 else "" for i in range( 1, number_of_train_1_input_instances ) ]
+            possible_batch_sizes = " ".join( possible_batch_sizes )
+            possible_batch_sizes = re.sub( r'\s+', ' ', possible_batch_sizes )
 
-            # Get Model Parameters From Training Data
-            self.Print_Log( "LBD::Prepare_Model_Data() - Fetching Model Parameters (Input/Output Sizes)" )
-            number_of_train_1_inputs = data_loader.Get_Number_Of_Primary_Elements()
+            self.Print_Log( "           - Possible Batch Sizes : " + possible_batch_sizes )
+
+        # Get Model Parameters From Training Data
+        self.Print_Log( "LBD::Prepare_Model_Data() - Fetching Model Parameters (Input/Output Sizes)" )
+        number_of_train_1_inputs = data_loader.Get_Number_Of_Primary_Elements()
+        number_of_train_2_inputs = number_of_train_1_inputs
+        number_of_train_3_inputs = -1
+        number_of_outputs        = number_of_train_1_inputs
+
+        if data_loader.Get_Is_CUI_Data() or data_loader.Is_Data_Composed_Of_CUIs():
+            number_of_train_2_inputs = data_loader.Get_Number_Of_Secondary_Elements() if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Primary_Elements()
+            number_of_outputs        = data_loader.Get_Number_Of_Primary_Elements()   if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Secondary_Elements()
+
+        if self.model.Get_Network_Model() == "bilstm":
+            number_of_outputs  = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "open_discovery"   else data_loader.Get_Number_Of_Secondary_Elements()
+            number_of_features = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "closed_discovery" else data_loader.Get_Number_Of_Primary_Elements() + data_loader.Get_Number_Of_Secondary_Elements()
+        if self.model.Get_Network_Model() == "simple":
             number_of_train_2_inputs = data_loader.Get_Number_Of_Secondary_Elements() if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Primary_Elements()
             number_of_train_3_inputs = data_loader.Get_Number_Of_Tertiary_Elements()  if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Primary_Elements()
             number_of_outputs        = 1
 
-            self.Print_Log( "                          - Number Of Features         : " + str( number_of_features          ) )
-            self.Print_Log( "                          - Number Of Primary Inputs   : " + str( number_of_train_1_inputs    ) )
-            self.Print_Log( "                          - Number Of Secondary Inputs : " + str( number_of_train_2_inputs    ) )
-            self.Print_Log( "                          - Number Of Tertiary Inputs  : " + str( number_of_train_3_inputs    ) )
-            self.Print_Log( "                          - Number Of Hidden Dimensions: " + str( number_of_hidden_dimensions ) )
-            self.Print_Log( "                          - Number Of Outputs          : " + str( number_of_outputs           ) )
-
-            self.Print_Log( "LBD::Prepare_Model_Data() - Building Model" )
-
-            if self.Is_Model_Loaded() == False:
-                self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_train_3_inputs,
-                                        number_of_hidden_dimensions, number_of_outputs, embeddings, sparse_mode = sparse_mode )
+        self.Print_Log( "                          - Number Of Features         : " + str( number_of_features          ) )
+        self.Print_Log( "                          - Number Of Primary Inputs   : " + str( number_of_train_1_inputs    ) )
+        self.Print_Log( "                          - Number Of Secondary Inputs : " + str( number_of_train_2_inputs    ) )
+        self.Print_Log( "                          - Number Of Tertiary Inputs  : " + str( number_of_train_3_inputs    ) )
+        self.Print_Log( "                          - Number Of Hidden Dimensions: " + str( number_of_hidden_dimensions ) )
+        self.Print_Log( "                          - Number Of Outputs          : " + str( number_of_outputs           ) )
 
         self.model_data_prepared = True
+
+        # Build Neural Network Model Based On Architecture
+        self.Print_Log( "LBD::Prepare_Model_Data() - Building Model" )
+
+        if self.Is_Model_Loaded() == False:
+            if self.model.Get_Network_Model() in ["bilstm", "cnn"]:
+                self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs )
+            elif self.model.Get_Network_Model() in ["rumelhart", "hinton", "cosface"]:
+                self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions, number_of_outputs, embeddings, sparse_mode = sparse_mode )
+            elif self.model.Get_Network_Model() == "simple":
+                self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_train_3_inputs,
+                                        number_of_hidden_dimensions, number_of_outputs, embeddings, sparse_mode = sparse_mode )
+            else:
+                self.Print_Log( "LBD::Prepare_Model_Data() - Error: Specified Network Model Not Supported", force_print = True )
+        else:
+            self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Model Has Already Been Built And Loaded In Memory" )
 
         self.Print_Log( "LBD::Prepare_Model_Data() - Complete" )
         return True
@@ -656,91 +478,35 @@ class LBD:
 
         #######################################################################
         #                                                                     #
-        #   Rumelhart & Hinton Networks                                       #
+        #   Execute Model Training                                            #
         #                                                                     #
         #######################################################################
-        if self.model.Get_Network_Model() in ["hinton", "rumelhart","cosface"]:
-            self.Print_Log( "LBD::Fit() - Network Model Type - " + str( self.model.Get_Network_Model() ) )
 
-            # Fetching Binarized Training Data From DataLoader Class
-            self.Print_Log( "LBD::Fit() - Fetching Model Inputs & Output Training Data" )
-            train_input_1 = self.Get_Data_Loader().Get_Primary_Inputs()
-            train_input_2 = self.Get_Data_Loader().Get_Secondary_Inputs()
-            train_outputs = self.Get_Data_Loader().Get_Outputs()
+        self.Print_Log( "LBD::Fit() - Network Model Type - " + str( self.model.Get_Network_Model() ) )
 
-            # Train Model
-            self.model.Fit( train_input_1, train_input_2, train_outputs, epochs = self.model.Get_Epochs(), batch_size = self.model.Get_Batch_Size(),
-                            momentum = self.model.Get_Momentum(), dropout = self.model.Get_Dropout(), verbose = self.model.Get_Verbose(),
-                            use_csr_format = self.model.Get_Use_CSR_Format(), per_epoch_saving = self.model.Get_Per_Epoch_Saving(),
-                            shuffle = self.model.Get_Shuffle() )
+        # Fetching Binarized Training Data From DataLoader Class
+        self.Print_Log( "LBD::Fit() - Fetching Model Inputs & Output Training Data" )
+        train_input_1 = self.Get_Data_Loader().Get_Primary_Inputs()
+        train_input_2 = self.Get_Data_Loader().Get_Secondary_Inputs()
+        train_input_3 = self.Get_Data_Loader().Get_Tertiary_Inputs()
+        train_outputs = self.Get_Data_Loader().Get_Outputs()
 
-        #######################################################################
-        #                                                                     #
-        #   BiLSTM Network                                                    #
-        #                                                                     #
-        #######################################################################
-        elif self.model.Get_Network_Model() == "bilstm":
-            self.Print_Log( "LBD::Fit() - Network Model Type - Bi-LSTM" )
-
-            # Fetching Binarized Training Data From DataLoader Class
-            self.Print_Log( "LBD::Fit() - Fetching Model Inputs & Output Training Data" )
-            train_input_1 = self.Get_Data_Loader().Get_Primary_Inputs()
-            train_input_2 = self.Get_Data_Loader().Get_Secondary_Inputs()
-            train_outputs = self.Get_Data_Loader().Get_Outputs()
-
-            # Concatenate Inputs Across Columns
+        # Concatenate Inputs Across Columns (Bi-LSTM)
+        if self.model.Get_Network_Model() == "bilstm":
             self.Print_Log( "LBD::Fit() - Horizontal Stacking Primary And Secondary Inputs" )
-            train_inputs = np.hstack( ( train_input_1, train_input_2 ) )
+            train_input_1 = np.hstack( ( train_input_1, train_input_2 ) )
 
-            self.Print_Log( "LBD::Fit() - Train Inputs (H-Stacked): " + str( train_inputs.shape ) )
-
-            # Train Model
-            self.model.Fit( train_inputs, train_outputs, epochs = self.model.Get_Epochs(), batch_size = self.model.Get_Batch_Size(),
-                            momentum = self.model.Get_Momentum(), dropout = self.model.Get_Dropout(), verbose = self.model.Get_Verbose(),
-                            use_csr_format = self.model.Get_Use_CSR_Format(), shuffle = self.model.Get_Shuffle(),
-                            per_epoch_saving = self.model.Get_Per_Epoch_Saving() )
+        # Train Model
+        self.model.Fit( train_input_1, train_input_2, train_input_3, train_outputs, epochs = self.model.Get_Epochs(),
+                        batch_size = self.model.Get_Batch_Size(), momentum = self.model.Get_Momentum(),
+                        dropout = self.model.Get_Dropout(), verbose = self.model.Get_Verbose(), shuffle = self.model.Get_Shuffle(),
+                        use_csr_format = self.model.Get_Use_CSR_Format(), per_epoch_saving = self.model.Get_Per_Epoch_Saving() )
 
         #######################################################################
         #                                                                     #
-        #   Convolutional Neural Network                                      #
+        #   Post Model Training                                               #
         #                                                                     #
         #######################################################################
-        elif self.model.Get_Network_Model() == "cnn":
-            self.Print_Log( "LBD::Fit() - Network Model Type - CNN" )
-            self.Print_Log( "Error: CNN Model Is Not Finished / Exiting Program", force_print = True )
-            exit()
-
-            # Fetching Binarized Training Data From DataLoader Class
-            self.Print_Log( "LBD::Fit() - Fetching Model Inputs & Output Training Data" )
-            train_inputs  = self.Get_Data_Loader().Get_Primary_Inputs()
-            train_outputs = self.Get_Data_Loader().Get_Outputs()
-
-            # Train Model
-            self.model.Fit( train_inputs, train_outputs, epochs = self.model.Get_Epochs(), batch_size = self.model.Get_Batch_Size(),
-                            momentum = self.model.Get_Momentum(), dropout = self.model.Get_Dropout(), verbose = self.model.Get_Verbose(),
-                            use_csr_format = self.model.Get_Use_CSR_Format(), shuffle = self.model.Get_Shuffle(),
-                            per_epoch_saving = self.model.Get_Per_Epoch_Saving() )
-
-        #######################################################################
-        #                                                                     #
-        #   Simple Network                                                    #
-        #                                                                     #
-        #######################################################################
-        elif self.model.Get_Network_Model() == "simple":
-            self.Print_Log( "LBD::Fit() - Network Model Type - " + str( self.model.Get_Network_Model() ) )
-
-            # Fetching Binarized Training Data From DataLoader Class
-            self.Print_Log( "LBD::Fit() - Fetching Model Inputs & Output Training Data" )
-            train_input_1 = self.Get_Data_Loader().Get_Primary_Inputs()
-            train_input_2 = self.Get_Data_Loader().Get_Secondary_Inputs()
-            train_input_3 = self.Get_Data_Loader().Get_Tertiary_Inputs()
-            train_outputs = self.Get_Data_Loader().Get_Outputs()
-
-            # Train Model
-            self.model.Fit( train_input_1, train_input_2, train_input_3, train_outputs, epochs = self.model.Get_Epochs(),
-                            batch_size = self.model.Get_Batch_Size(), momentum = self.model.Get_Momentum(), dropout = self.model.Get_Dropout(),
-                            verbose = self.model.Get_Verbose(), use_csr_format = self.model.Get_Use_CSR_Format(), shuffle = self.model.Get_Shuffle(),
-                            per_epoch_saving = self.model.Get_Per_Epoch_Saving() )
 
         # Compute Elapsed Time
         elapsed_time = "{:.2f}".format( time.time() - start_time )

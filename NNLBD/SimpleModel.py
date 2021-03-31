@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/02/2020                                                                   #
-#    Revised: 03/29/2021                                                                   #
+#    Revised: 03/30/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -89,7 +89,7 @@ class SimpleModel( BaseModel.BaseModel ):
                           early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization, final_layer_type = final_layer_type,
                           trainable_weights = trainable_weights, embedding_path = embedding_path, embedding_modification = embedding_modification,
                           feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
-        self.version       = 0.08
+        self.version       = 0.09
         self.network_model = "simple"   # Force Setting Model To 'Simple' Model.
 
 
@@ -171,8 +171,9 @@ class SimpleModel( BaseModel.BaseModel ):
         Outputs:
             None
     """
-    def Fit( self, train_input_1, train_input_2, train_input_3, train_outputs, epochs = 30, batch_size = 32, momentum = 0.05,
-             dropout = 0.01, verbose = 1, shuffle = True, use_csr_format = True, per_epoch_saving = False ):
+    def Fit( self, train_input_1 = None, train_input_2 = None, train_input_3 = None, train_outputs = None,
+             epochs = 30, batch_size = 32, momentum = 0.05, dropout = 0.01, verbose = 1, shuffle = True,
+             use_csr_format = True, per_epoch_saving = False ):
         # Update 'BaseModel' Class Variables
         if epochs           != 30:    self.Set_Epochs( epochs )
         if batch_size       != 32:    self.Set_Batch_Size( batch_size )

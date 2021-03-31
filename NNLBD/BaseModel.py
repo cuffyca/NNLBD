@@ -84,7 +84,7 @@ class BaseModel( object ):
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss", early_stopping_persistence = 3,
                   use_batch_normalization = False, checkpoint_directory = "./ckpt_models", trainable_weights = False, embedding_path = "",
                   scale = 30.0, margin = 0.35, feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
-        self.version                         = 0.13
+        self.version                         = 0.14
         self.network_model                   = network_model
         self.model                           = None                            # Automatically Set After Calling 'Build_Model()' Function
         self.epochs                          = epochs                          # Integer Value ie. 10, 32, 64, 200, etc.
