@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 03/22/2021                                                                   #
+#    Revised: 03/31/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -162,7 +162,7 @@ class NNLBD_Driver:
                 # Skip Global Variable Dictionary
                 if re.search( r'[Gg]lobal_[Ss]ettings', run_id ): continue
 
-                print( "Building LBD Experiment Run ID: " + str( run_id ) + "\n" )
+                print( "\nBuilding LBD Experiment Run ID: " + str( run_id ) + "\n" )
 
                 # Extract Experiment JSON Data Dictionary
                 run_dict = json_dict[run_id][0]
@@ -544,7 +544,7 @@ class NNLBD_Driver:
         # Create Directory
         model.utils.Create_Path( model_save_path )
 
-        print( "Beginning Model Data Prepatation/Model Training" )
+        print( "Beginning Model Data Preparation/Model Training" )
 
         # Set Correct Number Of Epochs Versus Number Of Epochs To Run Before Evaluation Is Performed
         epochs = epochs // run_eval_number_epoch
@@ -652,9 +652,7 @@ class NNLBD_Driver:
                             y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
 
         print( "\nBest Rank: " + str( best_ranking ) )
-        print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) )
-
-        print( "\n\n" )
+        print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
 
     def Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
                                          train_data_path, model_save_path, embedding_path, gold_b_instance ):
@@ -684,7 +682,7 @@ class NNLBD_Driver:
         # Create Directory
         model.utils.Create_Path( model_save_path )
 
-        print( "Beginning Model Data Prepatation/Model Training" )
+        print( "Beginning Model Data Preparation/Model Training" )
 
         # Set Correct Number Of Epochs Versus Number Of Epochs To Run Before Evaluation Is Performed
         epochs = epochs // run_eval_number_epoch
@@ -779,9 +777,7 @@ class NNLBD_Driver:
                             y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
 
         print( "\nBest Rank: " + str( best_ranking ) )
-        print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) )
-
-        print( "\n\n" )
+        print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
 
 
 ############################################################################################

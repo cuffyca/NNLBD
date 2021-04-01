@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 03/30/2021                                                                   #
+#    Revised: 03/31/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -287,7 +287,7 @@ class BiLSTMModel( BaseModel.BaseModel ):
         Outputs:
             None
     """
-    def Build_Model( self, number_of_features, number_of_embedding_dimensions, number_of_outputs, bilstm_dimension_size = 64, bilstm_merge_mode = "concat", embeddings = [] ):
+    def Build_Model( self, number_of_features, number_of_embedding_dimensions, number_of_outputs, bilstm_dimension_size = 64, bilstm_merge_mode = "concat", max_sequence_length = 2, embeddings = [] ):
         # Update 'BaseModel' Class Variables
         self.number_of_features             = number_of_features             if number_of_features             != self.number_of_features             else self.number_of_features
         self.number_of_embedding_dimensions = number_of_embedding_dimensions if number_of_embedding_dimensions != self.number_of_embedding_dimensions else self.number_of_embedding_dimensions
@@ -309,6 +309,7 @@ class BiLSTMModel( BaseModel.BaseModel ):
         self.Print_Log( "                           - No. of Outputs             : " + str( self.number_of_outputs              ) )
         self.Print_Log( "                           - Trainable Weights          : " + str( self.trainable_weights              ) )
         self.Print_Log( "                           - Feature Scaling Value      : " + str( self.feature_scale_value            ) )
+        self.Print_Log( "                           - Max Sequence Length        : " + str( max_sequence_length                 ) )
 
         #######################
         #                     #
@@ -321,9 +322,9 @@ class BiLSTMModel( BaseModel.BaseModel ):
             input_layer             = Input( shape = ( None, ), name = "Input_Layer" )
 
             if( len( embeddings ) > 0 ):
-                embedding_layer     = Embedding( number_of_features, number_of_embedding_dimensions, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
+                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
             else:
-                embedding_layer     = Embedding( number_of_features, number_of_embedding_dimensions, name = 'Embedding_Layer', trainable = self.trainable_weights )( input_layer )
+                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', trainable = self.trainable_weights )( input_layer )
 
             # Perform Feature Scaling Prior To Generating An Embedding Representation
             if self.feature_scale_value != 1.0:
@@ -333,19 +334,18 @@ class BiLSTMModel( BaseModel.BaseModel ):
             bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, return_sequences = True, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_1' )( embedding_layer )
             batch_norm_layer        = BatchNormalization( name = "Batch_Norm_Layer_1" )( bilstm_layer )
             bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_2' )( batch_norm_layer )
-            dense_layer             = Dense( units = number_of_outputs, activation = 'relu', name = 'Internal_Proposition_Representation', use_bias = True )( bilstm_layer )
+            dense_layer             = Dense( units = 256, activation = 'relu', name = 'Internal_Proposition_Representation', use_bias = True )( bilstm_layer )
             batch_norm_layer        = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
             output_layer            = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( batch_norm_layer )
-
 
         # Traditional Model Without Batch Normalization Using Functional API
         else:
             input_layer             = Input( shape = ( None, ), name = "Input_Layer" )
 
             if( len( embeddings ) > 0 ):
-                embedding_layer     = Embedding( number_of_features, number_of_embedding_dimensions, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
+                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
             else:
-                embedding_layer     = Embedding( number_of_features, number_of_embedding_dimensions, name = 'Embedding_Layer', trainable = self.trainable_weights )( input_layer )
+                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', trainable = self.trainable_weights )( input_layer )
 
             # Perform Feature Scaling Prior To Generating An Embedding Representation
             if self.feature_scale_value != 1.0:
@@ -354,7 +354,7 @@ class BiLSTMModel( BaseModel.BaseModel ):
 
             bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, return_sequences = True, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_1' )( embedding_layer )
             bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_2' )( bilstm_layer )
-            dense_layer             = Dense( units = number_of_outputs, activation = 'relu', name = 'Internal_Proposition_Representation', use_bias = True )( bilstm_layer )
+            dense_layer             = Dense( units = 256, activation = 'relu', name = 'Internal_Proposition_Representation', use_bias = True )( bilstm_layer )
             output_layer            = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( dense_layer )
 
         self.model = Model( inputs = input_layer, output = output_layer, name = self.network_model + " model" )

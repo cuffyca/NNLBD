@@ -8,33 +8,31 @@
             "number_of_iterations": 1
         }
     ],
-    "closed_discovery_train_and_eval_1": [
+    "refine_1": [
         {
-            "_comment": "Crichton CS1 Hinton Sigmoid: Closed Discovery",
+            "_comment": "Crichton CS1 Hinton Softplus: Closed Discovery",
             "print_debug_log": "False",
             "write_log_to_file": "False",
-            "network_model": "hinton",
+            "network_model": "bilstm",
             "model_type": "closed_discovery",
             "per_epoch_saving": "False",
             "use_gpu": "True",
             "skip_out_of_vocabulary_words": "True",
-            "activation_function": "sigmoid",
+            "activation_function": "softplus",
             "loss_function": "binary_crossentropy",
             "use_csr_format": "True",
             "trainable_weights": "False",
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../cs1_crichton_hinton_sigmoid_model_fs",
+            "model_load_path": "../cs1_crichton_bilstm_softplus_model",
+            "model_save_path": "../cs1_crichton_bilstm_softplus_model_rf_1",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 128,
             "dropout": 0.0,
-            "run_eval_number_epoch": 1,
-            "embedding_modification": "hadamard",
-            "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
-            "feature_scale_value": 10.0
+            "feature_scale_value": 1.0
         }
     ]
 }

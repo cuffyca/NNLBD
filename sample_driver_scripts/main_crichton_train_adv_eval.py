@@ -100,7 +100,7 @@ def Main():
     # Create Directory
     model.utils.Create_Path( model_save_path )
 
-    print( "Beginning Model Data Prepatation/Model Training" )
+    print( "Beginning Model Data Preparation/Model Training" )
 
     for iteration in range( model_iterations ):
         # Train Model Over Data: "../data/train_cs1_closed_discovery_without_aggregators"

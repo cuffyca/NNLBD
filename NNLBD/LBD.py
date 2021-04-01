@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 03/30/2021                                                                   #
+#    Revised: 03/31/2021                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -297,10 +297,10 @@ class LBD:
                                                                                                     stack_inputs = stack_inputs )
 
         # Check(s)
-        if isinstance( train_input_1, list ) and len( train_input_1 ) == 0: train_input_1 = None
-        if isinstance( train_input_2, list ) and len( train_input_2 ) == 0: train_input_2 = None
-        if isinstance( train_input_3, list ) and len( train_input_3 ) == 0: train_input_3 = None
-        if isinstance( train_outputs, list ) and len( train_outputs ) == 0: train_outputs = None
+        if isinstance( train_input_1, ( list, tuple, np.ndarray ) ) and len( train_input_1 ) == 0: train_input_1 = None
+        if isinstance( train_input_2, ( list, tuple, np.ndarray ) ) and len( train_input_2 ) == 0: train_input_2 = None
+        if isinstance( train_input_3, ( list, tuple, np.ndarray ) ) and len( train_input_3 ) == 0: train_input_3 = None
+        if isinstance( train_outputs, ( list, tuple, np.ndarray ) ) and len( train_outputs ) == 0: train_outputs = None
 
         if train_input_1 is None or train_input_2 is None or train_outputs is None:
             self.Print_Log( "LBD::Prepare_Model_Data() - Error Occurred During Model Data Vectorization", force_print = True )
@@ -318,7 +318,7 @@ class LBD:
             train_input_1 = np.hstack( ( train_input_1, train_input_2 ) )
             train_input_2 = None
 
-            self.Print_Log( "LBD::Prepare_Model_Data() - Train Inputs (H-Stacked): " + str( train_input_1.shape ) )
+            self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape (H-Stacked): " + str( train_input_1.shape ) )
 
         # CSR Matrix Format
         if self.model.Get_Use_CSR_Format():
@@ -351,6 +351,10 @@ class LBD:
         if self.model.Get_Network_Model() in ["rumelhart", "hinton", "cosface", "cnn"]:
             if number_of_train_1_input_instances == 0 or number_of_train_2_input_instances == 0 or \
                 number_of_train_output_instances == 0:
+                self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Input/Output Data", force_print = True )
+                return False
+        elif self.model.Get_Network_Model() == "bilstm":
+            if number_of_train_1_input_instances == 0 or number_of_train_output_instances == 0:
                 self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Input/Output Data", force_print = True )
                 return False
         elif self.model.Get_Network_Model() == "simple":
@@ -419,9 +423,10 @@ class LBD:
 
         if self.Is_Model_Loaded() == False:
             if self.model.Get_Network_Model() in ["bilstm", "cnn"]:
-                self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs )
+                self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs, embeddings = embeddings )
             elif self.model.Get_Network_Model() in ["rumelhart", "hinton", "cosface"]:
-                self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions, number_of_outputs, embeddings, sparse_mode = sparse_mode )
+                self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions,
+                                        number_of_outputs, embeddings = embeddings, sparse_mode = sparse_mode )
             elif self.model.Get_Network_Model() == "simple":
                 self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_train_3_inputs,
                                         number_of_hidden_dimensions, number_of_outputs, embeddings, sparse_mode = sparse_mode )
