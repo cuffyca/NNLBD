@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 03/30/2021                                                                   #
+#    Revised: 04/02/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -60,6 +60,7 @@ from keras import regularizers
 #from keras.callbacks import ModelCheckpoint
 from keras.models import Model, Sequential
 from keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
+from keras.callbacks import Callback
 
 # Custom Modules
 from . import BaseModel, Utils
@@ -213,6 +214,8 @@ class CosFaceModel( BaseModel.BaseModel ):
             self.Print_Log( "                            - Adding Model Saving Callback" )
             self.callback_list.append( BaseModel.Model_Saving_Callback() )
 
+        self.callback_list.append( BaseModel.Cosine_Annealing_Scheduler( lr = self.learning_rate, T_max = self.epochs, eta_max = self.learning_rate, eta_min = self.learning_rate_decay ) )
+
         # Perform Model Training
         self.Print_Log( "CosFaceModel::Fit() - Executing Model Training", force_print = True )
 
@@ -303,7 +306,7 @@ class CosFaceModel( BaseModel.BaseModel ):
             None
     """
     def Build_Model( self, number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions, number_of_outputs,
-                     embeddings = [], sparse_mode = False, embedding_modification = "concatenate", final_layer_type = "cosface", weight_decay = 0.004 ):
+                     embeddings = [], sparse_mode = False, embedding_modification = "concatenate", final_layer_type = "cosface", weight_decay = 0.0001 ):
         # Update 'BaseModel' Class Variables
         if number_of_features          != self.number_of_features:          self.number_of_features          = number_of_features
         if number_of_train_1_inputs    != self.number_of_primary_inputs:    self.number_of_primary_inputs    = number_of_train_1_inputs
@@ -422,30 +425,30 @@ class CosFaceModel( BaseModel.BaseModel ):
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
             batch_norm_layer  = BatchNormalization( name = "Batch_Norm_Layer_1" )( dense_layer )
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
-            final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation',
+            final_dense_layer = Dense( units = number_of_outputs, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation',
                                        kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( weight_decay ) )( dropout_layer )
             batch_norm_layer  = BatchNormalization( name = "Batch_Norm_Layer_2" )( final_dense_layer )
         else:
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
-            final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+            final_dense_layer = Dense( units = number_of_outputs, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation',
                                        kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( weight_decay ) )( dropout_layer )
 
         # Final Model Output Used For Prediction
         if self.use_batch_normalization:
             if self.final_layer_type == "arcface":
-                output_layer = BaseModel.ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+                output_layer = BaseModel.ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
             elif self.final_layer_type == "sphereface":
-                output_layer = BaseModel.SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+                output_layer = BaseModel.SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
             else:
-                output_layer = BaseModel.CosFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+                output_layer = BaseModel.CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
         else:
             if self.final_layer_type == "arcface":
-                output_layer = BaseModel.ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
+                output_layer = BaseModel.ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
             elif self.final_layer_type == "sphereface":
-                output_layer = BaseModel.SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
+                output_layer = BaseModel.SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
             else:
-                output_layer = BaseModel.CosFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
+                output_layer = BaseModel.CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
 
         self.model = Model( inputs = [primary_input_layer, secondary_input_layer, cosface_input_layer], output = output_layer, name = self.network_model + " model" )
 

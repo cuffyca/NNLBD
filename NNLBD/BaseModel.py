@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 03/29/2021                                                                   #
+#    Revised: 04/02/2021                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -27,7 +27,7 @@ warnings.filterwarnings( 'ignore' )
 #warnings.simplefilter( action = 'ignore', category = FutureWarning )   # Also Works For Future Warnings
 
 # Standard Modules
-import os, re, time
+import math, os, re, time
 import subprocess as sp
 
 # Suppress Tensorflow Warnings
@@ -57,7 +57,7 @@ from . import Utils
 
 ############################################################################################
 #                                                                                          #
-#    Keras Model Custom Callback Class                                                     #
+#    Keras Model Custom Callback Classes                                                   #
 #                                                                                          #
 ############################################################################################
 
@@ -67,6 +67,32 @@ from . import Utils
 class Model_Saving_Callback( keras.callbacks.Callback ):
     def on_epoch_end( self, epoch, logs = {} ):
         self.model.save( "ckpt_models/model_{}.hd5".format( epoch ) )
+
+"""
+    Keras Model Custom Callback Class - Cosine Annealing Scheduler
+"""
+class Cosine_Annealing_Scheduler( keras.callbacks.Callback ):
+    def __init__( self, T_max, eta_max, eta_min = 0, lr = 0.05, verbose = 0 ):
+        super( Cosine_Annealing_Scheduler, self ).__init__()
+        self.lr      = lr
+        self.T_max   = T_max
+        self.eta_max = eta_max
+        self.eta_min = eta_min
+        self.verbose = verbose
+
+    def on_epoch_begin( self, epoch, logs = None ):
+        if not hasattr( self.model.optimizer, 'lr' ):
+            raise ValueError( 'Optimizer must have a "lr" attribute.' )
+
+        lr = self.eta_min + ( self.eta_max - self.eta_min ) * ( 1 + math.cos( math.pi * epoch / self.T_max ) ) / 2
+        K.set_value( self.model.optimizer.lr, lr )
+
+        if self.verbose > 0:
+            print( '\nEpoch %05d: CosineAnnealingScheduler setting learning rate to %s.' % ( epoch + 1, lr ) )
+
+    def on_epoch_end( self, epoch, logs = None ):
+        logs = logs or {}
+        logs['lr'] = K.get_value( self.model.optimizer.lr )
 
 
 ############################################################################################
@@ -84,7 +110,7 @@ class BaseModel( object ):
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss", early_stopping_persistence = 3,
                   use_batch_normalization = False, checkpoint_directory = "./ckpt_models", trainable_weights = False, embedding_path = "",
                   scale = 30.0, margin = 0.35, feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
-        self.version                         = 0.14
+        self.version                         = 0.15
         self.network_model                   = network_model
         self.model                           = None                            # Automatically Set After Calling 'Build_Model()' Function
         self.epochs                          = epochs                          # Integer Value ie. 10, 32, 64, 200, etc.
@@ -1049,16 +1075,17 @@ class BaseModel( object ):
 #                                                                                          #
 #    ArcFace Class                                                                         #
 #                                                                                          #
-#        Source:  https://github.com/4uiiurz1/keras-arcface                                #
+#        Modified From Source:  https://github.com/4uiiurz1/keras-arcface                  #
 #                                                                                          #
 ############################################################################################
 
 class ArcFace( Layer ):
-    def __init__( self, n_classes = 10, scale = 30.0, margin = 0.50, regularizer = None, **kwargs ):
+    def __init__( self, n_classes = 10, scale = 30.0, margin = 0.50, regularizer = None, activation = "softmax", **kwargs ):
         super( ArcFace, self ).__init__( **kwargs )
         self.n_classes   = n_classes
         self.scale       = scale
         self.margin      = margin
+        self.activation  = activation
         self.regularizer = regularizers.get( regularizer )
 
     def build( self, input_shape ):
@@ -1071,6 +1098,10 @@ class ArcFace( Layer ):
 
     def call( self, inputs ):
         x, y = inputs
+
+        # Used For Debugging Purposes - Prints Ground Truth Labels Per Class
+        # y = tf.Print( y, [tf.round(y)], summarize = -1 )
+
         c = K.shape( x )[-1]
         # normalize feature
         x = tf.nn.l2_normalize( x, axis = 1 )
@@ -1090,9 +1121,21 @@ class ArcFace( Layer ):
         logits = logits * ( 1 - y ) + target_logits * y
         # feature re-scale
         logits *= self.scale
-        out = tf.nn.softmax( logits )
 
-        return out
+        predictions = None
+
+        # Pass Logits Through Softmax Function
+        #   ie. Generate Normalized Distribution Over All Logits Between 0.0 and 1.0
+        if self.activation == "softmax":
+            predictions = tf.nn.softmax( logits )
+        # Pass Each Logit Element Through The Sigmoid Function To Generate A Multi-Class/Multi-Label Distribution Per Element
+        else:
+            predictions = 1/( 1 + tf.math.exp( ( -logits ) ) )
+
+        # Used For Debugging Purposes - Prints Predicted Labels Per Class
+        # predictions = tf.Print( predictions, [tf.round(predictions)], summarize = -1 )
+
+        return predictions
 
     def compute_output_shape( self, input_shape ):
         return ( None, self.n_classes )
@@ -1102,16 +1145,17 @@ class ArcFace( Layer ):
 #                                                                                          #
 #    CosFace Class                                                                         #
 #                                                                                          #
-#        Source:  https://github.com/4uiiurz1/keras-arcface                                #
+#        Modified From Source:  https://github.com/4uiiurz1/keras-arcface                  #
 #                                                                                          #
 ############################################################################################
 
 class CosFace( Layer ):
-    def __init__( self, n_classes = 10, scale = 30.0, margin = 0.35, regularizer = None, **kwargs ):
+    def __init__( self, n_classes = 10, scale = 30.0, margin = 0.35, regularizer = None, activation = "softmax", **kwargs ):
         super( CosFace, self ).__init__( **kwargs )
         self.n_classes   = n_classes
         self.scale       = scale
         self.margin      = margin
+        self.activation  = activation
         self.regularizer = regularizers.get( regularizer )
 
     def build( self, input_shape ):
@@ -1124,6 +1168,10 @@ class CosFace( Layer ):
 
     def call( self, inputs ):
         x, y = inputs
+
+        # Used For Debugging Purposes - Prints Ground Truth Labels Per Class
+        # y = tf.Print( y, [tf.round(y)], summarize = -1 )
+
         c = K.shape( x )[-1]
         # normalize feature
         x = tf.nn.l2_normalize( x, axis = 1 )
@@ -1137,9 +1185,21 @@ class CosFace( Layer ):
         logits = logits * ( 1 - y ) + target_logits * y
         # feature re-scale
         logits *= self.scale
-        out = tf.nn.softmax( logits )
 
-        return out
+        predictions = None
+
+        # Pass Logits Through Softmax Function
+        #   ie. Generate Normalized Distribution Over All Logits Between 0.0 and 1.0
+        if self.activation == "softmax":
+            predictions = tf.nn.softmax( logits )
+        # Pass Each Logit Element Through The Sigmoid Function To Generate A Multi-Class/Multi-Label Distribution Per Element
+        else:
+            predictions = 1/( 1 + tf.math.exp( ( -logits ) ) )
+
+        # Used For Debugging Purposes - Prints Predicted Labels Per Class
+        # predictions = tf.Print( predictions, [tf.round(predictions)], summarize = -1 )
+
+        return predictions
 
     def compute_output_shape( self, input_shape ):
         return ( None, self.n_classes )
@@ -1149,16 +1209,17 @@ class CosFace( Layer ):
 #                                                                                          #
 #    SphereFace Class                                                                      #
 #                                                                                          #
-#        Source:  https://github.com/4uiiurz1/keras-arcface                                #
+#        Modified From Source:  https://github.com/4uiiurz1/keras-arcface                  #
 #                                                                                          #
 ############################################################################################
 
 class SphereFace( Layer ):
-    def __init__( self, n_classes = 10, scale = 30.0, margin = 1.35, regularizer = None, **kwargs ):
+    def __init__( self, n_classes = 10, scale = 30.0, margin = 1.35, regularizer = None, activation = "softmax", **kwargs ):
         super( SphereFace, self ).__init__( **kwargs )
         self.n_classes   = n_classes
         self.scale       = scale
         self.margin      = margin
+        self.activation  = activation
         self.regularizer = regularizers.get( regularizer )
 
     def build( self, input_shape ):
@@ -1171,6 +1232,10 @@ class SphereFace( Layer ):
 
     def call( self, inputs ):
         x, y = inputs
+
+        # Used For Debugging Purposes - Prints Ground Truth Labels Per Class
+        # y = tf.Print( y, [tf.round(y)], summarize = -1 )
+
         c = K.shape(x)[-1]
         # normalize feature
         x = tf.nn.l2_normalize( x, axis = 1 )
@@ -1186,9 +1251,21 @@ class SphereFace( Layer ):
         logits = logits * ( 1 - y ) + target_logits * y
         # feature re-scale
         logits *= self.scale
-        out = tf.nn.softmax( logits )
 
-        return out
+        predictions = None
+
+        # Pass Logits Through Softmax Function
+        #   ie. Generate Normalized Distribution Over All Logits Between 0.0 and 1.0
+        if self.activation == "softmax":
+            predictions = tf.nn.softmax( logits )
+        # Pass Each Logit Element Through The Sigmoid Function To Generate A Multi-Class/Multi-Label Distribution Per Element
+        else:
+            predictions = 1/( 1 + tf.math.exp( ( -logits ) ) )
+
+        # Used For Debugging Purposes - Prints Predicted Labels Per Class
+        # predictions = tf.Print( predictions, [tf.round(predictions)], summarize = -1 )
+
+        return predictions
 
     def compute_output_shape( self, input_shape ):
         return ( None, self.n_classes )
