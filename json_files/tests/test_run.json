@@ -2,7 +2,7 @@
     "global_settings": [
         {
             "_comment": "Global Variable Settings",
-            "enable_gpu_polling": "True",
+            "enable_gpu_polling": "False",
             "acceptable_available_memory": 500,
             "device_name": "/gpu:0",
             "number_of_iterations": 1
@@ -25,10 +25,11 @@
             "trainable_weights": "False",
             "embedding_path": "../vectors/vectors_random_cui_mini",
             "train_data_path": "../data/cui_mini",
-            "epochs": 700,
+            "epochs": 500,
             "verbose": 1,
-            "learning_rate": 0.01,
-            "batch_size": 32,
+            "learning_rate": 0.001,
+            "dropout": 0.1,
+            "batch_size": 128,
             "scale": 10.0,
             "margin": 0.05,
             "set_per_iteration_model_path": "False"

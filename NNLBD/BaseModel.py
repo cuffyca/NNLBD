@@ -759,6 +759,8 @@ class BaseModel( object ):
     #                                                                                          #
     #    Keras Model Metrics                                                                   #
     #                                                                                          #
+    #        Source: https://gist.github.com/arnaldog12/5f2728f229a8bd3b4673b72786913252       #
+    #                                                                                          #
     ############################################################################################
 
     """

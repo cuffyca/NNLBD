@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 03/31/2021                                                                   #
+#    Revised: 04/08/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -508,6 +508,7 @@ class NNLBD_Driver:
         best_number_of_ties      = 0
         gold_b_term              = gold_b_instance.split()[1]
         best_ranking             = sys.maxsize
+        best_ranking_epoch       = -1
         eval_data                = model.Get_Data_Loader().Read_Data( eval_data_path, keep_in_memory = False )
 
         # Check
@@ -614,6 +615,7 @@ class NNLBD_Driver:
             # Keep Track Of The Best Rank
             if rank < best_ranking:
                 best_ranking        = rank
+                best_ranking_epoch  = iteration
                 best_number_of_ties = number_of_ties
 
             print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( rank ) +
@@ -652,6 +654,7 @@ class NNLBD_Driver:
                             y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
 
         print( "\nBest Rank: " + str( best_ranking ) )
+        print( "Best Ranking Epoch: " + str( best_ranking_epoch ) )
         print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
 
     def Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
@@ -678,6 +681,7 @@ class NNLBD_Driver:
         gold_b_term              = gold_b_instance.split( '\t' )[1]
         c_term                   = gold_b_instance.split( '\t' )[2]
         best_ranking             = sys.maxsize
+        best_ranking_epoch       = -1
 
         # Create Directory
         model.utils.Create_Path( model_save_path )
@@ -739,6 +743,7 @@ class NNLBD_Driver:
             # Keep Track Of The Best Rank
             if gold_b_rank < best_ranking:
                 best_ranking        = gold_b_rank
+                best_ranking_epoch  = iteration
                 best_number_of_ties = gold_b_ties
 
             print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
@@ -777,6 +782,7 @@ class NNLBD_Driver:
                             y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
 
         print( "\nBest Rank: " + str( best_ranking ) )
+        print( "Best Ranking Epoch: " + str( best_ranking_epoch ) )
         print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
 
 

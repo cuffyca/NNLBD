@@ -29,8 +29,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -55,8 +55,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -81,8 +81,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -107,8 +107,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -133,8 +133,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -159,8 +159,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -185,8 +185,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -211,8 +211,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -237,8 +237,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -263,8 +263,8 @@
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ],
@@ -288,8 +288,8 @@
             "epochs": 2000000,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 128,
-            "dropout": 0.0,
+            "batch_size": 256,
+            "dropout": 0.1,
             "feature_scale_value": 10.0
         }
     ]
