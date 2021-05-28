@@ -25,6 +25,7 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs2.embeddings",
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs2_closed_discovery_without_aggregators_mod",
             "model_load_path": "../cs2_crichton_bilstm_softplus_model_fs",
             "model_save_path": "../cs2_crichton_bilstm_softplus_model_fs_rf_1",
             "epochs": 200,
@@ -32,6 +33,7 @@
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ]

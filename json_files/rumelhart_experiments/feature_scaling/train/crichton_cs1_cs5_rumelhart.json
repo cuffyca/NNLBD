@@ -25,12 +25,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs1_crichton_rumelhart_sigmoid_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -51,12 +53,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs2.embeddings",
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs2_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs2_crichton_rumelhart_sigmoid_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -77,12 +81,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs3.embeddings",
             "train_data_path": "../data/train_cs3_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs3_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs3_crichton_rumelhart_sigmoid_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -103,12 +109,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs4.embeddings",
             "train_data_path": "../data/train_cs4_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs4_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs4_crichton_rumelhart_sigmoid_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -129,12 +137,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs5.embeddings",
             "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs5_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs5_crichton_rumelhart_sigmoid_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -155,12 +165,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs1_crichton_rumelhart_softplus_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -181,12 +193,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs2.embeddings",
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs2_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs2_crichton_rumelhart_softplus_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -207,12 +221,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs3.embeddings",
             "train_data_path": "../data/train_cs3_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs3_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs3_crichton_rumelhart_softplus_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -233,12 +249,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs4.embeddings",
             "train_data_path": "../data/train_cs4_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs4_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs4_crichton_rumelhart_softplus_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -259,12 +277,14 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs5.embeddings",
             "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs5_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs5_crichton_rumelhart_softplus_model_fs",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ],
@@ -285,11 +305,13 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators_mod",
             "epochs": 2000000,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ]

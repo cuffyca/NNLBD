@@ -8,7 +8,7 @@
 #    ***** Used For Debugging Purposes *****                                               #
 #                                                                                          #
 #    Date:    01/08/2021                                                                   #
-#    Revised: 01/22/2021                                                                   #
+#    Revised: 05/08/2021                                                                   #
 #                                                                                          #
 #    Tests DataLoader::Vectorize_Model_Data() function which includes multi-threading      #
 #        support.                                                                          #
@@ -31,7 +31,8 @@ from scipy.sparse import csr_matrix
 sys.path.insert( 0, "../" )
 
 # Custom Modules
-from NNLBD import DataLoader, Utils
+from NNLBD.DataLoader import StdDataLoader, CrichtonDataLoader
+from NNLBD.Misc       import Utils
 
 def Main():
     print( "~Begin" )
@@ -49,14 +50,14 @@ def Main():
 
     utils = Utils()
 
-    data_loader = DataLoader( print_debug_log = True, skip_out_of_vocabulary_words = True )
+    data_loader = StdDataLoader( print_debug_log = True, skip_out_of_vocabulary_words = True )
     data_loader.Read_Data( file_path )
     data_loader.Load_Embeddings( embedding_path )
     data_loader.Generate_Token_IDs()
 
     print( "Vectorizing Data" )
     primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Data( number_of_threads = 1, use_csr_format = True,
-                                                                                                   model_type = "open_discovery", is_crichton_format = False,
+                                                                                                   model_type = "open_discovery",
                                                                                                    pad_inputs = True, pad_output = True )
 
     # Check(s)

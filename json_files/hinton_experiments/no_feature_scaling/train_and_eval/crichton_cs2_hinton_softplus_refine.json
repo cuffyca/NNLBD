@@ -25,6 +25,7 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs2.embeddings",
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs2_closed_discovery_without_aggregators_mod",
             "model_load_path": "../cs2_crichton_hinton_softplus_model",
             "model_save_path": "../cs2_crichton_hinton_softplus_model_rf_1",
             "epochs": 200,
@@ -35,6 +36,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011331\tHOC:42\tPR:000005308\t0.0",
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 1.0
         }
     ]

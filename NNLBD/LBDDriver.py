@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 04/08/2021                                                                   #
+#    Revised: 05/22/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -28,6 +28,7 @@ import matplotlib.pyplot as plt
 import subprocess as sp
 from shutil import copy2
 
+
 sys.path.insert( 0, "../" )
 
 # Fixes Recursion Limit Issue
@@ -35,7 +36,9 @@ sys.path.insert( 0, "../" )
 # sys.setrecursionlimit( 10**6 )
 
 # Custom Modules
-from NNLBD import LBD, Utils
+from NNLBD            import LBD
+from NNLBD.Misc       import Utils
+from NNLBD.DataLoader import StdDataLoader
 
 
 ############################################################################################
@@ -58,7 +61,6 @@ class NNLBD_Driver:
 
         # Private Variables (Do Not Modify)
         self.json_file_path              = ""
-
 
     ############################################################################################
     #                                                                                          #
@@ -150,7 +152,7 @@ class NNLBD_Driver:
         early_stopping_metric_monitor, early_stopping_persistence, use_batch_normalization          = "loss", 3, False
         embedding_modification, skip_out_of_vocabulary_words, eval_data_path, checkpoint_directory  = "concatenate", True, "", "ckpt_models"
         model_save_path, model_load_path, set_per_iteration_model_path, learning_rate_decay         = "", "", False, 0.004
-        feature_scale_value                                                                         = 1.0
+        feature_scale_value, separate_ids_by_input_type                                             = 1.0, False
 
         # Model Variables
         run_eval_number_epoch = 1
@@ -180,6 +182,7 @@ class NNLBD_Driver:
                 if "enable_early_stopping"         in run_dict: enable_early_stopping         = True if run_dict["enable_early_stopping"]        == "True" else False
                 if "use_batch_normalization"       in run_dict: use_batch_normalization       = True if run_dict["use_batch_normalization"]      == "True" else False
                 if "set_per_iteration_model_path"  in run_dict: set_per_iteration_model_path  = True if run_dict["set_per_iteration_model_path"] == "True" else False
+                if "separate_ids_by_input_type"    in run_dict: separate_ids_by_input_type    = True if run_dict["separate_ids_by_input_type"]   == "True" else False
                 if "network_model"                 in run_dict: network_model                 = run_dict["network_model"]
                 if "model_type"                    in run_dict: model_type                    = run_dict["model_type"]
                 if "activation_function"           in run_dict: activation_function           = run_dict["activation_function"]
@@ -212,7 +215,6 @@ class NNLBD_Driver:
                 if "run_eval_number_epoch"         in run_dict: run_eval_number_epoch         = run_dict["run_eval_number_epoch"]
                 if "gold_b_instance"               in run_dict: gold_b_instance               = run_dict["gold_b_instance"]
 
-
                 # Wait For Next Available GPU
                 if self.enable_gpu_polling and self.available_device_name == "":
                     print( "*** Waiting For The Next Available GPU ***" )
@@ -235,7 +237,7 @@ class NNLBD_Driver:
                              margin = margin, scale = scale, enable_early_stopping = enable_early_stopping,  early_stopping_metric_monitor = early_stopping_metric_monitor,
                              use_batch_normalization = use_batch_normalization, embedding_modification = embedding_modification,  enable_tensorboard_logs = enable_tensorboard_logs,
                              early_stopping_persistence = early_stopping_persistence, skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, learning_rate_decay = learning_rate_decay,
-                             feature_scale_value = feature_scale_value )
+                             feature_scale_value = feature_scale_value, separate_ids_by_input_type = separate_ids_by_input_type )
 
                 ######################################################
                 # Determine What Type Of Experiment Will Be Executed #
@@ -387,8 +389,9 @@ class NNLBD_Driver:
                     self.Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
                                                           learning_rate = learning_rate, verbose = verbose,
                                                           run_eval_number_epoch = run_eval_number_epoch,
-                                                          train_data_path = train_data_path, model_save_path = model_save_path,
-                                                          embedding_path = embedding_path, gold_b_instance = gold_b_instance )
+                                                          train_data_path = train_data_path, eval_data_path = eval_data_path,
+                                                          model_save_path = model_save_path, embedding_path = embedding_path,
+                                                          gold_b_instance = gold_b_instance )
 
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
@@ -413,8 +416,9 @@ class NNLBD_Driver:
                         self.Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
                                                               learning_rate = learning_rate, verbose = verbose,
                                                               run_eval_number_epoch = run_eval_number_epoch,
-                                                              train_data_path = train_data_path, model_save_path = model_save_path,
-                                                              embedding_path = embedding_path, gold_b_instance = gold_b_instance )
+                                                              train_data_path = train_data_path, eval_data_path = eval_data_path,
+                                                              model_save_path = model_save_path, embedding_path = embedding_path,
+                                                              gold_b_instance = gold_b_instance )
 
                         if model_save_path != "":
                             model.Save_Model( model_save_path )
@@ -482,6 +486,8 @@ class NNLBD_Driver:
     #                                                                                          #
     ############################################################################################
 
+    ''' Reduplicates Crichton's Proposed MLP Closed Discovery Model
+        This Is Intended To Be Utilized With Their CS1-CS5 Closed Discovery Data-sets '''
     def Crichton_Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
                                                   train_data_path, eval_data_path, model_save_path, embedding_path, gold_b_instance ):
         # Check(s)
@@ -560,6 +566,7 @@ class NNLBD_Driver:
                 return
 
             history = model.Get_Model().model_history.history
+            # 'accuracy' changes to 'acc' for refined models. (I don't know why)
             accuracy_score = history['accuracy'][-1] if 'accuracy' in history else history['acc'][-1]
 
             loss_per_epoch.append( history['loss'][-1] )
@@ -657,31 +664,58 @@ class NNLBD_Driver:
         print( "Best Ranking Epoch: " + str( best_ranking_epoch ) )
         print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
 
+    ''' Performs Closed Discovery For Our Proposed Models: Hinton, Rumelhart, Bi-LSTM '''
     def Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
-                                         train_data_path, model_save_path, embedding_path, gold_b_instance ):
+                                         train_data_path, model_save_path, embedding_path, gold_b_instance, eval_data_path = "" ):
         # Check(s)
         if Utils().Check_If_File_Exists( train_data_path ) == False:
             print( "Error: Specified Training File Does Not Exist" )
+            return
+        if eval_data_path != "" and Utils().Check_If_File_Exists( eval_data_path ) == False:
+            print( "Error: Specified Evaluation File Does Not Exist" )
             return
         if embedding_path != "" and Utils().Check_If_File_Exists( embedding_path ) == False:
             print( "Error: Specified Embedding File Does Not Exist" )
             return
 
         # Training/Evaluation Variables (Do Not Modify)
-        ranking_per_epoch        = []
-        ranking_per_epoch_value  = []
-        number_of_ties_per_epoch = []
-        loss_per_epoch           = []
-        accuracy_per_epoch       = []
-        precision_per_epoch      = []
-        recall_per_epoch         = []
-        f1_score_per_epoch       = []
-        best_number_of_ties      = 0
-        a_term                   = gold_b_instance.split( '\t' )[0]
-        gold_b_term              = gold_b_instance.split( '\t' )[1]
-        c_term                   = gold_b_instance.split( '\t' )[2]
-        best_ranking             = sys.maxsize
-        best_ranking_epoch       = -1
+        ranking_per_epoch             = []
+        ranking_per_epoch_value       = []
+        number_of_ties_per_epoch      = []
+        loss_per_epoch                = []
+        accuracy_per_epoch            = []
+        precision_per_epoch           = []
+        recall_per_epoch              = []
+        f1_score_per_epoch            = []
+        best_number_of_ties           = 0
+        a_term                        = gold_b_instance.split( '\t' )[0]
+        gold_b_term                   = gold_b_instance.split( '\t' )[1]
+        c_term                        = gold_b_instance.split( '\t' )[2]
+        best_ranking                  = sys.maxsize
+        best_ranking_epoch            = -1
+        eval_best_ranking             = sys.maxsize
+        eval_best_ranking_epoch       = -1
+        eval_token_list               = None
+        eval_ranking_per_epoch        = []
+        eval_ranking_per_epoch_value  = []
+        eval_number_of_ties_per_epoch = []
+
+        # Load Evaluation Data (Use Temporary Data Loader / Outside Of Model's Data Loader)
+        if eval_data_path != "":
+            eval_data_loader = StdDataLoader( skip_out_of_vocabulary_words = model.Get_Data_Loader().Get_Skip_Out_Of_Vocabulary_Words(),
+                                              separate_ids_by_input_type = model.Get_Data_Loader().Get_Separate_IDs_By_Input_Type() )
+            eval_data_loader.Read_Data( eval_data_path )
+            eval_data_loader.Load_Embeddings( embedding_path )
+            eval_data_loader.Generate_Token_IDs()
+
+            # Closed Discovery Substitutes B Concepts (Secondary ID Dictionary) For Output
+            #   So We Must Grab The Secondary ID Dictionary Concepts To Evaluate Against.
+            if eval_data_loader.Get_Separate_IDs_By_Input_Type():
+                eval_token_list = eval_data_loader.Get_Secondary_ID_Dictionary().keys()
+            else:
+                eval_token_list = eval_data_loader.Get_Token_ID_Dictionary().keys()
+
+            eval_data_loader.Clear_Data()
 
         # Create Directory
         model.utils.Create_Path( model_save_path )
@@ -709,21 +743,30 @@ class NNLBD_Driver:
             recall_per_epoch.append( history['Recall'][-1] )
             f1_score_per_epoch.append( history['F1_Score'][-1] )
 
-            # Perform Prediction Over The Entire Evaluation Data-set (Model Inference)
+            # Perform Inference Over The Entire Training Data-set
             predictions = model.Predict( a_term, c_term, return_raw_values = True )[0]
 
             # Fetch All Unique Terms From DataLoader Dictionary
-            unique_token_list = model.Get_Data_Loader().Get_Token_ID_Dictionary().keys()
+            #   For Closed Discovery The Secondary ID Dictionary Is Substituted With The Output Dictionary i.e. A & C Used To Predict B
+            if model.Get_Data_Loader().Get_Separate_IDs_By_Input_Type():
+                unique_token_list = list( model.Get_Data_Loader().Get_Secondary_ID_Dictionary().keys() )
+            else:
+                unique_token_list = list( model.Get_Data_Loader().Get_Token_ID_Dictionary().keys() )
 
             ################################################################
             # Rank Unique Token Predictions Using Their Probability Values #
             ################################################################
 
-            prob_dict = {}
+            prob_dict      = {}     # Probability Rankings Among Training Data Unique B Terms
+            eval_prob_dict = {}     # Probability Rankings Among Evaluation Data Unique B Terms
+
+            if len( unique_token_list ) != len( predictions ):
+                print( "Error: Unique B Concept List != Number Of Model Predictions / Unable To Perform Evaluation" )
+                continue
 
             # For Each Prediction From The Model, Store The Prediction Value And Unique Concept Token Within A Dictionary
             for token, prediction in zip( unique_token_list, predictions ):
-                # print( str( token ) + "\t:\t" + str( prediction ) )
+                # print( str( token ) + "\t:\t" + str( prediction ) )   # Used For Debugging Purposes
                 prob_dict[token] = prediction
 
             # Sort Concept And Probability Dictionary In Reverse Order To Rank Concepts.
@@ -746,16 +789,48 @@ class NNLBD_Driver:
                 best_ranking_epoch  = iteration
                 best_number_of_ties = gold_b_ties
 
-            print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
-                   " Of " + str( len( prob_dict ) ) + " Number Of B Terms" + " - Score: " + str( gold_b_value ) + \
+            # Perform Ranking Against Evaluation Data-Set If Specified
+            eval_gold_b_rank, eval_gold_b_value, eval_gold_b_ties = -1, -1, -1
+
+            if eval_data_path != "":
+                eval_prob_dict    = { token: prob_dict[token] for token in eval_token_list if token in prob_dict }
+                eval_prob_dict    = { k: v for k, v in sorted( eval_prob_dict.items(), key = lambda x: x[1], reverse = True ) }
+                eval_gold_b_rank  = list( eval_prob_dict.keys() ).index( gold_b_term.lower() ) if gold_b_term.lower() in eval_prob_dict else -1
+                eval_gold_b_value = eval_prob_dict[gold_b_term.lower()] if gold_b_term.lower() in eval_prob_dict else -1
+                eval_gold_b_ties  = list( eval_prob_dict.values() ).count( eval_gold_b_value ) - 1
+
+                eval_ranking_per_epoch.append( eval_gold_b_rank )
+                eval_ranking_per_epoch_value.append( eval_gold_b_value )
+                eval_number_of_ties_per_epoch.append( eval_gold_b_ties )
+
+                if eval_gold_b_rank < eval_best_ranking:
+                    eval_best_ranking = eval_gold_b_rank
+                    eval_best_ranking_epoch = iteration
+                    eval_best_number_of_ties = eval_gold_b_ties
+
+                print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
+                    " Of " + str( len( prob_dict ) ) + " Number Of B Terms - Score: " + str( gold_b_value ) + \
+                    " - Number Of Ties: " + str( gold_b_ties ) + "\n          - Eval Rank: " + str( eval_gold_b_rank ) + \
+                    " Of " + str( len( eval_prob_dict ) ) + " Number Of Eval B Terms - Score: " + str( eval_gold_b_value ) + \
+                    " - Number Of Ties: " + str( eval_gold_b_ties ) )
+            else:
+                print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
+                   " Of " + str( len( prob_dict ) ) + " Number Of B Terms - Score: " + str( gold_b_value ) + \
                    " - Number Of Ties: " + str( gold_b_ties ) )
 
         # Print Ranking Information Per Epoch
         print( "" )
 
-        for epoch in range( len( ranking_per_epoch ) ):
-            print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
-                " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
+        if eval_data_path != "":
+            for epoch in range( len( ranking_per_epoch ) ):
+                print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
+                      " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) +
+                      " - Eval Rank: " + str( eval_ranking_per_epoch[epoch] ) + " - Eval Value: " + str( eval_ranking_per_epoch_value[epoch] ) +
+                      " - Eval Number Of Ties: " + str( eval_number_of_ties_per_epoch[epoch] ) )
+        else:
+            for epoch in range( len( ranking_per_epoch ) ):
+                print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
+                       " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
 
         print( "\nGenerating Model Metric Charts" )
         if not re.search( r"\/$", model_save_path ): model_save_path += "/"
@@ -784,6 +859,11 @@ class NNLBD_Driver:
         print( "\nBest Rank: " + str( best_ranking ) )
         print( "Best Ranking Epoch: " + str( best_ranking_epoch ) )
         print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
+
+        if eval_data_path != "":
+            print( "Eval Best Rank: " + str( eval_best_ranking ) )
+            print( "Eval Best Ranking Epoch: " + str( eval_best_ranking_epoch ) )
+            print( "Eval Number Of Ties With Best Rank: " + str( eval_best_number_of_ties ) )
 
 
 ############################################################################################

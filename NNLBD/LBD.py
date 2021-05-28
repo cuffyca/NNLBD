@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 03/31/2021                                                                   #
+#    Revised: 05/27/2021                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -22,10 +22,12 @@
 import os, re, time
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, data
 
 # Custom Modules
-from NNLBD import *
+from NNLBD.DataLoader import StdDataLoader, CrichtonDataLoader
+from NNLBD.Models     import *
+from NNLBD.Misc       import Utils
 
 
 ############################################################################################
@@ -45,14 +47,15 @@ class LBD:
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, checkpoint_directory = "./ckpt_models",
                   trainable_weights = False, embedding_path = "", embedding_modification = "concatenate", final_layer_type = "dense",
-                  feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
-        self.version                       = 0.18
+                  feature_scale_value = 1.0, learning_rate_decay = 0.004, separate_ids_by_input_type = False ):
+        self.version                       = 0.19
         self.model                         = None                            # Automatically Set After Calling 'LBD::Build_Model()' Function
         self.debug_log                     = print_debug_log                 # Options: True, False
         self.write_log                     = write_log_to_file               # Options: True, False
         self.debug_log_file_handle         = None                            # Debug Log File Handle
         self.checkpoint_directory          = checkpoint_directory            # Path (String)
         self.model_data_prepared           = False                           # Options: True, False (Default: False)
+        self.data_loader                   = None
         self.debug_log_file_name           = "LBD_Log.txt"                   # File Name (String)
 
         # Create Log File Handle
@@ -60,11 +63,21 @@ class LBD:
             self.debug_log_file_handle = open( self.debug_log_file_name, "w" )
 
         # Create New DataLoader Instance With Options
-        self.data_loader = DataLoader( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
-                                       skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, debug_log_file_handle = self.debug_log_file_handle )
+        # Model Specific DataLoader Parameters/Settings
+        if network_model in [ "rumelhart", "hinton", "bilstm", "cnn", "cosface" ]:
+            self.data_loader = StdDataLoader( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
+                                              skip_out_of_vocabulary_words = skip_out_of_vocabulary_words,
+                                              debug_log_file_handle = self.debug_log_file_handle, separate_ids_by_input_type = separate_ids_by_input_type )
+        elif network_model in [ "simple" ]:
+            self.data_loader = CrichtonDataLoader( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
+                                                   skip_out_of_vocabulary_words = skip_out_of_vocabulary_words,
+                                                   debug_log_file_handle = self.debug_log_file_handle, separate_ids_by_input_type = separate_ids_by_input_type )
+        else:
+            print( "LBD::Init() - Error Model \"" + str( network_model ) + "\"'s DataLoader Not Implemented" )
+            raise NotImplementedError
 
         # Create New Utils Instance
-        self.utils       = Utils()
+        self.utils = Utils()
 
         self.Print_Log( "LBD::Init() - Current Working Directory: \"" + str( self.utils.Get_Working_Directory() ) + "\"" )
 
@@ -238,7 +251,7 @@ class LBD:
             self.Print_Log( "LBD::Prepare_Model_Data() - Generating Token IDs From Training Data", force_print = True )
 
             if self.model.Get_Network_Model() == "simple":
-                data_loader.Generate_Token_IDs( separate_ids_by_input_type = False, skip_association_value = True, scale_embedding_weight_value = 1.0 )
+                data_loader.Generate_Token_IDs( separate_ids_by_input_type = False, skip_association_value = True )
             else:
                 data_loader.Generate_Token_IDs()
 
@@ -255,12 +268,24 @@ class LBD:
             else:
                 data_loader.Generate_Token_IDs( data_instances )
 
-        embeddings = data_loader.Get_Embeddings()
+        primary_embeddings, secondary_embeddings, tertiary_embeddings, output_embeddings  = [], [], [], []
 
-        if len( embeddings ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Embeddings Data Length == 0" )
-        else: number_of_hidden_dimensions = data_loader.Get_Embedding_Dimension_Size()
+        # If We're Actually Generating Embeddings And Passing To The Model. If We're Refining A Model, It Already Contains The Embedding
+        #    Representations, So We Just Set 'simulate_embeddings_loaded' Parameter To 'True' In The DataLoader Class To Avoid Generating Them Again.
+        if data_loader.Is_Embeddings_Loaded() and data_loader.Simulate_Embeddings_Loaded_Mode() == False:
+            primary_embeddings   = data_loader.Get_Embeddings( embedding_type = "primary"   )
+            secondary_embeddings = data_loader.Get_Embeddings( embedding_type = "secondary" )
+            tertiary_embeddings  = data_loader.Get_Embeddings( embedding_type = "tertiary"  )
+            output_embeddings    = data_loader.Get_Embeddings( embedding_type = "output"    )
 
-        self.Save_Model_Keys( model_name = "last_" + self.model.Get_Network_Model() + "_model" )
+            if len( primary_embeddings   ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Primary Embeddings Data Length == 0" )
+            if len( secondary_embeddings ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Secondary Embeddings Data Length == 0" )
+            if len( tertiary_embeddings  ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Tertiary Embeddings Data Length == 0" )
+            if len( output_embeddings    ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Output Embeddings Data Length == 0" )
+
+            number_of_hidden_dimensions = data_loader.Get_Embedding_Dimension_Size()
+
+            self.Save_Model_Keys( model_name = "last_" + self.model.Get_Network_Model() + "_model" )
 
         self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - " + str( self.model.Get_Network_Model() ) )
 
@@ -270,7 +295,7 @@ class LBD:
         #                                                                     #
         #######################################################################
 
-        # Binarize Training Data For Keras Model
+        # Binarize Model Data
         self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data", force_print = True )
 
         train_input_1, train_input_2, train_input_3, train_outputs = None, None, None, None
@@ -285,14 +310,12 @@ class LBD:
         if len( data_instances ) == 0:
             train_input_1, train_input_2, train_input_3, train_outputs = self.Vectorize_Model_Data( model_type = self.model.Get_Model_Type(),
                                                                                                     use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                                    is_crichton_format = is_crichton_format,
                                                                                                     pad_inputs = pad_inputs, pad_output = pad_output,
                                                                                                     stack_inputs = stack_inputs )
         # Train On Data Instances Within The DataLoader Class
         else:
             train_input_1, train_input_2, train_input_3, train_outputs = self.Vectorize_Model_Data( training_data, model_type = self.model.Get_Model_Type(),
                                                                                                     use_csr_format = self.model.Get_Use_CSR_Format(),
-                                                                                                    is_crichton_format = is_crichton_format,
                                                                                                     pad_inputs = pad_inputs, pad_output = pad_output,
                                                                                                     stack_inputs = stack_inputs )
 
@@ -393,21 +416,15 @@ class LBD:
         # Get Model Parameters From Training Data
         self.Print_Log( "LBD::Prepare_Model_Data() - Fetching Model Parameters (Input/Output Sizes)" )
         number_of_train_1_inputs = data_loader.Get_Number_Of_Primary_Elements()
-        number_of_train_2_inputs = number_of_train_1_inputs
-        number_of_train_3_inputs = -1
-        number_of_outputs        = number_of_train_1_inputs
-
-        if data_loader.Get_Is_CUI_Data() or data_loader.Is_Data_Composed_Of_CUIs():
-            number_of_train_2_inputs = data_loader.Get_Number_Of_Secondary_Elements() if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Primary_Elements()
-            number_of_outputs        = data_loader.Get_Number_Of_Primary_Elements()   if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Secondary_Elements()
+        number_of_train_2_inputs = data_loader.Get_Number_Of_Secondary_Elements() if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Output_Elements()
+        number_of_train_3_inputs = data_loader.Get_Number_Of_Tertiary_Elements()
+        number_of_outputs        = data_loader.Get_Number_Of_Output_Elements()    if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Secondary_Elements()
 
         if self.model.Get_Network_Model() == "bilstm":
-            number_of_outputs  = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "open_discovery"   else data_loader.Get_Number_Of_Secondary_Elements()
-            number_of_features = data_loader.Get_Number_Of_Primary_Elements() if self.model.Get_Model_Type() == "closed_discovery" else data_loader.Get_Number_Of_Primary_Elements() + data_loader.Get_Number_Of_Secondary_Elements()
-        if self.model.Get_Network_Model() == "simple":
-            number_of_train_2_inputs = data_loader.Get_Number_Of_Secondary_Elements() if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Primary_Elements()
-            number_of_train_3_inputs = data_loader.Get_Number_Of_Tertiary_Elements()  if self.model.Get_Model_Type() == "open_discovery" else data_loader.Get_Number_Of_Primary_Elements()
-            number_of_outputs        = 1
+            number_of_outputs  = data_loader.Get_Number_Of_Output_Elements() if self.model.Get_Model_Type() == "open_discovery"   else data_loader.Get_Number_Of_Secondary_Elements()
+            number_of_features = data_loader.Get_Number_Of_Unique_Features()
+
+        if self.model.Get_Network_Model() == "simple": number_of_outputs = 1
 
         self.Print_Log( "                          - Number Of Features         : " + str( number_of_features          ) )
         self.Print_Log( "                          - Number Of Primary Inputs   : " + str( number_of_train_1_inputs    ) )
@@ -423,13 +440,16 @@ class LBD:
 
         if self.Is_Model_Loaded() == False:
             if self.model.Get_Network_Model() in ["bilstm", "cnn"]:
-                self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs, embeddings = embeddings )
+                self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs, embeddings = data_loader.Get_Embeddings() )
             elif self.model.Get_Network_Model() in ["rumelhart", "hinton", "cosface"]:
-                self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions,
-                                        number_of_outputs, embeddings = embeddings, sparse_mode = sparse_mode )
+                self.model.Build_Model( number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions,
+                                        number_of_outputs, number_of_primary_embeddings = number_of_train_1_inputs,
+                                        number_of_secondary_embeddings = number_of_train_2_inputs, primary_embeddings = primary_embeddings,
+                                        secondary_embeddings = secondary_embeddings if self.model.Get_Model_Type() == "open_discovery" else output_embeddings,
+                                        sparse_mode = sparse_mode )
             elif self.model.Get_Network_Model() == "simple":
                 self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_train_3_inputs,
-                                        number_of_hidden_dimensions, number_of_outputs, embeddings, sparse_mode = sparse_mode )
+                                        number_of_hidden_dimensions, number_of_outputs, data_loader.Get_Embeddings(), sparse_mode = sparse_mode )
             else:
                 self.Print_Log( "LBD::Prepare_Model_Data() - Error: Specified Network Model Not Supported", force_print = True )
         else:
@@ -552,7 +572,7 @@ class LBD:
         vectorize_data      = True
 
         # Check For Vectorized Input Matrices Have Been Passed As Parameters
-        if primary_input == "" and secondary_input == "" and tertiary_input == "":
+        if primary_input_matrix != [] or secondary_input_matrix != [] or tertiary_input_matrix != [] or output_matrix != []:
             self.Print_Log( "LBD::Predict() - Vectorized Input Matrices Passed / Skipping Plain Text Vectorization" )
             vectorize_data = False
 
@@ -566,8 +586,20 @@ class LBD:
         # Check To See If Primary And Secondary ID Key Dictionaries Are Loaded
         self.Print_Log( "LBD::Predict() - Checking For Token Keys" )
 
-        if self.Get_Data_Loader().Get_Number_Of_Unique_Features() == 0:
+        if self.Get_Data_Loader().Get_Separate_IDs_By_Input_Type() == False and self.Get_Data_Loader().Get_Number_Of_Unique_Features() == 0:
             self.Print_Log( "LBD::Predict() - Error: Token ID Key Dictionary Is Empty", force_print = True )
+            return []
+        if self.Get_Data_Loader().Get_Separate_IDs_By_Input_Type() and primary_input != "" and self.Get_Data_Loader().Get_Number_Of_Primary_Elements() == 0:
+            self.Print_Log( "LBD::Predict() - Error: Primary ID Key Dictionary Is Empty", force_print = True )
+            return []
+        if self.Get_Data_Loader().Get_Separate_IDs_By_Input_Type() and secondary_input != "" and self.Get_Data_Loader().Get_Number_Of_Secondary_Elements() == 0:
+            self.Print_Log( "LBD::Predict() - Error: Secondary ID Key Dictionary Is Empty", force_print = True )
+            return []
+        if self.Get_Data_Loader().Get_Separate_IDs_By_Input_Type() and tertiary_input != "" and self.Get_Data_Loader().Get_Number_Of_Tertiary_Elements() == 0:
+            self.Print_Log( "LBD::Predict() - Error: Tertiary ID Key Dictionary Is Empty", force_print = True )
+            return []
+        if self.Get_Data_Loader().Get_Separate_IDs_By_Input_Type() and output != "" and self.Get_Data_Loader().Get_Number_Of_Output_Elements() == 0:
+            self.Print_Log( "LBD::Predict() - Error: Output ID Key Dictionary Is Empty", force_print = True )
             return []
 
         # Check
@@ -575,131 +607,72 @@ class LBD:
             self.Print_Log( "LBD::Predict() - Warning: Unable To Return Raw Values With 'return_vector = False' / Setting 'return_vector = True'" )
             return_vector = True
 
+        # Check If We're Performing Closed Discovery. If So Swap Secondary Input To Output.
+        if self.Get_Network_Model() not in ["cosface", "simple"] and self.Get_Model_Type() == "closed_discovery" and output == "":
+            output = secondary_input
+            secondary_input = "<*>padding<*>"
+
         #######################################################################
         #                                                                     #
-        #   Rumelhart & Hinton Networks                                       #
+        #   Prepare Model Input/Output Data                                   #
         #                                                                     #
         #######################################################################
-        if self.model.Get_Network_Model() in ["hinton", "rumelhart"]:
-            self.Print_Log( "LBD::Predict() - Binarizing/Vectorizing Model Inputs" )
 
-            if vectorize_data:
-                if self.Is_Embeddings_Loaded():
-                    primary_input_matrix, secondary_input_matrix, _, _ = self.Vectorize_Model_Inputs( primary_input, secondary_input, tertiary_input, output,
-                                                                                                      model_type = self.model.Get_Model_Type(),
-                                                                                                      pad_inputs = False, instance_separator = instance_separator )
-                else:
-                    primary_input_matrix, secondary_input_matrix, _, _ = self.Vectorize_Model_Inputs( primary_input, secondary_input, tertiary_input,
-                                                                                                      model_type = self.model.Get_Model_Type(),
-                                                                                                      pad_inputs = True, instance_separator = instance_separator )
+        # Binarize Model Data
+        self.Print_Log( "LBD::Predict() - Binarizing/Vectorizing Model Inputs" )
 
-            # Check(s)
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Primary Input Matrix Is Empty",   force_print = True )
-            if ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Secondary Input Matrix Is Empty", force_print = True )
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 )     or \
-               ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
-                return []
+        # Model Specific DataLoader Parameters/Settings (Assumes No Embeddings Are Loaded)
+        pad_inputs = True if self.model.Get_Network_Model() != "cnn"    else False
+        pad_output = True if self.model.Get_Network_Model() != "simple" else False
 
-            self.Print_Log( "LBD::Predict() - Predicting Outputs" )
+        if self.Is_Embeddings_Loaded(): pad_inputs = False
+
+        if vectorize_data:
+            primary_input_matrix, secondary_input_matrix, tertiary_input_matrix, output_matrix = self.Vectorize_Model_Inputs( primary_input, secondary_input, tertiary_input, output,
+                                                                                                                              model_type = self.Get_Model_Type(),
+                                                                                                                              pad_inputs = pad_inputs, pad_output = pad_output,
+                                                                                                                              instance_separator = instance_separator )
+
+        # Check(s)
+        if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Primary Input Matrix Is Empty",   force_print = True )
+            return []
+        if ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Secondary Input Matrix Is Empty", force_print = True )
+            return []
+        if tertiary_input != "" and ( isinstance( tertiary_input_matrix, np.ndarray ) and len( tertiary_input_matrix ) == 0 ) or ( isinstance( tertiary_input_matrix, csr_matrix ) and tertiary_input_matrix.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Tertiary Input Matrix Is Empty",  force_print = True )
+            return []
+        if output != "" and ( isinstance( output_matrix, np.ndarray ) and len( output_matrix ) == 0 ) or ( isinstance( output_matrix, csr_matrix ) and output_matrix.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Output Matrix Is Empty", force_print = True )
+            return []
+
+        # Perform Model Predictions
+        if primary_input_matrix == [] or secondary_input_matrix == []:
+            self.Print_Log( "LBD::Predict() - Error: Primary Or Secondary Input Matrix Is Empty", force_print = True )
+            return []
+
+        self.Print_Log( "LBD::Predict() - Predicting Outputs" )
+
+        # Ensure Vectorized Model Inputs Are Numpy Arrays Prior To Sending To The Model For Prediction
+        if isinstance( primary_input_matrix,   list ): primary_input_matrix   = np.asarray( primary_input_matrix   )
+        if isinstance( secondary_input_matrix, list ): secondary_input_matrix = np.asarray( secondary_input_matrix )
+        if isinstance( tertiary_input_matrix,  list ): tertiary_input_matrix  = np.asarray( tertiary_input_matrix  )
+        if isinstance( output_matrix,          list ): output_matrix          = np.asarray( output_matrix          )
+
+        if self.model.Get_Network_Model() == "hinton" or self.model.Get_Network_Model() == "rumelhart":
             prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix )
-
-        #######################################################################
-        #                                                                     #
-        #   BiLSTM Network                                                    #
-        #                                                                     #
-        #######################################################################
         elif self.model.Get_Network_Model() == "bilstm":
-            self.Print_Log( "LBD::Predict() - Binarizing/Vectorizing Model Inputs" )
-
-            if vectorize_data:
-                primary_input_matrix, secondary_input_matrix, _, _ = self.Vectorize_Model_Inputs( primary_input, secondary_input, tertiary_input, output,
-                                                                                                  model_type = self.model.Get_Model_Type(),
-                                                                                                  pad_inputs = False, instance_separator = instance_separator )
-
-            # Check(s)
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Primary Input Matrix Is Empty",   force_print = True )
-            if ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Secondary Input Matrix Is Empty", force_print = True )
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 )     or \
-               ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
-                return []
-
             # Concatenate Inputs Across Columns
-            train_inputs = np.hstack( ( primary_input_matrix, secondary_input_matrix ) ) # if self.Get_Model_Type() == "open_discovery" else np.hstack( ( primary_input_matrix, output_matrix ) )
-
-            self.Print_Log( "LBD::Predict() - Predicting Outputs" )
+            train_inputs = np.hstack( ( primary_input_matrix, secondary_input_matrix ) )
             prediction = self.model.Predict( train_inputs )
-
-        #######################################################################
-        #                                                                     #
-        #   Simple Network                                                    #
-        #                                                                     #
-        #######################################################################
-        if self.model.Get_Network_Model() == "simple":
-            self.Print_Log( "LBD::Predict() - Binarizing/Vectorizing Model Inputs" )
-
-            if vectorize_data:
-                if self.Is_Embeddings_Loaded():
-                    primary_input_matrix, secondary_input_matrix, tertiary_input_matrix, _ = self.Vectorize_Model_Inputs( primary_input, secondary_input, tertiary_input, output,
-                                                                                                                          is_crichton_format = True, model_type = self.model.Get_Model_Type(),
-                                                                                                                          pad_inputs = False, instance_separator = instance_separator )
-                else:
-                    primary_input_matrix, secondary_input_matrix, tertiary_input_matrix, _ = self.Vectorize_Model_Inputs( primary_input, secondary_input, tertiary_input, output,
-                                                                                                                          is_crichton_format = True, model_type = self.model.Get_Model_Type(),
-                                                                                                                          pad_inputs = True, instance_separator = instance_separator )
-
-            # Check(s)
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Primary Input Matrix Is Empty",   force_print = True )
-            if ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Secondary Input Matrix Is Empty", force_print = True )
-            if ( isinstance( tertiary_input_matrix, np.ndarray ) and len( tertiary_input_matrix   ) == 0 ) or ( isinstance( tertiary_input_matrix, csr_matrix ) and tertiary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Tertiary input Matrix Is Empty",  force_print = True )
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 )     or \
-               ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ) or \
-               ( isinstance( tertiary_input_matrix, np.ndarray ) and len( tertiary_input_matrix   ) == 0 ) or ( isinstance( tertiary_input_matrix, csr_matrix ) and tertiary_input_matrix.shape[0] == 0 ):
-                return []
-
-            self.Print_Log( "LBD::Predict() - Predicting Outputs" )
+        elif self.model.Get_Network_Model() == "simple":
             prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix, tertiary_input_matrix )
-
-        #######################################################################
-        #                                                                     #
-        #   CosFace Network                                                   #
-        #                                                                     #
-        #######################################################################
-        elif self.model.Get_Network_Model() in ["cosface"]:
-            self.Print_Log( "LBD::Predict() - Binarizing/Vectorizing Model Inputs" )
-
-            if vectorize_data:
-                if self.Is_Embeddings_Loaded():
-                    primary_input_matrix, secondary_input_matrix, _, output_matrix = self.Vectorize_Model_Inputs( primary_input, secondary_input,
-                                                                                                                  tertiary_input, output,
-                                                                                                                  model_type = self.model.Get_Model_Type(),
-                                                                                                                  pad_inputs = False, instance_separator = instance_separator )
-                else:
-                    primary_input_matrix, secondary_input_matrix, _, output_matrix = self.Vectorize_Model_Inputs( primary_input, secondary_input,
-                                                                                                                  tertiary_input, output,
-                                                                                                                  model_type = self.model.Get_Model_Type(),
-                                                                                                                  pad_inputs = True, instance_separator = instance_separator )
-
-            # Check(s)
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Primary Input Matrix Is Empty",   force_print = True )
-            if ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Secondary Input Matrix Is Empty", force_print = True )
-            if ( isinstance( output_matrix, np.ndarray ) and len( output_matrix   ) == 0 ) or ( isinstance( output_matrix, csr_matrix ) and output_matrix.shape[0] == 0 ):
-                self.Print_Log( "LBD::Predict() - Error: Output Matrix Is Empty",          force_print = True )
-            if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix     ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 )     or \
-               ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ) or \
-               ( isinstance( output_matrix, np.ndarray ) and len( output_matrix   ) == 0 ) or ( isinstance( output_matrix, csr_matrix ) and output_matrix.shape[0] == 0 ):
-                return []
-
-            self.Print_Log( "LBD::Predict() - Predicting Outputs" )
+        elif self.model.Get_Network_Model() == "cosface":
             prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix, output_matrix )
+        else:
+            self.Print_Log( "LBD::Predict() - Error: Unknown Network Type / Functionality Not Implemented", force_print = True )
+            return []
 
 
         #######################################################################
@@ -717,7 +690,7 @@ class LBD:
             return []
 
         # Perform Prediction Thresholding
-        if prediction.ndim == 2:   # [entry if tag in entry else [] for tag in tags for entry in entries]
+        if prediction.ndim == 2:
             temp_prediction = []
 
             if return_raw_values == False:
@@ -740,16 +713,20 @@ class LBD:
         # Convert Predictions To Tokens
         if return_vector == False:
             self.Print_Log( "LBD::Predict() - Converting Predicted Indices To Word Tokens" )
+            token_type = None
+
+            if self.Get_Data_Loader().Get_Separate_IDs_By_Input_Type():
+                token_type = "output" if self.model.Get_Model_Type() == "open_discovery" else "secondary"
 
             if prediction.ndim == 2:
                 for instance_values in prediction:
                     for index, value in enumerate( instance_values ):
                         if value == 1:
-                            prediction_tokens += self.Get_Data_Loader().Get_Token_From_ID( index, get_relation = False ) + " "
+                            prediction_tokens += self.Get_Data_Loader().Get_Token_From_ID( index, get_relation = False, token_type = token_type ) + " "
             else:
                 for index, value in enumerate( prediction ):
                         if value == 1:
-                            prediction_tokens += self.Get_Data_Loader().Get_Token_From_ID( index, get_relation = False ) + " "
+                            prediction_tokens += self.Get_Data_Loader().Get_Token_From_ID( index, get_relation = False, token_type = token_type ) + " "
 
             prediction_tokens = re.sub( r'\s+$', "", prediction_tokens )
 
@@ -788,6 +765,11 @@ class LBD:
         # Start Elapsed Time Timer
         start_time = time.time()
 
+        # Ensure Vectorized Model Inputs Are Numpy Arrays Prior To Sending To The Model For Prediction
+        if isinstance( primary_input_vector,   list ): primary_input_vector   = np.asarray( primary_input_vector   )
+        if isinstance( secondary_input_vector, list ): secondary_input_vector = np.asarray( secondary_input_vector )
+        if isinstance( tertiary_input_vector,  list ): tertiary_input_vector  = np.asarray( tertiary_input_vector  )
+
         self.Print_Log( "LBD::Predict_Vector() - Predicting Outputs" )
 
         prediction        = []
@@ -817,11 +799,23 @@ class LBD:
         #######################################################################
         elif self.model.Get_Network_Model() == "simple":
             prediction = self.model.Predict( primary_input_vector, secondary_input_vector, tertiary_input_vector )
+        else:
+            self.Print_Log( "LBD::Predict_Vector() - Error: Unknown Network Architecture / Functionality Not Implemented", force_print = True )
+            return []
 
         self.Print_Log( "LBD::Predict_Vector() - Raw Prediction Vector: " + str( prediction ) )
 
         # Perform Prediction Thresholding
-        if prediction.ndim > 1:
+        if prediction.ndim == 2:
+            temp_prediction = []
+
+            if return_raw_values == False:
+                for instance_values in prediction:
+                    instance_values = [1 if value > self.model.Get_Prediction_Threshold() else 0 for value in instance_values]
+                    temp_prediction.append( instance_values )
+
+                prediction = np.asarray( temp_prediction )
+        elif prediction.ndim == 1:
             prediction = [1 if value > self.model.Get_Prediction_Threshold() else 0 for value in prediction.squeeze()] if return_raw_values == False else prediction.squeeze()
         else:
             if return_raw_values:
@@ -835,14 +829,17 @@ class LBD:
         if return_vector == False:
             self.Print_Log( "LBD::Predict_Vector() - Converting Predicted Indices To Word Tokens" )
 
+            if self.Get_Data_Loader().Get_Separate_IDs_By_Input_Type():
+                token_type = "output" if self.model.Get_Model_Type() == "open_discovery" else "secondary"
+
             if self.model.Get_Model_Type() == "open_discovery":
                 for index, value in enumerate( prediction ):
                     if value == 1:
-                        prediction_tokens += self.Get_Token_From_ID( index, get_relation = False ) + " "
+                        prediction_tokens += self.Get_Token_From_ID( index, get_relation = False, token_type = token_type ) + " "
             else:
                 for index, value in enumerate( prediction ):
                     if value == 1:
-                        prediction_tokens += self.Get_Token_From_ID( index, get_relation = True ) + " "
+                        prediction_tokens += self.Get_Token_From_ID( index, get_relation = True, token_type = token_type ) + " "
 
             prediction_tokens = re.sub( r'\s+$', "", prediction_tokens )
 
@@ -1218,9 +1215,9 @@ class LBD:
     """
         Vectorized/Binarized Model Data - Used For Training/Evaluation Data
     """
-    def Vectorize_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, is_crichton_format = False, pad_inputs = True,
+    def Vectorize_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
                               pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
-        return self.Get_Data_Loader().Vectorize_Model_Data( data_list, model_type = model_type, use_csr_format = use_csr_format, is_crichton_format = is_crichton_format, pad_inputs = pad_inputs,
+        return self.Get_Data_Loader().Vectorize_Model_Data( data_list, model_type = model_type, use_csr_format = use_csr_format, pad_inputs = pad_inputs,
                                                             pad_output = pad_output, stack_inputs = stack_inputs, number_of_threads = number_of_threads, keep_in_memory = keep_in_memory, str_delimiter = str_delimiter )
 
     """
@@ -1236,11 +1233,10 @@ class LBD:
             secondary_input_vector = Numpy Binary Vector
             output_vector          = Numpy Binary Vector
     """
-    def Vectorize_Model_Inputs( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery", is_crichton_format = False,
+    def Vectorize_Model_Inputs( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
                                 pad_inputs = True, pad_output = True, instance_separator = "<:>" ):
         return self.Get_Data_Loader().Vectorize_Model_Inputs( primary_input = primary_input, secondary_input = secondary_input, tertiary_input = tertiary_input, outputs = outputs,
-                                                              model_type = model_type, is_crichton_format = is_crichton_format, pad_inputs = pad_inputs, pad_output = pad_output,
-                                                              instance_separator = instance_separator )
+                                                              model_type = model_type, pad_inputs = pad_inputs, pad_output = pad_output, instance_separator = instance_separator )
 
     """
         Loads The Model From A File
@@ -1269,14 +1265,26 @@ class LBD:
         use_gpu     = self.model.Get_Use_GPU()
         device_name = self.model.Get_Device_Name()
 
-        # Check If Previous Model Utilized Embeddings To Train
-        if self.Get_Setting_Value_From_Model_Settings( model_path + model_name + "_settings.cfg", "EmbeddingsLoaded" ) == "True":
-            self.Get_Data_Loader().Set_Simulate_Embeddings_Loaded_Mode( True )
-
         self.Print_Log( "LBD::Load_Model() - Detected Model Type: " + str( network_model ), force_print = True )
 
         # Load Network Architecture Type
         if network_model != None:
+            self.Print_Log( "LBD::Load_Model() - Creating Model Data Loader" )
+
+            # Create New DataLoader Instance With Options
+            # Model Specific DataLoader Parameters/Settings
+            if network_model in [ "rumelhart", "hinton", "bilstm", "cnn", "cosface" ]:
+                self.data_loader = StdDataLoader( print_debug_log = self.debug_log, write_log_to_file = self.write_log, debug_log_file_handle = self.debug_log_file_handle )
+            elif network_model in [ "simple" ]:
+                self.data_loader = CrichtonDataLoader( print_debug_log = self.debug_log, write_log_to_file = self.write_log, debug_log_file_handle = self.debug_log_file_handle )
+            else:
+                print( "LBD::Load_Model() - Error Model \"" + str( network_model ) + "\"'s DataLoader Not Implemented" )
+                raise NotImplementedError
+
+            # Check If Previous Model Utilized Embeddings To Train
+            if self.Get_Setting_Value_From_Model_Settings( model_path + model_name + "_settings.cfg", "EmbeddingsLoaded" ) == "True":
+                self.Get_Data_Loader().Set_Simulate_Embeddings_Loaded_Mode( True )
+
             self.Print_Log( "LBD::Load_Model() - Creating New \"" + str( network_model ) + "\" Model", force_print = True )
 
             self.model.Set_Debug_Log_File_Handle( None )
@@ -1528,8 +1536,8 @@ class LBD:
 
     def Is_Model_Data_Prepared( self ):             return self.model_data_prepared
 
-    def Get_Next_Data_Elements( self, file_path, number_of_elements_to_fetch ):
-        return self.data_loader.Get_Next_Data_Elements( file_path, number_of_elements_to_fetch )
+    def Get_Next_Batch( self, file_path, number_of_elements_to_fetch ):
+        return self.data_loader.Get_Next_Batch( file_path, number_of_elements_to_fetch )
 
     ############################################################################################
     #                                                                                          #

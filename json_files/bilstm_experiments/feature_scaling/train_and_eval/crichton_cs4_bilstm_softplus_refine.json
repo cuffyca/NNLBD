@@ -25,6 +25,7 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs4_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs4_closed_discovery_without_aggregators_mod",
             "model_load_path": "../cs4_crichton_bilstm_softplus_model_fs",
             "model_save_path": "../cs4_crichton_bilstm_softplus_model_fs_rf_1",
             "epochs": 200,
@@ -35,6 +36,7 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011170\tCHEBI:26523\tMESH:D010190\t0.0",
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 10.0
         }
     ]

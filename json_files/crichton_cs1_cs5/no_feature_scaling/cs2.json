@@ -39,6 +39,7 @@
             "use_batch_normalization": "False",
             "gold_b_instance": "PR:000011331\tHOC:42\tPR:000005308\t0.0",
             "set_per_iteration_model_path": "True",
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 1.0
         }
     ]

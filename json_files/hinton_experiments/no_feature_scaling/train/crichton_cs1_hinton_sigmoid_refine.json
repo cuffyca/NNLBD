@@ -25,6 +25,7 @@
             "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators_mod",
             "model_load_path": "../cs1_crichton_hinton_sigmoid_model",
             "model_save_path": "../cs1_crichton_hinton_sigmoid_model_rf_1",
             "epochs": 200,
@@ -32,6 +33,7 @@
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
+            "separate_ids_by_input_type": "True",
             "feature_scale_value": 1.0
         }
     ]

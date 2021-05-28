@@ -57,7 +57,7 @@ def Main():
     for epoch in range( actual_epochs ):
         # Fetch Elements Until The EOF Is Reached
         while data_loader.Reached_End_Of_File() == False:
-            data_elements = data_loader.Get_Next_Data_Elements( file_path, number_of_elements_to_fetch = instances_per_batch )
+            data_elements = data_loader.Get_Next_Batch( file_path, number_of_elements_to_fetch = instances_per_batch )
 
             # Only Process 'data_elements' If It Contains Data
 

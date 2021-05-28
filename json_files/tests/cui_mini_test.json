@@ -26,8 +26,10 @@
             "train_data_path": "../data/cui_mini",
             "epochs": 100,
             "verbose": 1,
-            "learning_rate": 0.005,
-            "batch_size": 32
+            "learning_rate": 0.001,
+            "dropout": 0.1,
+            "batch_size": 32,
+            "separate_ids_by_input_type": "True"
         }
     ],
     "train_2": [
@@ -48,8 +50,10 @@
             "train_data_path": "../data/cui_mini",
             "epochs": 100,
             "verbose": 1,
-            "learning_rate": 0.005,
-            "batch_size": 32
+            "learning_rate": 0.001,
+            "dropout": 0.1,
+            "batch_size": 32,
+            "separate_ids_by_input_type": "True"
         }
     ]
 }
