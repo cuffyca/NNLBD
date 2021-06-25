@@ -6,9 +6,9 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 05/27/2021                                                                   #
+#    Revised: 06/21/2021                                                                   #
 #                                                                                          #
-#    Standard Data Loader CLass For The NNLBD Package.                                     #
+#    Standard Data Loader Classs For The NNLBD Package.                                    #
 #                                                                                          #
 #    Expected Format:    C001	TREATS	C002	C004	C009                               #
 #                        C001	ISA	    C003                                               #
@@ -212,7 +212,9 @@ class StdDataLoader( DataLoader ):
 
         # Concatenate Vectorized Model Data Segments From Threads
         for model_data in tmp_thread_data:
-            if model_data is None or len( model_data ) < 4: continue
+            if model_data is None or len( model_data ) < 4:
+                self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Expected At Least Four Vectorized Elements / Received None Or < 4", force_print = True )
+                continue
 
             # Vectorized Inputs/Outputs
             primary_input_array   = model_data[0]
@@ -743,6 +745,9 @@ class StdDataLoader( DataLoader ):
                     break
 
         else:
+            self.separated_by_input_type    = False
+            self.separate_ids_by_input_type = False
+
             for line in token_id_data:
                 key, value = line.split( "<:>" )
                 self.Print_Log( "StdDataLoader::Load_Token_ID_Data() - Key: " + str( key ) + " - Value: " + str( value ) )
@@ -1303,11 +1308,22 @@ class StdDataLoader( DataLoader ):
     def Reinitialize_Token_ID_Values( self ):
         self.Print_Log( "StdDataLoader::Reinitialize_Token_ID_Values() - Re-initializing Token ID Values" )
 
+        # Using Embeddings
         if self.Is_Embeddings_Loaded() or self.Simulate_Embeddings_Loaded_Mode():
-            self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
-            self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
-            self.number_of_tertiary_tokens  = len( self.tertiary_id_dictionary  )
-            self.number_of_output_tokens    = len( self.output_id_dictionary    )
+            # Inputs Are Separated By Unique Concepts/Terms (Reduced Output)
+            if self.separated_by_input_type:
+                self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
+                self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
+                self.number_of_tertiary_tokens  = len( self.tertiary_id_dictionary  )
+                self.number_of_output_tokens    = len( self.output_id_dictionary    )
+            # Primary, Secondary, Tertiary And Output Concepts Are The Same (Full Output)
+            else:
+                # Set Number Of Primary Tokens Based On Token ID Dictionary Length
+                self.number_of_primary_tokens   = len( self.token_id_dictionary )
+                self.number_of_secondary_tokens = self.number_of_primary_tokens
+                self.number_of_tertiary_tokens  = self.number_of_primary_tokens
+                self.number_of_output_tokens    = self.number_of_primary_tokens
+        # Sparse Mode
         else:
             for token, id_value in self.Get_Token_ID_Dictionary().items():
                 # Element Is CUI

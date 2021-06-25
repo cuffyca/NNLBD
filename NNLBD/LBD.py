@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 05/27/2021                                                                   #
+#    Revised: 06/21/2021                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from scipy.sparse import csr_matrix, data
 
 # Custom Modules
-from NNLBD.DataLoader import StdDataLoader, CrichtonDataLoader
+from NNLBD.DataLoader import CrichtonDataLoader, StdDataLoader
 from NNLBD.Models     import *
 from NNLBD.Misc       import Utils
 
@@ -115,7 +115,8 @@ class LBD:
                                                enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, verbose = verbose,
                                                early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                                                use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
-                                               final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
+                                               final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
+                                               embedding_modification = embedding_modification )
         elif network_model == "bilstm":
             self.model = BiLSTMModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, verbose = verbose,
                                       model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
@@ -667,6 +668,9 @@ class LBD:
             train_inputs = np.hstack( ( primary_input_matrix, secondary_input_matrix ) )
             prediction = self.model.Predict( train_inputs )
         elif self.model.Get_Network_Model() == "simple":
+            if isinstance( primary_input_matrix,   csr_matrix ): primary_input_matrix   = primary_input_matrix.todense()
+            if isinstance( secondary_input_matrix, csr_matrix ): secondary_input_matrix = secondary_input_matrix.todense()
+            if isinstance( tertiary_input_matrix,  csr_matrix ): tertiary_input_matrix  = tertiary_input_matrix.todense()
             prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix, tertiary_input_matrix )
         elif self.model.Get_Network_Model() == "cosface":
             prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix, output_matrix )
@@ -1247,7 +1251,7 @@ class LBD:
         Outputs:
             None
     """
-    def Load_Model( self, model_path, model_name = "model", load_new_model = True ):
+    def Load_Model( self, model_path, model_name = "model", load_new_model = True, bypass_gpu_init = False ):
         self.Print_Log( "LBD::Load_Model() - Loading Model From Path - " + str( model_path ), force_print = True )
         self.Print_Log( "LBD::Load_Model() -         Model Name      - " + str( model_name ), force_print = True )
 
@@ -1259,7 +1263,7 @@ class LBD:
             return False
 
         self.Print_Log( "LBD::Load_Model() - Fetching Network Model Type From Settings File" )
-        network_model = self.Get_Setting_Value_From_Model_Settings( model_path + model_name + "_settings.cfg", "NetworkModelMode" )
+        network_model = self.Get_Setting_Value_From_Model_Settings( model_path + model_name + "_settings.cfg", "NetworkModel" )
 
         # Get Current Specified Device (GPU/CPU)
         use_gpu     = self.model.Get_Use_GPU()
@@ -1300,11 +1304,18 @@ class LBD:
                 self.model = CosFaceModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
             elif network_model == "cnn":
                 self.model = CNNModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
+            else:
+                self.Print_Log( "LBD::Load_Model() - Error: Trying To Load Unsupported Model Architecture Or Type", force_print = True )
+                self.Print_Log( "LBD::Load_Model() -        Specified Model: " + str( network_model ), force_print = True )
+                return False
 
             # Load The Model From File & Model Settings To Model Object
             self.Print_Log( "LBD::Load_Model() - Loading Model", force_print = True )
 
-            self.model.Load_Model( model_path = model_path + model_name, load_new_model = load_new_model )
+            self.model.Load_Model( model_path = model_path + model_name, load_new_model = load_new_model, bypass_gpu_init = bypass_gpu_init )
+
+            # Enforce New GPU Device ID Setting
+            self.model.Set_Device_Name( device_name )
 
             # Load Model Primary And Secondary Keys
             self.Print_Log( "LBD::Load_Model() - Loading Model Token ID Dictionary", force_print = True )
@@ -1317,10 +1328,13 @@ class LBD:
             # Reinitialize Data Loader Primary And Secondary ID Dictionaries Key Variables
             self.Get_Data_Loader().Reinitialize_Token_ID_Values()
 
-            self.Print_Log( "LBD::Load_Model() - Complete", force_print = True  )
+            self.Print_Log( "LBD::Load_Model() - Complete", force_print = True )
             return True
+        else:
+            self.Print_Log( "LBD::Load_Model() - Error: Trying To Load Unsupported Model Architecture Or Type", force_print = True )
+            self.Print_Log( "LBD::Load_Model() -        Specified Model: " + str( network_model ), force_print = True )
 
-        self.Print_Log( "LBD::Load_Model() - Error Loading Model \"" + str( model_path + model_name ) + "\"" )
+        self.Print_Log( "LBD::Load_Model() - Error Loading Model \"" + str( model_path + model_name ) + "\"", force_print = True )
         return False
 
     """
@@ -1335,7 +1349,7 @@ class LBD:
     def Save_Model( self, model_path = "./", model_name = "model" ):
         # Check
         if self.Is_Model_Loaded() == False:
-            self.Print_Log( "LBD::Save_Model() - Error: No Model Object In Memory / Has Model Been Trained or Loaded?" )
+            self.Print_Log( "LBD::Save_Model() - Error: No Model Object In Memory / Has Model Been Trained or Loaded?", force_print = True )
             return
 
         if self.utils.Check_If_Path_Exists( model_path ) == False:
@@ -1376,6 +1390,9 @@ class LBD:
 
         self.Print_Log( "LBD::Save_Model_Keys() - Complete" )
 
+    """
+        Generates Keras Model Depiction
+    """
     def Generate_Model_Depiction( self, path = "./" ):
         # Check
         if self.Is_Model_Loaded() == False:
@@ -1402,46 +1419,50 @@ class LBD:
 
         history = self.model.model_history.history
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Loss vs Epoch" )
-        plt.plot( range( len( self.model.model_history.epoch ) ), history['loss'] )
-        plt.title( "Training: Loss vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Loss" )
-        plt.savefig( str( path ) + "training_epoch_vs_loss.png" )
-        plt.clf()
+        if "loss" in history:
+            self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Loss vs Epoch" )
+            plt.plot( range( len( self.model.model_history.epoch ) ), history['loss'] )
+            plt.title( "Training: Loss vs Epoch" )
+            plt.xlabel( "Epoch" )
+            plt.ylabel( "Loss" )
+            plt.savefig( str( path ) + "training_epoch_vs_loss.png" )
+            plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Accuracy vs Epoch" )
-        plt.plot( range( len( self.model.model_history.epoch ) ), history['accuracy'] if 'accuracy' in history else history['acc'] )
-        plt.title( "Training: Accuracy vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Accuracy" )
-        plt.savefig( str( path ) + "training_epoch_vs_accuracy.png" )
-        plt.clf()
+        if "Accuracy" in history or "acc" in history:
+            self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Accuracy vs Epoch" )
+            plt.plot( range( len( self.model.model_history.epoch ) ), history['accuracy'] if 'accuracy' in history else history['acc'] )
+            plt.title( "Training: Accuracy vs Epoch" )
+            plt.xlabel( "Epoch" )
+            plt.ylabel( "Accuracy" )
+            plt.savefig( str( path ) + "training_epoch_vs_accuracy.png" )
+            plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Precision vs Epoch" )
-        plt.plot( range( len( self.model.model_history.epoch ) ), history['Precision'] )
-        plt.title( "Training: Precision vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Precision" )
-        plt.savefig( str( path ) + "training_epoch_vs_precision.png" )
-        plt.clf()
+        if "Precision" in history:
+            self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Precision vs Epoch" )
+            plt.plot( range( len( self.model.model_history.epoch ) ), history['Precision'] )
+            plt.title( "Training: Precision vs Epoch" )
+            plt.xlabel( "Epoch" )
+            plt.ylabel( "Precision" )
+            plt.savefig( str( path ) + "training_epoch_vs_precision.png" )
+            plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Recall vs Epoch" )
-        plt.plot( range( len( self.model.model_history.epoch ) ), history['Recall'] )
-        plt.title( "Training: Recall vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "Recall" )
-        plt.savefig( str( path ) + "training_epoch_vs_recall.png" )
-        plt.clf()
+        if "Recall" in history:
+            self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Recall vs Epoch" )
+            plt.plot( range( len( self.model.model_history.epoch ) ), history['Recall'] )
+            plt.title( "Training: Recall vs Epoch" )
+            plt.xlabel( "Epoch" )
+            plt.ylabel( "Recall" )
+            plt.savefig( str( path ) + "training_epoch_vs_recall.png" )
+            plt.clf()
 
-        self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - F1-Score vs Epoch" )
-        plt.plot( range( len( self.model.model_history.epoch ) ), history['F1_Score'] )
-        plt.title( "Training: F1-Score vs Epoch" )
-        plt.xlabel( "Epoch" )
-        plt.ylabel( "F1-Score" )
-        plt.savefig( str( path ) + "training_epoch_vs_f1.png" )
-        plt.clf()
-
+        if "F1_Score" in history:
+            self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - F1-Score vs Epoch" )
+            plt.plot( range( len( self.model.model_history.epoch ) ), history['F1_Score'] )
+            plt.title( "Training: F1-Score vs Epoch" )
+            plt.xlabel( "Epoch" )
+            plt.ylabel( "F1-Score" )
+            plt.savefig( str( path ) + "training_epoch_vs_f1.png" )
+            plt.clf()
 
         self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Complete" )
 

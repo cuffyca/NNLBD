@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    08/05/2020                                                                   #
-#    Revised: 05/27/2021                                                                   #
+#    Revised: 06/02/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -38,7 +38,7 @@ warnings.filterwarnings( 'ignore' )
 #warnings.simplefilter( action = 'ignore', category = FutureWarning )   # Also Works For Future Warnings
 
 # Standard Modules
-import os
+import os, re
 
 # Suppress Tensorflow Warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checking Error/Warning Messages
@@ -54,12 +54,24 @@ import tensorflow as tf
 tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
 
 import numpy as np
-import tensorflow.keras.backend as K
 from tensorflow import keras
-from tensorflow.keras import optimizers
-#from keras.callbacks import ModelCheckpoint
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Lambda
+
+# Tensorflow v2.x Support
+if re.search( r'2.\d+', tf.__version__ ):
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import optimizers
+    from tensorflow.keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
+# Tensorflow v1.15.x Support
+else:
+    import keras.backend as K
+    from keras import optimizers
+    from keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from keras.models import Model
+    from keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
 
 # Custom Modules
 from NNLBD.Models           import BaseModel
@@ -80,7 +92,7 @@ class RumelhartHintonModel( BaseModel ):
                   prediction_threshold = 0.5, shuffle = True, use_csr_format = True, per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0",
                   verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False, embedding_path = "", final_layer_type = "dense",
-                  feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
+                  feature_scale_value = 1.0, learning_rate_decay = 0.004, embedding_modification = "concatenate" ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format,
                           optimizer = optimizer, activation_function = activation_function, loss_function = loss_function, momentum = momentum,
@@ -90,8 +102,9 @@ class RumelhartHintonModel( BaseModel ):
                           enable_early_stopping = enable_early_stopping, early_stopping_metric_monitor = early_stopping_metric_monitor,
                           early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization,
                           trainable_weights = trainable_weights, embedding_path = embedding_path, final_layer_type = final_layer_type,
-                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
-        self.version       = 0.27
+                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
+                          embedding_modification = embedding_modification )
+        self.version       = 0.28
 
         # Check(s) - Set Default Parameters If Not Specified
         self.network_model = "hinton" if self.network_model != "hinton" and self.network_model != "rumelhart" else self.network_model
@@ -252,7 +265,7 @@ class RumelhartHintonModel( BaseModel ):
             secondary_input_vector : Vectorized Secondary Model Input (Numpy Array)
 
         Outputs:
-            prediction              : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
+            prediction             : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
     """
     def Predict( self, primary_input_vector, secondary_input_vector ):
         self.Print_Log( "RumelhartHintonModel::Predict() - Predicting Using Input #1: " + str( primary_input_vector ) )
@@ -318,6 +331,7 @@ class RumelhartHintonModel( BaseModel ):
         self.Print_Log( "RumelhartHintonModel::Build_Model() - Model Settings" )
         self.Print_Log( "                                    - Network Model             : " + str( self.network_model                  ) )
         self.Print_Log( "                                    - Sparse Mode               : " + str( sparse_mode                         ) )
+        self.Print_Log( "                                    - Embedding Modification    : " + str( self.embedding_modification         ) )
         self.Print_Log( "                                    - Learning Rate             : " + str( self.learning_rate                  ) )
         self.Print_Log( "                                    - Dropout                   : " + str( self.dropout                        ) )
         self.Print_Log( "                                    - Momentum                  : " + str( self.momentum                       ) )
@@ -332,19 +346,28 @@ class RumelhartHintonModel( BaseModel ):
         self.Print_Log( "                                    - Trainable Weights         : " + str( self.trainable_weights              ) )
         self.Print_Log( "                                    - Feature Scaling Value     : " + str( self.feature_scale_value            ) )
 
+        # Check(s)
+        embedding_modification_list = ["average", "concatenate", "hadamard"]
+
+        if self.embedding_modification not in embedding_modification_list:
+            self.Print_Log( "RumelhartHintonModel::Build_Model() - Error: Invalid Embedding Modification Type", force_print = True )
+            self.Print_Log( "                                    - Options: " + str( embedding_modification_list ), force_print = True )
+            self.Print_Log( "                                    - Specified Option: " + str( self.embedding_modification ), force_print = True )
+            return
+
         #######################
         #                     #
         #  Build Keras Model  #
         #                     #
         #######################
 
-        primary_input_layer     = None
-        primary_flatten_layer   = None
-        primary_concept_layer   = None
-        secondary_input_layer   = None
-        secondary_concept_layer = None
-        concatenate_layer       = None
-        concatenate_layer_dim   = 0
+        primary_input_layer           = None
+        primary_flatten_layer         = None
+        primary_concept_layer         = None
+        secondary_input_layer         = None
+        secondary_concept_layer       = None
+        distributed_concept_layer     = None
+        distributed_concept_layer_dim = 0
 
         if sparse_mode:
             primary_input_layer     = Input( shape = ( number_of_train_1_inputs, ), name = "Localist_Concept_Input"  )
@@ -353,11 +376,11 @@ class RumelhartHintonModel( BaseModel ):
 
             if self.network_model == "hinton":
                 secondary_concept_layer = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_train_2_inputs, name = 'Internal_Distributed_Relation_Representation' )( secondary_input_layer )
-                concatenate_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
-                concatenate_layer_dim   = number_of_hidden_dimensions * 2
+                distributed_concept_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
+                distributed_concept_layer_dim   = number_of_hidden_dimensions * 2
             elif self.network_model == "rumelhart":
-                concatenate_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_input_layer] )
-                concatenate_layer_dim   = number_of_hidden_dimensions + number_of_train_2_inputs
+                distributed_concept_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_input_layer] )
+                distributed_concept_layer_dim   = number_of_hidden_dimensions + number_of_train_2_inputs
         else:
             primary_input_layer     = Input( shape = ( 1, ), name = "Localist_Concept_Input"  )
             secondary_input_layer   = Input( shape = ( 1, ), name = "Localist_Relation_Input" )
@@ -390,23 +413,35 @@ class RumelhartHintonModel( BaseModel ):
                 feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
                 secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
 
+            # Perform Embedding Modification Based On User-Specified Setting 'self.embedding_modification'
             if self.network_model == "hinton":
                 secondary_concept_layer = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Relation_Representation' )( secondary_flatten_layer )
-                concatenate_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
-            elif self.network_model == "rumelhart":
-                concatenate_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_flatten_layer] )
 
-            concatenate_layer_dim = number_of_hidden_dimensions * 2
+                if self.embedding_modification == "average":
+                    distributed_concept_layer = Average( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
+                elif self.embedding_modification == "hadamard":
+                    distributed_concept_layer = Multiply( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
+                else:
+                    distributed_concept_layer = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
+            elif self.network_model == "rumelhart":
+                if self.embedding_modification == "average":
+                    distributed_concept_layer = Average( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_flatten_layer] )
+                elif self.embedding_modification == "hadamard":
+                    distributed_concept_layer = Multiply( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_flatten_layer] )
+                else:
+                    distributed_concept_layer = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_flatten_layer] )
+
+            distributed_concept_layer_dim = number_of_hidden_dimensions * 2 if self.embedding_modification == "concatenate" else number_of_hidden_dimensions
 
         dense_layer       = None
         batch_norm_layer  = None
         final_dense_layer = None
-        dropout_layer     = Dropout( name = "Dropout_Layer_1", rate = self.dropout )( concatenate_layer )
+        dropout_layer     = Dropout( name = "Dropout_Layer_1", rate = self.dropout )( distributed_concept_layer )
         output_layer      = None
 
         if self.use_batch_normalization:
             if self.network_model == "hinton":
-                dense_layer         = Dense( units = number_of_hidden_dimensions, input_dim = concatenate_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
+                dense_layer         = Dense( units = number_of_hidden_dimensions, input_dim = distributed_concept_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
                 batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_1" )( dense_layer )
                 dropout_layer       = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
                 final_dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation', use_bias = True )( dropout_layer )
@@ -415,7 +450,7 @@ class RumelhartHintonModel( BaseModel ):
                 dense_layer         = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation', use_bias = False )( dropout_layer )
         else:
             if self.network_model == "hinton":
-                dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = concatenate_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
+                dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = distributed_concept_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
                 dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
                 final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation', use_bias = True )( dropout_layer )
             elif self.network_model == "rumelhart":

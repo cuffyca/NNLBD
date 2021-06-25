@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 05/27/2021                                                                   #
+#    Revised: 06/08/2021                                                                   #
 #                                                                                          #
 #    Crichton Data Loader Class For The NNLBD Package.                                     #
 #                                                                                          #
@@ -131,7 +131,7 @@ class CrichtonDataLoader( DataLoader ):
             self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: Number Of Threads < 1 / Setting Number Of Threads = 1", force_print = True )
             number_of_threads = 1
 
-        if self.Check_Data_File_Format( is_crichton_format = True ) == False:
+        if self.Check_Data_File_Format() == False:
             self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Data Integrity Violation Found", force_print = True )
             return None, None, None, None
 
@@ -210,7 +210,9 @@ class CrichtonDataLoader( DataLoader ):
 
         # Concatenate Vectorized Model Data Segments From Threads
         for model_data in tmp_thread_data:
-            if model_data is None or len( model_data ) < 4: continue
+            if model_data is None or len( model_data ) < 4:
+                self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Expected At Least Four Vectorized Elements / Received None Or < 4", force_print = True )
+                continue
 
             # Vectorized Inputs/Outputs
             primary_input_array   = model_data[0]

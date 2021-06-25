@@ -8,7 +8,7 @@
 #    Date:    10/08/2020                                                                   #
 #    Revised: 05/21/2021                                                                   #
 #                                                                                          #
-#    Base Data Loader CLass For The NNLBD Package.                                         #
+#    Base Data Loader Classs For The NNLBD Package.                                         #
 #                                                                                          #
 #                                                                                          #
 #    Authors:                                                                              #

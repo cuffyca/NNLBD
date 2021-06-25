@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 05/27/2021                                                                   #
+#    Revised: 06/02/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -38,7 +38,7 @@ warnings.filterwarnings( 'ignore' )
 #warnings.simplefilter( action = 'ignore', category = FutureWarning )   # Also Works For Future Warnings
 
 # Standard Modules
-import os
+import os, re
 
 # Suppress Tensorflow Warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checking Error/Warning Messages
@@ -54,13 +54,24 @@ import tensorflow as tf
 tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
 
 import numpy as np
-import tensorflow.keras.backend as K
 from tensorflow import keras
-from tensorflow.keras import optimizers
-from tensorflow.keras import regularizers
-#from keras.callbacks import ModelCheckpoint
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
+
+# Tensorflow v2.x Support
+if re.search( r'2.\d+', tf.__version__ ):
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import optimizers
+    from tensorflow.keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
+# Tensorflow v1.15.x Support
+else:
+    import keras.backend as K
+    from keras import optimizers
+    from keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from keras.models import Model
+    from keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
 
 # Custom Modules
 from NNLBD.Models           import BaseModel

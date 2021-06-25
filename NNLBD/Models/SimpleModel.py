@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/02/2020                                                                   #
-#    Revised: 05/27/2021                                                                   #
+#    Revised: 06/02/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -38,7 +38,7 @@ warnings.filterwarnings( 'ignore' )
 #warnings.simplefilter( action = 'ignore', category = FutureWarning )   # Also Works For Future Warnings
 
 # Standard Modules
-import os
+import os, re
 
 # Suppress Tensorflow Warnings
 ''' TF_CPP_MIN_LOG_LEVEL
@@ -53,13 +53,24 @@ import tensorflow as tf
 tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
 
 import numpy as np
-import tensorflow.keras.backend as K
 from tensorflow import keras
-from tensorflow.keras import optimizers
-from tensorflow.keras import regularizers
-#from keras.callbacks import ModelCheckpoint
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
+
+# Tensorflow v2.x Support
+if re.search( r'2.\d+', tf.__version__ ):
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import optimizers
+    from tensorflow.keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
+# Tensorflow v1.15.x Support
+else:
+    import keras.backend as K
+    from keras import optimizers
+    from keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from keras.models import Model
+    from keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
 
 # Custom Modules
 from NNLBD.Models           import BaseModel
@@ -379,7 +390,7 @@ class SimpleModel( BaseModel ):
             primary_input_layer     = Input( shape = ( number_of_train_1_inputs, ), name = "Localist_Concept_1_Input" )
             secondary_input_layer   = Input( shape = ( number_of_train_2_inputs, ), name = "Localist_Concept_2_Input" )
             tertiary_input_layer    = Input( shape = ( number_of_train_3_inputs, ), name = "Localist_Concept_3_Input" )
-            cosface_input_layer     = Input( shape = ( number_of_outputs,        ), name = "Cosface_Input_Layer"  )
+            cosface_input_layer     = Input( shape = ( number_of_outputs,        ), name = "Cosface_Input_Layer"      )
 
             primary_concept_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_train_1_inputs, activation = 'relu', name = 'Internal_Distributed_Concept_1_Representation' )( primary_input_layer   )
             secondary_concept_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_train_2_inputs, activation = 'relu', name = 'Internal_Distributed_Concept_2_Representation' )( secondary_input_layer )
@@ -399,13 +410,13 @@ class SimpleModel( BaseModel ):
 
             # Add Embeddings Or Embeddings Initialized As Random Weights
             if len( embeddings ) > 0:
-                embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( primary_input_layer     )
+                embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer',   weights = [embeddings], trainable = self.trainable_weights )( primary_input_layer   )
                 embedding_layer_2   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( secondary_input_layer )
-                embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( tertiary_input_layer   )
+                embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer',  weights = [embeddings], trainable = self.trainable_weights )( tertiary_input_layer  )
             else:
-                embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', trainable = self.trainable_weights )( primary_input_layer     )
+                embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer',   trainable = self.trainable_weights )( primary_input_layer   )
                 embedding_layer_2   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
-                embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer', trainable = self.trainable_weights )( tertiary_input_layer   )
+                embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer',  trainable = self.trainable_weights )( tertiary_input_layer  )
 
             primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction"   )( embedding_layer_1 )
             secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( embedding_layer_2 )

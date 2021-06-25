@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 05/27/2021                                                                   #
+#    Revised: 06/02/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -54,12 +54,24 @@ import tensorflow as tf
 tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
 
 import numpy as np
-import tensorflow.keras.backend as K
 from tensorflow import keras
-from tensorflow.keras import optimizers
-#from keras.callbacks import ModelCheckpoint
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, Activation, Input, Dropout, Embedding, Bidirectional, LSTM, BatchNormalization, Lambda
+
+# Tensorflow v2.x Support
+if re.search( r'2.\d+', tf.__version__ ):
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import optimizers
+    from tensorflow.keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import Activation, Average, BatchNormalization, Bidirectional, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, Multiply
+# Tensorflow v1.15.x Support
+else:
+    import keras.backend as K
+    from keras import optimizers
+    from keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from keras.models import Model
+    from keras.layers import Activation, Average, BatchNormalization, Bidirectional, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, Multiply
 
 # Custom Modules
 from NNLBD.Models           import BaseModel

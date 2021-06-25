@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 05/22/2021                                                                   #
+#    Revised: 06/21/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -257,7 +257,7 @@ class NNLBD_Driver:
                 # Evaluate Model
                 elif re.match( r"^[Ee]val_\d+", run_id ):
                     if model_load_path != "":
-                        if not model.Load_Model( model_load_path ): continue
+                        if not model.Load_Model( model_load_path, bypass_gpu_init = True ): continue
 
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
@@ -269,7 +269,7 @@ class NNLBD_Driver:
                 # Evaluate Model For Prediction
                 elif re.match( r"^[Ee]val_[Pp]rediction_\d+", run_id ):
                     if model_load_path != "":
-                        if not model.Load_Model( model_load_path ): continue
+                        if not model.Load_Model( model_load_path, bypass_gpu_init = True ): continue
 
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
@@ -281,7 +281,7 @@ class NNLBD_Driver:
                 # Evaluate Model For Ranking
                 elif re.match( r"^[Ee]val_[Rr]anking_\d+", run_id ):
                     if model_load_path != "":
-                        if not model.Load_Model( model_load_path ): continue
+                        if not model.Load_Model( model_load_path, bypass_gpu_init = True ): continue
 
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
@@ -320,7 +320,7 @@ class NNLBD_Driver:
                 # Refine Existing Model
                 elif re.match( r"^[Rr]efine_\d+", run_id ):
                     if model_load_path != "":
-                        if not model.Load_Model( model_load_path ): continue
+                        if not model.Load_Model( model_load_path, bypass_gpu_init = True ): continue
 
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
@@ -359,7 +359,7 @@ class NNLBD_Driver:
                         continue
 
                     if model_load_path != "":
-                        if not model.Load_Model( model_load_path ): continue
+                        if not model.Load_Model( model_load_path, bypass_gpu_init = True ): continue
 
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
@@ -406,7 +406,7 @@ class NNLBD_Driver:
                         continue
 
                     if model_load_path != "":
-                        if not model.Load_Model( model_load_path ): continue
+                        if not model.Load_Model( model_load_path, bypass_gpu_init = True ): continue
 
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
@@ -534,9 +534,9 @@ class NNLBD_Driver:
 
         # Vectorize Gold B Term And Entire Evaluation Data-set
         gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Vectorize_Model_Data( data_list = [gold_b_instance], model_type = "closed_discovery",
-                                                                                        use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
+                                                                                        use_csr_format = True, keep_in_memory = False )
         eval_input_1, eval_input_2, eval_input_3, _       = model.Vectorize_Model_Data( data_list = eval_data, model_type = "closed_discovery",
-                                                                                        use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
+                                                                                        use_csr_format = True, keep_in_memory = False )
 
         # Checks
         if gold_b_input_1 is None or gold_b_input_2 is None or gold_b_input_3 is None:

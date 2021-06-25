@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 05/05/2021                                                                   #
+#    Revised: 06/21/2021                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -45,11 +45,20 @@ tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow
 
 import math as m
 import numpy as np
-import tensorflow.keras.backend as K
 from tensorflow import keras
-from tensorflow.keras.layers import Layer
-from tensorflow.keras import regularizers
-from tensorflow.keras.metrics import categorical_accuracy
+
+# Tensorflow v2.x Support
+if re.search( r'2.\d+', tf.__version__ ):
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import regularizers
+    from tensorflow.keras.layers import Layer
+    from tensorflow.keras.metrics import categorical_accuracy
+# Tensorflow v1.15.x Support
+else:
+    import keras.backend as K
+    from keras import regularizers
+    from keras.layers import Layer
+    from keras.metrics import categorical_accuracy
 
 # Custom Modules
 from NNLBD.Misc import Utils
@@ -248,6 +257,11 @@ class BaseModel( object ):
 
         # GPU/CUDA Checks
         self.Print_Log( "BaseModel::Initialize_GPU() - Checking For GPU/CUDA Compatibility" )
+        self.Print_Log( "BaseModel::Initialize_GPU() - Tensorflow Version: " + str( tf.__version__ ) )
+
+        if re.search( r'2.d+', tf.__version__ ):
+            self.Print_Log( "BaseModel::Initialize_GPU() - CUDA Version: " + str( tf.sysconfig.get_build_info()["cuda_version"] ) )
+            self.Print_Log( "BaseModel::Initialize_GPU() - CUDNN Version: " + str( tf.sysconfig.get_build_info()["cudnn_version"] ) )
 
         if self.use_gpu:
             # Check
@@ -265,6 +279,13 @@ class BaseModel( object ):
 
                 if len( physical_gpus ) == 0:
                     self.Print_Log( "BaseModel::Initialize_GPU() - Error: No GPUs Detected By Tensorflow / Using CPU", force_print = True )
+                    self.Print_Log( "BaseModel::Initialize_GPU() -        Ensure Your Version Of Tensorflow Supports The Installed CUDA Version", force_print = True )
+                    self.Print_Log( "BaseModel::Initialize_GPU() -        Tensorflow Version: " + str( tf.__version__ ), force_print = True )
+
+                    if re.search( r'2.d+', tf.__version__ ):
+                        self.Print_Log( "BaseModel::Initialize_GPU() -        CUDA Version: " + str( tf.sysconfig.get_build_info()["cuda_version"] ), force_print = True )
+                        self.Print_Log( "BaseModel::Initialize_GPU() -        CUDNN Version: " + str( tf.sysconfig.get_build_info()["cudnn_version"] ), force_print = True )
+
                     tf.config.experimental.set_visible_devices( [], 'GPU' )
                     self.device_name = "/cpu:0"
                     return True
@@ -412,13 +433,14 @@ class BaseModel( object ):
         Loads The Model From A File
 
         Inputs:
-            model_path     : File Path (String)
-            load_new_model : Sets Whether Or Not To Load A New Model Or Use The Model Already In Memory (Bool)
+            model_path      : File Path (String)
+            load_new_model  : Sets Whether Or Not To Load A New Model Or Use The Model Already In Memory (Bool)
+            bypass_gpu_init : Bypassed GPU Initialization (Bool)
 
         Outputs:
             None
     """
-    def Load_Model( self, model_path, load_new_model = True ):
+    def Load_Model( self, model_path, load_new_model = True, bypass_gpu_init = False ):
         try:
             if load_new_model:
                 self.Print_Log( "BaseModel::Load_Model() - Loading Pretrained Model" )
@@ -455,8 +477,11 @@ class BaseModel( object ):
             self.Print_Log( "BaseModel::Load_Model() - Error: Model Settings File Does Not Exist", force_print = True )
 
         # Checks To See If The User Wants To Utilize The GPU or CPU For Training/Inference.
-        if self.Initialize_GPU() == False:
+        if bypass_gpu_init == False and self.Initialize_GPU() == False:
+            self.Print_Log( "BaseModel::Load_Model() - Error: Unable To Initialize GPU", force_print = True )
             exit()
+        else:
+            self.Print_Log( "BaseModel::Load_Model() - Bypass GPU Initialization == True" )
 
         self.Print_Log( "BaseModel::Load_Model() - Complete" )
         return True
@@ -486,13 +511,18 @@ class BaseModel( object ):
                 out_file.write( model_configuration )
             out_file.close()
 
-            # Save Model
+        except Exception as e:
+            self.Print_Log( "BaseModel::Save_Model() - Error: Unable To Generate Model Configuration File" )
+            self.Print_Log( "                        -   Error Message: " + str( e ) )
+
+        # Save Model
+        try:
             self.Print_Log( "BaseModel::Save_Model() - Saving Model To Path: " + str( model_path + ".h5" ) )
             self.model.save( model_path + ".h5")
 
         except Exception as e:
-            self.Print_Log( "BaseModel::Save_Model() - Error: Unable To Generate Model Configuration File And/Or Save Model" )
-            self.Print_Log( "                        - Error Message: " + str( e ) )
+            self.Print_Log( "BaseModel::Save_Model() - Error: Unable To Save Model" )
+            self.Print_Log( "                        -   Error Message: " + str( e ) )
 
         # Save Model Settings
         self.Print_Log( "BaseModel::Save_Model() - Saving Model Settings To Path: " + str( model_path + "_settings.cfg" ) )
@@ -518,7 +548,7 @@ class BaseModel( object ):
             if re.match( r'^#', model_setting ) or model_setting == "": continue
             key, value = model_setting.split( "<:>" )
 
-            if key == "NetworkModelMode"           : self.network_model                   = str( value )
+            if key == "NetworkModel"               : self.network_model                   = str( value )
             if key == "ModelType"                  : self.model_type                      = str( value )
             if key == "Epochs"                     : self.epochs                          = int( value )
             if key == "Verbose"                    : self.verbose                         = int( value )
@@ -579,7 +609,7 @@ class BaseModel( object ):
         # Open File Handle
         fh = open( file_path, "w" )
 
-        fh.write( "NetworkModelMode<:>"            + str( self.network_model                  ) + "\n" )
+        fh.write( "NetworkModel<:>"                + str( self.network_model                  ) + "\n" )
         fh.write( "ModelType<:>"                   + str( self.model_type                     ) + "\n" )
         fh.write( "Epochs<:>"                      + str( self.epochs                         ) + "\n" )
         fh.write( "Verbose<:>"                     + str( self.verbose                        ) + "\n" )
@@ -648,7 +678,7 @@ class BaseModel( object ):
         self.Print_Log( "BaseModel::-   Configuration File Settings                         -" )
         self.Print_Log( "BaseModel::=========================================================" )
 
-        self.Print_Log( "BaseModel::    Neural Network Mode           : " + str( self.network_model                  ), force_print = True )
+        self.Print_Log( "BaseModel::    Neural Network Model          : " + str( self.network_model                  ), force_print = True )
         self.Print_Log( "BaseModel::    Neural Model Type             : " + str( self.model_type                     ), force_print = True )
         self.Print_Log( "BaseModel::    Epochs                        : " + str( self.epochs                         ), force_print = True )
         self.Print_Log( "BaseModel::    Verbose                       : " + str( self.verbose                        ), force_print = True )
@@ -729,19 +759,22 @@ class BaseModel( object ):
         Trains Model Using Training Data, Fits Model To Data
     """
     def Fit( self ):
-        pass
+        self.Print_Log( "BaseModel::Fit() - Error: Function Not Implemented / Calling Parent Function", force_print = True )
+        raise NotImplementedError
 
     """
         Outputs Model's Prediction Vector Given Inputs
     """
     def Predict( self ):
-        pass
+        self.Print_Log( "BaseModel::Predict() - Error: Function Not Implemented / Calling Parent Function", force_print = True )
+        raise NotImplementedError
 
     """
         Evaluates Model's Ability To Predict Evaluation Data
     """
     def Evaluate( self ):
-        pass
+        self.Print_Log( "BaseModel::Evaluate() - Error: Function Not Implemented / Calling Parent Function", force_print = True )
+        raise NotImplementedError
 
     ############################################################################################
     #                                                                                          #
@@ -753,7 +786,8 @@ class BaseModel( object ):
         Build The Keras Model
     """
     def Build_Model( self ):
-        pass
+        self.Print_Log( "BaseModel::Build_Model() - Error: Function Not Implemented / Calling Parent Function", force_print = True )
+        raise NotImplementedError
 
     ############################################################################################
     #                                                                                          #
@@ -823,9 +857,9 @@ class BaseModel( object ):
         return numerator / ( denominator + K.epsilon() )
 
     """
-        Categorical Crossentropy Loss
+        Categorical Crossentropy Loss: Log-Loss + Softmax
 
-        Computes categorical loss between predictions and ground-truth labels.
+        Computes Categorical Loss Between Predictions And Ground-Truth Labels.
         (Used For Debugging Purposes - Do Not Use For Model Training)
     """
     def Categorical_Crossentropy_Loss( self, y_true, y_pred ):
