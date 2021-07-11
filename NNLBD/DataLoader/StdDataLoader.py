@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 06/21/2021                                                                   #
+#    Revised: 07/09/2021                                                                   #
 #                                                                                          #
 #    Standard Data Loader Classs For The NNLBD Package.                                    #
 #                                                                                          #
@@ -31,7 +31,6 @@
 
 # Standard Modules
 import itertools, re, scipy, threading, types
-from numpy.core.fromnumeric import sort
 import numpy as np
 from scipy.sparse import csr_matrix, hstack, vstack
 
@@ -47,11 +46,11 @@ from NNLBD.DataLoader import DataLoader
 
 class StdDataLoader( DataLoader ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False, debug_log_file_handle = None,
-                  separate_ids_by_input_type = False ):
+                  restrict_outputs = True ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, shuffle = shuffle,
                           skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, debug_log_file_handle = debug_log_file_handle,
-                          separate_ids_by_input_type = separate_ids_by_input_type )
-        self.version = 0.04
+                           restrict_outputs = restrict_outputs )
+        self.version = 0.06
 
     """
         Performs Checks Against The Specified Data File/Data List To Ensure File Integrity Before Further Processing
@@ -124,8 +123,8 @@ class StdDataLoader( DataLoader ):
             tertiary_input_vector  : CSR Matrix or Numpy Array
             output_vector          : CSR Matrix or Numpy Array
     """
-    def Vectorize_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
-                              pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
+                           pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
         # Check(s)
         if len( data_list ) == 0:
             self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: No Data Specified By User / Using Data Stored In Memory" )
@@ -401,8 +400,8 @@ class StdDataLoader( DataLoader ):
             tertiary_input_vector  : Numpy Array
             output_vector          : Numpy Array
     """
-    def Vectorize_Model_Inputs( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
-                                pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
+    def Encode_Model_Instance( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
+                               pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
         # Convert Inputs/Outputs To Lowercase
         primary_input   = primary_input.lower()
         secondary_input = secondary_input.lower()
@@ -424,28 +423,40 @@ class StdDataLoader( DataLoader ):
         tertiary_input_array  = []
         output_array          = []
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Vectorizing Inputs" )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() -                   Primary Input  : " + str( primary_input   ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() -                   Secondary Input: " + str( secondary_input ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() -                   Tertiary Input : " + str( tertiary_input  ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() -                   Outputs        : " + str( outputs         ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Vectorizing Inputs" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() -             Primary Input  : " + str( primary_input   ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() -             Secondary Input: " + str( secondary_input ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() -             Tertiary Input : " + str( tertiary_input  ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() -             Outputs        : " + str( outputs         ) )
 
         for primary_input, secondary_input, tertiary_input, outputs in zip( primary_input_instances, secondary_input_instances, tertiary_input_instances, output_instances ):
-            primary_input_id   = self.Get_Token_ID( primary_input,   token_type = "primary"   )
-            secondary_input_id = self.Get_Token_ID( secondary_input, token_type = "secondary" )
-            tertiary_input_id  = self.Get_Token_ID( tertiary_input,  token_type = "tertiary"  )
+            # Get Primary Input ID
+            primary_input_id, secondary_input_id, tertiary_input_id = -1, -1, -1
+
+            # Only Reduce Model Outputs To Unique Output Tokens Seen Within The Model Data (For Closed Discovery)
+            #   Secondary Inputs Are Substituted With The Outputs For Closed Discovery
+            if model_type == "closed_discovery" and self.restrict_outputs:
+                primary_input_id   = self.Get_Token_ID( primary_input,   token_type = None )
+                secondary_input_id = self.Get_Token_ID( secondary_input, token_type = "secondary" )
+                tertiary_input_id  = self.Get_Token_ID( tertiary_input,  token_type = None )
+            # Either Use Unique Token List Among All Inputs/Outputs For Both Open And Closed Discovery
+            #   Or Use Unique Lists Per Input/Output For Open Discovery
+            else:
+                primary_input_id   = self.Get_Token_ID( primary_input,   token_type = None )
+                secondary_input_id = self.Get_Token_ID( secondary_input, token_type = None )
+                tertiary_input_id  = self.Get_Token_ID( tertiary_input,  token_type = None )
 
             # Check(s)
-            if primary_input   != "" and primary_input_id   == -1: self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Warning: Primary Input  : \"" + str( primary_input   ) + "\" Not In Token ID Dictionary" )
-            if secondary_input != "" and secondary_input_id == -1: self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Warning: Secondary Input: \"" + str( secondary_input ) + "\" Not In Token ID Dictionary" )
-            if tertiary_input  != "" and tertiary_input_id  == -1: self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Warning: Teritary Input : \"" + str( tertiary_input  ) + "\" Not In Token ID Dictionary" )
+            if primary_input   != "" and primary_input_id   == -1: self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Warning: Primary Input  : \"" + str( primary_input   ) + "\" Not In Token ID Dictionary" )
+            if secondary_input != "" and secondary_input_id == -1: self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Warning: Secondary Input: \"" + str( secondary_input ) + "\" Not In Token ID Dictionary" )
+            if tertiary_input  != "" and tertiary_input_id  == -1: self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Warning: Teritary Input : \"" + str( tertiary_input  ) + "\" Not In Token ID Dictionary" )
             if ( primary_input   != "" and primary_input_id   == -1 ) or \
                ( secondary_input != "" and secondary_input_id == -1 ) or \
                ( tertiary_input  != "" and tertiary_input_id  == -1 ):
                 return [], [], [], []
 
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Vectorizing Inputs \"" + str( primary_input ) + "\" & \"" + str( secondary_input ) + "\" & \"" + str( tertiary_input ) + "\"" )
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Vectorizing Outputs \"" + str( outputs ) + "\"" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Vectorizing Inputs \"" + str( primary_input ) + "\" & \"" + str( secondary_input ) + "\" & \"" + str( tertiary_input ) + "\"" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Vectorizing Outputs \"" + str( outputs ) + "\"" )
 
             temp_primary_input_array   = []
             temp_secondary_input_array = []
@@ -461,37 +472,40 @@ class StdDataLoader( DataLoader ):
                 #####################
                 if outputs != "":
                     # Split Output Tokens Into Multiple Output Instances
+                    output_instance_size = self.Get_Number_Of_Output_Elements() if self.restrict_outputs else self.Get_Number_Of_Unique_Features()
+
                     if separate_outputs:
                         for output in outputs.split():
-                            output_id = self.Get_Token_ID( output, token_type = "output" )
+                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_outputs else self.Get_Token_ID( output )
 
                             # Token ID Not Found In Token ID Dictionary
                             if output_id == -1:
-                                self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
+                                self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
                                 return [], [], [], []
 
                             if pad_output:
                                 # One-Hot Encoding
-                                temp_array = np.zeros( ( self.Get_Number_Of_Output_Elements(), ), dtype = int )
+                                temp_array = np.zeros( ( output_instance_size, ), dtype = int )
                                 temp_array[output_id] = 1
                                 temp_output_array.append( temp_array )
                             else:
                                 # Single Token ID Per Instance
                                 temp_output_array.append( [output_id] )
+
                     # Contain All Outputs Into A Single Instance
                     else:
                         if pad_output:
                             # One-Hot Encoding
-                            temp_array = np.zeros( ( self.Get_Number_Of_Output_Elements(), ), dtype = int )
+                            temp_array = np.zeros( ( output_instance_size, ), dtype = int )
                         else:
                             temp_array = []
 
                         for output in outputs.split():
-                            output_id = self.Get_Token_ID( output, token_type = "output" )
+                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_outputs else self.Get_Token_ID( output )
 
                             # Token ID Not Found In Token ID Dictionary
                             if output_id == -1:
-                                self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
+                                self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
                                 return [], [], [], []
 
                             if pad_output:
@@ -506,11 +520,13 @@ class StdDataLoader( DataLoader ):
                 ###########################
                 # Vectorize Primary Input #
                 ###########################
+                primary_instance_size = self.Get_Number_Of_Unique_Features()
+
                 if separate_outputs:
                     for i in range( len( temp_output_array ) ):
                         if pad_inputs:
                             # One-Hot Encoding
-                            temp_array = np.zeros( ( self.Get_Number_Of_Primary_Elements(), ), dtype = int )
+                            temp_array = np.zeros( ( primary_instance_size, ), dtype = int )
                             temp_array[primary_input_id] = 1
                             temp_primary_input_array.append( temp_array )
                         else:
@@ -519,7 +535,7 @@ class StdDataLoader( DataLoader ):
                 else:
                     if pad_inputs:
                         # One-Hot Encoding
-                        temp_array = np.zeros( ( self.Get_Number_Of_Primary_Elements(), ), dtype = int )
+                        temp_array = np.zeros( ( primary_instance_size, ), dtype = int )
                         temp_array[primary_input_id] = 1
                         temp_primary_input_array.append( temp_array )
                     else:
@@ -529,11 +545,13 @@ class StdDataLoader( DataLoader ):
                 #############################
                 # Vectorize Secondary Input #
                 #############################
+                secondary_instance_size = self.Get_Number_Of_Unique_Features()
+
                 if separate_outputs:
                     for i in range( len( temp_output_array ) ):
                         if pad_inputs:
                             # One-Hot Encoding
-                            temp_array = np.zeros( ( self.Get_Number_Of_Secondary_Elements(), ), dtype = int )
+                            temp_array = np.zeros( ( secondary_instance_size, ), dtype = int )
                             temp_array[secondary_input_id] = 1
                             temp_secondary_input_array.append( temp_array )
                         else:
@@ -542,7 +560,7 @@ class StdDataLoader( DataLoader ):
                 else:
                     if pad_inputs:
                         # One-Hot Encoding
-                        temp_array = np.zeros( ( self.Get_Number_Of_Secondary_Elements(), ), dtype = int )
+                        temp_array = np.zeros( ( secondary_instance_size, ), dtype = int )
                         temp_array[secondary_input_id] = 1
                         temp_secondary_input_array.append( temp_array )
                     else:
@@ -552,12 +570,14 @@ class StdDataLoader( DataLoader ):
                 ############################
                 # Vectorize Tertiary Input #
                 ############################
+                tertiary_instance_size = self.Get_Number_Of_Unique_Features()
+
                 if tertiary_input_id != -1:
                     if separate_outputs:
                         for i in range( len( temp_output_array ) ):
                             if pad_inputs:
                                 # One-Hot Encoding
-                                temp_array = np.zeros( ( self.Get_Number_Of_Tertiary_Elements(), ), dtype = int )
+                                temp_array = np.zeros( ( tertiary_instance_size, ), dtype = int )
                                 temp_array[tertiary_input_id] = 1
                                 temp_tertiary_input_array.append( temp_array )
                             else:
@@ -566,7 +586,7 @@ class StdDataLoader( DataLoader ):
                     else:
                         if pad_inputs:
                             # One-Hot Encoding
-                            temp_array = np.zeros( ( self.Get_Number_Of_Tertiary_Elements(), ), dtype = int )
+                            temp_array = np.zeros( ( tertiary_instance_size, ), dtype = int )
                             temp_array[tertiary_input_id] = 1
                             temp_tertiary_input_array.append( temp_array )
                         else:
@@ -579,21 +599,26 @@ class StdDataLoader( DataLoader ):
             else:
                 # Vectorize Inputs/Output For Closed Discovery
                 #    In Comparison To Open Discovery, The Following Code Swaps The Secondary Input Elements And Output Elements For Closed Discovery
+                primary_instance_size   = self.Get_Number_Of_Unique_Features()
+                secondary_instance_size = self.Get_Number_Of_Secondary_Elements() if self.restrict_outputs else self.Get_Number_Of_Unique_Features()
+                tertiary_instance_size  = self.Get_Number_Of_Unique_Features()
+                output_instance_size    = self.Get_Number_Of_Unique_Features()
+
                 if len( outputs.split() ) > 0:
                     #############################
                     # Vectorize Secondary Input #
                     #############################
                     for output in outputs.split():
-                        output_id = self.Get_Token_ID( output, token_type = "output" )
+                        output_id = self.Get_Token_ID( output, None )
 
                         # Token ID Not Found In Token ID Dictionary
                         if output_id == -1:
-                            self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
+                            self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
                             return [], [], [], []
 
                         if pad_inputs:
                             # One-Hot Encoding
-                            temp_array = np.zeros( ( self.Get_Number_Of_Output_Elements(), ), dtype = int )
+                            temp_array = np.zeros( ( output_instance_size, ), dtype = int )
                             temp_array[output_id] = 1
                             temp_secondary_input_array.append( temp_array )
                         else:
@@ -607,7 +632,7 @@ class StdDataLoader( DataLoader ):
                     for i in range( len( temp_secondary_input_array ) ):
                         if pad_inputs:
                             # One-Hot Encoding
-                            temp_array = np.zeros( ( self.Get_Number_Of_Primary_Elements(), ), dtype = int )
+                            temp_array = np.zeros( ( primary_instance_size, ), dtype = int )
                             temp_array[primary_input_id] = 1
                             temp_primary_input_array.append( temp_array )
                         else:
@@ -616,7 +641,7 @@ class StdDataLoader( DataLoader ):
 
                         if pad_output:
                             # One-Hot Encoding
-                            temp_array = np.zeros( ( self.Get_Number_Of_Secondary_Elements(), ), dtype = int )
+                            temp_array = np.zeros( ( secondary_instance_size, ), dtype = int )
                             temp_array[secondary_input_id] = 1
                             temp_output_array.append( temp_array )
                         else:
@@ -631,16 +656,16 @@ class StdDataLoader( DataLoader ):
                 else:
                     # One-Hot Encodings
                     if pad_inputs:
-                        temp_array = np.zeros( ( self.Get_Number_Of_Primary_Elements(), ), dtype = int )
+                        temp_array = np.zeros( ( primary_instance_size, ), dtype = int )
                         temp_array[primary_input_id] = 1
                         temp_primary_input_array.append( temp_array )
 
-                        temp_array = np.zeros( ( self.Get_Number_Of_Output_Elements(), ), dtype = int )
+                        temp_array = np.zeros( ( output_instance_size, ), dtype = int )
                         temp_array[secondary_input_id] = 1
                         temp_secondary_input_array.append( temp_array )
 
                         if tertiary_input_id != -1:
-                            temp_tertiary_input_array = np.zeros( ( self.Get_Number_Of_Tertiary_Elements() + 1, ), dtype = int )
+                            temp_tertiary_input_array = np.zeros( ( tertiary_instance_size + 1, ), dtype = int )
                             temp_tertiary_input_array[tertiary_input_id] = 1
                     # Single Token ID Per Instance
                     else:
@@ -661,11 +686,11 @@ class StdDataLoader( DataLoader ):
             for instance in temp_output_array:
                 output_array.append( instance )
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Vectorized Primary Input   \"" + str( primary_input_array   ) + "\"" )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Vectorized Secondary Input \"" + str( secondary_input_array ) + "\"" )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Vectorized Tertiary Input  \"" + str( tertiary_input_array  ) + "\"" )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Vectorized Outputs         \"" + str( output_array          ) + "\"" )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Inputs() - Complete" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Vectorized Primary Input   \"" + str( primary_input_array   ) + "\"" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Vectorized Secondary Input \"" + str( secondary_input_array ) + "\"" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Vectorized Tertiary Input  \"" + str( tertiary_input_array  ) + "\"" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Vectorized Outputs         \"" + str( output_array          ) + "\"" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Complete" )
 
         return primary_input_array, secondary_input_array, tertiary_input_array, output_array
 
@@ -691,67 +716,62 @@ class StdDataLoader( DataLoader ):
 
         self.Print_Log( "StdDataLoader::Load_Token_ID_Data() - Loading Key Data" )
 
+        primary_index, secondary_index, tertiary_index, token_index = 0, 0, 0, 0
+
+        # Read Primary Key Data
         if "<*>primary id dictionary<*>" in token_id_data:
-            self.separated_by_input_type    = True
-            self.separate_ids_by_input_type = True
-            found = False
+            primary_index = token_id_data.index( "<*>primary id dictionary<*>" )
 
-            # Read Primary Key Data
-            for i, line in enumerate( token_id_data ):
-                if "<*>primary id dictionary<*>" in line: found = True
-                elif found:
-                    key, value = line.split( "<:>" )
-                    self.primary_id_dictionary[key] = int( value )
-
-                # Look Ahead For Segment End
-                if "<*> end primary" in token_id_data[i+1]:
-                    found = False
-                    break
-
-            # Read Secondary Key Data
-            for i, line in enumerate( token_id_data ):
-                if "<*>secondary id dictionary<*>" in line: found = True
-                elif found:
-                    key, value = line.split( "<:>" )
-                    self.secondary_id_dictionary[key] = int( value )
-
-                # Look Ahead For Segment End
-                if "<*> end secondary" in token_id_data[i+1]:
-                    found = False
-                    break
-
-            # Read Tertiary Key Data
-            for i, line in enumerate( token_id_data ):
-                if "<*>tertiary id dictionary<*>" in line: found = True
-                elif found:
-                    key, value = line.split( "<:>" )
-                    self.tertiary_id_dictionary[key] = int( value )
-
-                # Look Ahead For Segment End
-                if "<*> end tertiary" in token_id_data[i+1]:
-                    found = False
-                    break
-
-            # Read Output Key Data
-            for i, line in enumerate( token_id_data ):
-                if "<*>output id dictionary<*>" in line: found = True
-                elif found:
-                    key, value = line.split( "<:>" )
-                    self.output_id_dictionary[key] = int( value )
-
-                # Look Ahead For Segment End
-                if "<*> end output" in token_id_data[i+1]:
-                    found = False
-                    break
-
-        else:
-            self.separated_by_input_type    = False
-            self.separate_ids_by_input_type = False
-
-            for line in token_id_data:
+            for i, line in enumerate( token_id_data[primary_index:], primary_index ):
                 key, value = line.split( "<:>" )
-                self.Print_Log( "StdDataLoader::Load_Token_ID_Data() - Key: " + str( key ) + " - Value: " + str( value ) )
+                self.primary_id_dictionary[key] = int( value )
+
+                # Look Ahead For Segment End
+                if "<*>end primary" in token_id_data[i+1]: break
+
+        # Read Secondary Key Data
+        if "<*>secondary id dictionary<*>" in token_id_data:
+            secondary_index = token_id_data.index( "<*>secondary id dictionary<*>" )
+
+            for i, line in enumerate( token_id_data[secondary_index:], secondary_index ):
+                key, value = line.split( "<:>" )
+                self.secondary_id_dictionary[key] = int( value )
+
+                # Look Ahead For Segment End
+                if "<*>end secondary" in token_id_data[i+1]: break
+
+        # Read Tertiary Key Data
+        if "<*>tertiary id dictionary<*>" in token_id_data:
+            tertiary_index = token_id_data.index( "<*>secondary id dictionary<*>" )
+
+            for i, line in enumerate( token_id_data[tertiary_index:], tertiary_index ):
+                key, value = line.split( "<:>" )
+                self.tertiary_id_dictionary[key] = int( value )
+
+                # Look Ahead For Segment End
+                if "<*>end tertiary" in token_id_data[i+1]: break
+
+        # Read Output Key Data
+        if "<*>tertiary id dictionary<*>" in token_id_data:
+            tertiary_index = token_id_data.index( "<*>tertiary id dictionary<*>" )
+
+            for i, line in enumerate( token_id_data[tertiary_index:], tertiary_index ):
+                key, value = line.split( "<:>" )
+                self.output_id_dictionary[key] = int( value )
+
+                # Look Ahead For Segment End
+                if "<*>end output" in token_id_data[i+1]: break
+
+        # Read Token ID Key Data
+        if "<*>token id dictionary<*>" in token_id_data:
+            token_index = token_id_data.index( "<*>token id dictionary<*>" )
+
+            for i, line in enumerate( token_id_data[token_index:], token_index ):
+                key, value = line.split( "<:>" )
                 self.token_id_dictionary[key] = int( value )
+
+                # Look Ahead For Segment End
+                if "<*>end token" in token_id_data[i+1]: break
 
         self.Print_Log( "StdDataLoader::Load_Token_ID_Data() - Complete" )
 
@@ -767,42 +787,45 @@ class StdDataLoader( DataLoader ):
         # Open File Handle
         fh = open( file_path, "w" )
 
-        if self.separate_ids_by_input_type or self.separated_by_input_type:
-            # Write Primary ID Dictionary
-            fh.write( "<*>PRIMARY ID DICTIONARY<*>\n" )
+        # Write Primary ID Dictionary
+        fh.write( "<*>PRIMARY ID DICTIONARY<*>\n" )
 
-            for key in self.primary_id_dictionary:
-                fh.write( str( key ) + "<:>" + str( self.primary_id_dictionary[key] ) + "\n" )
+        for key in self.primary_id_dictionary:
+            fh.write( str( key ) + "<:>" + str( self.primary_id_dictionary[key] ) + "\n" )
 
-            fh.write( "<*> END PRIMARY ID DICTIONARY<*>\n\n" )
+        fh.write( "<*>END PRIMARY ID DICTIONARY<*>\n\n" )
 
-            # Write Secondary ID Dictionary
-            fh.write( "<*>SECONDARY ID DICTIONARY<*>\n" )
+        # Write Secondary ID Dictionary
+        fh.write( "<*>SECONDARY ID DICTIONARY<*>\n" )
 
-            for key in self.secondary_id_dictionary:
-                fh.write( str( key ) + "<:>" + str( self.secondary_id_dictionary[key] ) + "\n" )
+        for key in self.secondary_id_dictionary:
+            fh.write( str( key ) + "<:>" + str( self.secondary_id_dictionary[key] ) + "\n" )
 
-            fh.write( "<*> END SECONDARY ID DICTIONARY<*>\n\n" )
+        fh.write( "<*>END SECONDARY ID DICTIONARY<*>\n\n" )
 
-            # Write Secondary ID Dictionary
-            fh.write( "<*>TERTIARY ID DICTIONARY<*>\n" )
+        # Write Secondary ID Dictionary
+        fh.write( "<*>TERTIARY ID DICTIONARY<*>\n" )
 
-            for key in self.tertiary_id_dictionary:
-                fh.write( str( key ) + "<:>" + str( self.tertiary_id_dictionary[key] ) + "\n" )
+        for key in self.tertiary_id_dictionary:
+            fh.write( str( key ) + "<:>" + str( self.tertiary_id_dictionary[key] ) + "\n" )
 
-            fh.write( "<*> END TERTIARY ID DICTIONARY<*>\n\n" )
+        fh.write( "<*>END TERTIARY ID DICTIONARY<*>\n\n" )
 
-            # Write Output ID Dictionary
-            fh.write( "<*>OUTPUT ID DICTIONARY<*>\n" )
+        # Write Output ID Dictionary
+        fh.write( "<*>OUTPUT ID DICTIONARY<*>\n" )
 
-            for key in self.output_id_dictionary:
-                fh.write( str( key ) + "<:>" + str( self.output_id_dictionary[key] ) + "\n" )
+        for key in self.output_id_dictionary:
+            fh.write( str( key ) + "<:>" + str( self.output_id_dictionary[key] ) + "\n" )
 
-            fh.write( "<*> END OUTPUT ID DICTIONARY<*>\n\n" )
-        else:
-            for key in self.token_id_dictionary:
-                fh.write( str( key ) + "<:>" + str( self.token_id_dictionary[key] ) + "\n" )
+        fh.write( "<*>END OUTPUT ID DICTIONARY<*>\n\n" )
 
+        # Write Complete Token ID Dictionary
+        fh.write( "<*>TOKEN ID DICTIONARY<*>" )
+
+        for key in self.token_id_dictionary:
+            fh.write( str( key ) + "<:>" + str( self.token_id_dictionary[key] ) + "\n" )
+
+        fh.write( "<*>END TOKEN ID DICTIONARY<*>" )
         fh.close()
 
         self.Print_Log( "StdDataLoader::Save_Token_ID_Data() - Complete" )
@@ -823,43 +846,39 @@ class StdDataLoader( DataLoader ):
 
         Inputs:
             data_list                   : List Of Data By Line (List)
-            separate_ids_by_input_type  : Assigns Token IDs To All Inputs/Outputs Independently (Bool)
+            restrict_outputs            : Signals The DataLoader's Encoding Functions To Reduce The Model Output To Output Tokens Only Appearing In The Model Data
             scale_embedding_weight_value: Scales Embedding Weights By Specified Value ie. embedding_weights *= scale_embedding_weight_value (Float)
 
         Outputs:
             None
     """
-    def Generate_Token_IDs( self, data_list = [], separate_ids_by_input_type = None, scale_embedding_weight_value = 1.0 ):
+    def Generate_Token_IDs( self, data_list = [], restrict_outputs = None, scale_embedding_weight_value = 1.0 ):
         # Check(s)
         if self.generated_embedding_ids:
             self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Warning: Already Generated Embedding Token IDs" )
             return
 
-        if separate_ids_by_input_type is None:
-            separate_ids_by_input_type = self.separate_ids_by_input_type
-        else:
-            self.separate_ids_by_input_type = separate_ids_by_input_type
-
-        if len( data_list ) > 0 and len( self.embeddings ) > 0 and self.generated_embedding_ids == False:
-            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Warning: Token IDs Cannot Be Generated From Data List When Embeddings Have Been Loaded In Memory" )
-            return
+        if restrict_outputs is not None: self.restrict_outputs = restrict_outputs
 
         self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Parameter Settings:" )
-        self.Print_Log( "StdDataLoader::Generate_Token_IDs() -          Separate IDs By Input Type: " + str( separate_ids_by_input_type ) )
+        self.Print_Log( "StdDataLoader::Generate_Token_IDs()             Only Reduce Outputs : " + str( restrict_outputs ) )
+
+        # Insert Padding At First Index Of The Token ID Dictionaries
+        if "<*>padding<*>" not in self.token_id_dictionary    : self.token_id_dictionary["<*>padding<*>"]     = 0
+        if "<*>padding<*>" not in self.primary_id_dictionary  : self.primary_id_dictionary["<*>padding<*>"]   = 0
+        if "<*>padding<*>" not in self.secondary_id_dictionary: self.secondary_id_dictionary["<*>padding<*>"] = 0
+        if "<*>padding<*>" not in self.tertiary_id_dictionary : self.tertiary_id_dictionary["<*>padding<*>"]  = 0
+        if "<*>padding<*>" not in self.output_id_dictionary   : self.output_id_dictionary["<*>padding<*>"]    = 0
 
         # Generate Embeddings Based On Embeddings (Assumes Word2vec Format)
-        if len( self.embeddings ) > 0:
-            self.separated_by_input_type = separate_ids_by_input_type
-
-            # Insert Padding At First Index Of The Token ID Dictionary
-            self.token_id_dictionary["<*>padding<*>"] = 0
-
+        if len( self.embeddings ) > 0 and self.generated_embedding_ids == False:
             # Index 0 Of Embeddings Matrix Is Padding
             embeddings = np.zeros( ( len( self.embeddings ) + 1, len( self.embeddings[1].split() ) - 1 ) )
 
             self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Generating Token IDs Using Embeddings" )
 
-            for index, embedding in enumerate( self.embeddings, 1 ):
+            for embedding in self.embeddings:
+                index              = len( self.token_id_dictionary )
                 embedding_elements = embedding.split()
                 embeddings[index]  = np.asarray( embedding_elements[1:], dtype = 'float32' )
 
@@ -870,170 +889,13 @@ class StdDataLoader( DataLoader ):
                 else:
                     self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Token - Warning: \"" + str( embedding_elements[0] ) + "\" Already In Dictionary" )
 
-            # Iterate Through The Data And Generate The Input/Output Specific Embedding Lists
-            if separate_ids_by_input_type:
-                # Check(s)
-                # If User Does Not Specify Data, Use The Data Stored In Memory
-                if len( data_list ) == 0:
-                    self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Warning: No Data Specified By User / Using Data Stored In Memory" )
-                    data_list = self.data_list
-
-                primary_unique_tokens, secondary_unique_tokens, output_unique_tokens = [], [], []
-
-                # Process Elements In Data List, Line-By-Line
-                self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Building Unique Input/Output Dictionaries" )
-
-                for sequence in data_list:
-                    self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Processing Sequence: " + str( sequence ) )
-
-                    sequence_tokens = sequence.split()
-
-                    if sequence_tokens[0] not in primary_unique_tokens:
-                        primary_unique_tokens.append( sequence_tokens[0] )
-
-                    if sequence_tokens[1] not in secondary_unique_tokens:
-                        secondary_unique_tokens.append( sequence_tokens[1] )
-
-                    for token in sequence_tokens[2:]:
-                        if token not in output_unique_tokens:
-                            output_unique_tokens.append( token )
-
-                # This Is Not Necessary And Can Be Removed (Originally Used For Debugging Purposes)
-                primary_unique_tokens   = sorted( primary_unique_tokens   )
-                secondary_unique_tokens = sorted( secondary_unique_tokens )
-                output_unique_tokens    = sorted( output_unique_tokens    )
-
-                self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Building Token ID Dictionaries" )
-
-                # Insert Padding At First Index Of The Token ID Dictionaries
-                self.primary_id_dictionary["<*>padding<*>"]   = 0
-                self.secondary_id_dictionary["<*>padding<*>"] = 0
-                self.tertiary_id_dictionary["<*>padding<*>"]  = 0
-                self.output_id_dictionary["<*>padding<*>"]    = 0
-
-                # Build Unique Dictionaries
-                for i, token in enumerate( primary_unique_tokens, 1 ):
-                    self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding To Primary Dictionary: " + str( token ) + " => " + str( i ) )
-                    self.primary_id_dictionary[token] = i
-
-                for i, token in enumerate( secondary_unique_tokens, 1 ):
-                    self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding To Secondary Dictionary: " + str( token ) + " => " + str( i ) )
-                    self.secondary_id_dictionary[token] = i
-
-                for i, token in enumerate( output_unique_tokens, 1 ):
-                    self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding To Output Dictionary: " + str( token ) + " => " + str( i ) )
-                    self.output_id_dictionary[token] = i
-
-                self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Dictionaries Built" )
-
-                primary_unique_tokens   = []
-                secondary_unique_tokens = []
-                output_unique_tokens    = []
-
-                self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
-                self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
-                self.number_of_output_tokens    = len( self.output_id_dictionary    )
-
-            # Set Number Of Secondary, Tertiary And Output Tokens = Number Of Primary Tokens Since They're Using The Same Embeddings
-            else:
-                # Set Number Of Primary Tokens Based On Token ID Dictionary Length
-                self.number_of_primary_tokens   = len( self.token_id_dictionary )
-                self.number_of_secondary_tokens = self.number_of_primary_tokens
-                self.number_of_tertiary_tokens  = self.number_of_primary_tokens
-                self.number_of_output_tokens    = self.number_of_primary_tokens
-
             self.embeddings = []
             self.embeddings = np.asarray( embeddings ) * scale_embedding_weight_value if scale_embedding_weight_value != 1.0 else np.asarray( embeddings )
 
             self.generated_embedding_ids = True
 
-        # Generate One-Hot Encoding Using Data
-        else:
-            # Check(s)
-            # If User Does Not Specify Data, Use The Data Stored In Memory
-            if len( data_list ) == 0:
-                self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Warning: No Data Specified By User / Using Data Stored In Memory" )
-                data_list = self.data_list
-
-            self.separated_by_input_type = separate_ids_by_input_type
-
-            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Generating Token IDs Using Data" )
-            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Separate IDs By Input Type: " + str( separate_ids_by_input_type ) )
-            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Processing Data List Elements" )
-
-            self.number_of_primary_tokens   = 1
-            self.number_of_secondary_tokens = 1
-            self.number_of_tertiary_tokens  = 1
-            self.number_of_output_tokens    = 1
-
-            # Insert Padding At First Index Of The Token ID Dictionaries
-            if separate_ids_by_input_type:
-                self.primary_id_dictionary["<*>padding<*>"]   = 0
-                self.secondary_id_dictionary["<*>padding<*>"] = 0
-                self.tertiary_id_dictionary["<*>padding<*>"]  = 0
-                self.output_id_dictionary["<*>padding<*>"]    = 0
-            else:
-                self.token_id_dictionary["<*>padding<*>"] = 0
-
-            # Process Squences In Data List, Line-By-Line
-            for sequence in data_list:
-                self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Processing Sequence: " + str( sequence ) )
-
-                if separate_ids_by_input_type:
-                    sequence_tokens = sequence.split()
-
-                    # Add Primary Token To Primary Token ID Dictionary
-                    #   Check To See If Token Is Already In Dictionary, If Not Add The Token
-                    if sequence_tokens[0] not in self.primary_id_dictionary:
-                        self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Primary Token: \"" + str( sequence_tokens[0] ) + "\" Value: " + str( self.number_of_primary_tokens ) )
-                        self.primary_id_dictionary[sequence_tokens[0]] = self.number_of_primary_tokens
-                        self.number_of_primary_tokens += 1
-                    else:
-                        self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Primary Token - Warning: \"" + str( sequence_tokens[0] ) + "\" Already In Dictionary" )
-
-                    # Add Secondary Token To Secondary Token ID Dictionary
-                    #   Check To See If Token Is Already In Dictionary, If Not Add The Token
-                    if sequence_tokens[1] not in self.secondary_id_dictionary:
-                        self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Secondary Token: \"" + str( sequence_tokens[1] ) + "\" Value: " + str( self.number_of_secondary_tokens ) )
-                        self.secondary_id_dictionary[sequence_tokens[1]] = self.number_of_secondary_tokens
-                        self.number_of_secondary_tokens += 1
-                    else:
-                        self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Secondary Token - Warning: \"" + str( sequence_tokens[1] ) + "\" Already In Dictionary" )
-
-                    # Add Output Token(s) To Output Token ID Dictionary
-                    #   Check To See If Token Is Already In Dictionary, If Not Add The Token
-                    for token in sequence_tokens[2:]:
-                        if token not in self.output_id_dictionary:
-                            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Output Token: \"" + str( token ) + "\" Value: " + str( self.number_of_output_tokens ) )
-                            self.output_id_dictionary[token] = self.number_of_output_tokens
-                            self.number_of_output_tokens += 1
-                        else:
-                            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Output Token - Warning: \"" + str( token ) + "\" Already In Dictionary" )
-
-                # Store All Unique Tokens Within A Single Dictionary (This Will Be Used For All Inputs/Outputs By The Model)
-                else:
-                    # Check To See If Sequence Tokens Are Already In Dictionary, If Not Add The Tokens
-                    for token in sequence.split():
-                        if token not in self.token_id_dictionary:
-                            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Token: \"" + str( token ) + "\" Value: " + str( self.number_of_primary_tokens + self.number_of_secondary_tokens ) )
-                            self.token_id_dictionary[token] = self.number_of_primary_tokens
-                            self.number_of_primary_tokens += 1
-                        else:
-                            self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Adding Token - Warning: \"" + str( token ) + "\" Already In Dictionary" )
-
-            # Set Unique Token Counts
-            if separate_ids_by_input_type:
-                self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
-                self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
-                self.number_of_tertiary_tokens  = len( self.tertiary_id_dictionary  )
-                self.number_of_output_tokens    = len( self.output_id_dictionary    )
-            # Set Number Of Secondary, Tertiary And Output Tokens = Number Of Primary Tokens Since They're Using The Same Embeddings
-            else:
-                # Set Number Of Primary Tokens Based On Token ID Dictionary Length
-                self.number_of_primary_tokens   = len( self.token_id_dictionary )
-                self.number_of_secondary_tokens = self.number_of_primary_tokens
-                self.number_of_tertiary_tokens  = self.number_of_primary_tokens
-                self.number_of_output_tokens    = self.number_of_primary_tokens
+        # Build Unique Per Input/Output Token ID Dictionaries
+        super().Generate_Token_IDs( data_list )
 
         self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Complete" )
 
@@ -1178,10 +1040,6 @@ class StdDataLoader( DataLoader ):
     def Get_Token_ID( self, token, token_type = None ):
         self.Print_Log( "StdDataLoader::Get_Token_ID() - Fetching ID For Token: \"" + str( token ) + "\"" )
 
-        if self.separated_by_input_type == False:
-            self.Print_Log( "StdDataLoader::Get_Token_ID() - Warning: 'self.separated_by_input_type' == False / Setting 'token_type' = None" )
-            token_type = None
-
         if token_type != None and token_type not in ["primary", "secondary", "tertiary", "output"]:
             self.Print_Log( "StdDataLoader::Get_Token_ID() - Unknown Token Type \"" + str( token_type ) + "\"" )
             return -1
@@ -1213,18 +1071,13 @@ class StdDataLoader( DataLoader ):
 
         Inputs:
             index_value  : Token ID Value (Integer)
-            get_relation : True = Get Relation Token Based On ID Value, False = Get CUI Token Based On ID Value (Bool)
             token_type   : Primary, Secondary, Tertiary, Output (String)
 
         Outputs:
             key          : Token String (String)
     """
-    def Get_Token_From_ID( self, index_value, get_relation = False, token_type = None ):
-        self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Searching For ID: " + str( index_value ) + " - Get_Relation = " + str( get_relation ) )
-
-        if self.separated_by_input_type == False:
-            self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Warning: 'self.separated_by_input_type' == False / Setting 'token_type' = None" )
-            token_type = None
+    def Get_Token_From_ID( self, index_value, token_type = None ):
+        self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Searching For ID: " + str( index_value ) )
 
         if token_type != None and token_type not in ["primary", "secondary", "tertiary", "output"]:
             self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Unknown Token Type \"" + str( token_type ) + "\"" )
@@ -1252,17 +1105,9 @@ class StdDataLoader( DataLoader ):
                     return key
         elif token_type == None:
             for key, val in self.token_id_dictionary.items():
-                if self.separated_by_input_type == True:
-                    if val == index_value and get_relation == False and re.search( r'^[Cc]\d+', key ):
-                        self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
-                        return key
-                    elif val == index_value and get_relation and not re.search( r'^[Cc]\d+', key ):
-                        self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
-                        return key
-                else:
-                    if val == index_value:
-                        self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
-                        return key
+                if val == index_value:
+                    self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
+                    return key
 
         self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Warning: Key Not Found In Dictionary" )
 
@@ -1455,9 +1300,9 @@ class StdDataLoader( DataLoader ):
             tertiary_input_array  = []
             output_array          = []
 
-            primary_input_array, secondary_input_array, tertiary_input_array, output_array = self.Vectorize_Model_Inputs( elements[0], elements[1], "", " ".join( elements[2:] ),
-                                                                                                                          model_type = model_type, pad_inputs = temp_pad_inputs,
-                                                                                                                          pad_output = temp_pad_output, separate_outputs = separate_outputs )
+            primary_input_array, secondary_input_array, tertiary_input_array, output_array = self.Encode_Model_Instance( elements[0], elements[1], "", " ".join( elements[2:] ),
+                                                                                                                         model_type = model_type, pad_inputs = temp_pad_inputs,
+                                                                                                                         pad_output = temp_pad_output, separate_outputs = separate_outputs )
 
             # Check(s)
             if self.skip_out_of_vocabulary_words == False and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
@@ -1563,23 +1408,23 @@ class StdDataLoader( DataLoader ):
 
         if model_type == "open_discovery":
             if pad_inputs:
-                number_of_primary_rows   = self.Get_Number_Of_Primary_Elements()
-                number_of_secondary_rows = self.Get_Number_Of_Secondary_Elements()
-                number_of_tertiary_rows  = self.Get_Number_Of_Tertiary_Elements()
+                number_of_primary_rows   = self.Get_Number_Of_Unique_Features()
+                number_of_secondary_rows = self.Get_Number_Of_Unique_Features()
+                number_of_tertiary_rows  = self.Get_Number_Of_Unique_Features()
 
             # Number Of Output Rows Are Not Dependent On Padding Inputs
             if pad_output:
-                number_of_output_rows = self.Get_Number_Of_Output_Elements()
+                number_of_output_rows = self.Get_Number_Of_Output_Elements() if self.Get_Restrict_Outputs() else self.Get_Number_Of_Unique_Features()
 
         elif model_type == "closed_discovery":
             if pad_inputs:
-                number_of_primary_rows   = self.Get_Number_Of_Primary_Elements()
-                number_of_secondary_rows = self.Get_Number_Of_Output_Elements()
-                number_of_tertiary_rows  = self.Get_Number_Of_Tertiary_Elements()
+                number_of_primary_rows   = self.Get_Number_Of_Unique_Features()
+                number_of_secondary_rows = self.Get_Number_Of_Unique_Features()
+                number_of_tertiary_rows  = self.Get_Number_Of_Unique_Features()
 
             # Number Of Output Rows Are Not Dependent On Padding Inputs
             if pad_output:
-                number_of_output_rows = self.Get_Number_Of_Secondary_Elements()
+                number_of_output_rows = self.Get_Number_Of_Secondary_Elements() if self.Get_Restrict_Outputs() else self.Get_Number_Of_Unique_Features()
 
         # Convert Inputs To CSR Matrix Format
         if use_csr_format and stack_inputs == False:
@@ -1648,9 +1493,9 @@ class StdDataLoader( DataLoader ):
                 return
 
             # Convert Numpy Arrays To CSR Matrices
-            primary_inputs     = csr_matrix( ( primary_input_data,   ( primary_input_row,   primary_input_col   ) ), shape = ( primary_row_index, number_of_primary_rows     ) )
-            secondary_inputs   = csr_matrix( ( secondary_input_data, ( secondary_input_row, secondary_input_col ) ), shape = ( secondary_row_index, number_of_secondary_rows ) )
-            tertiary_inputs    = csr_matrix( ( tertiary_input_data,  ( tertiary_input_row,  tertiary_input_col  ) ), shape = ( tertiary_row_index, number_of_tertiary_rows   ) )
+            primary_inputs   = csr_matrix( ( primary_input_data,   ( primary_input_row,   primary_input_col   ) ), shape = ( primary_row_index, number_of_primary_rows     ) )
+            secondary_inputs = csr_matrix( ( secondary_input_data, ( secondary_input_row, secondary_input_col ) ), shape = ( secondary_row_index, number_of_secondary_rows ) )
+            tertiary_inputs  = csr_matrix( ( tertiary_input_data,  ( tertiary_input_row,  tertiary_input_col  ) ), shape = ( tertiary_row_index, number_of_tertiary_rows   ) )
         else:
             self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Thread ID: " + str( thread_id ) + " - Primary Input Data:  \n" + str( primary_inputs   ) )
             self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Thread ID: " + str( thread_id ) + " - Secondary Input Data:\n" + str( secondary_inputs ) )
@@ -1710,7 +1555,7 @@ class StdDataLoader( DataLoader ):
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
     print( "     Example Code Below:\n" )
-    print( "     from models import DataLoader\n" )
+    print( "     from NNLBD.Models import DataLoader\n" )
     print( "     data_loader = StdDataLoader( print_debug_log = True )" )
     print( "     data = data_loader.Read_Data( \"path_to_file\" )" )
     exit()

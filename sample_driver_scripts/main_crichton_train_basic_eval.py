@@ -31,7 +31,7 @@ from NNLBD import LBD
 
 def Main():
     # Create Model With Default Settings Except Those Listed Below
-    model = LBD( network_model = "simple", model_type = "closed_discovery", activation_function = "softplus",
+    model = LBD( network_model = "cd2", model_type = "closed_discovery", activation_function = "softplus",
                  print_debug_log = False, write_log_to_file = False, per_epoch_saving = False,
                  use_csr_format = True, use_gpu = True, enable_early_stopping = False,
                  early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, dropout = 0.0,

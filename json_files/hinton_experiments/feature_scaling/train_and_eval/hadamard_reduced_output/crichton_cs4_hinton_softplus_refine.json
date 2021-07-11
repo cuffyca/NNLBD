@@ -2,10 +2,10 @@
     "global_settings": [
         {
             "_comment": "Global Variable Settings",
-            "enable_gpu_polling": "True",
+            "enable_gpu_polling": "False",
             "acceptable_available_memory": 3000,
-            "device_name": "/gpu:0",
-            "number_of_iterations": 1
+            "device_name": "/gpu:6",
+            "number_of_iterations": 5
         }
     ],
     "closed_discovery_refine_and_eval_1": [
@@ -28,7 +28,7 @@
             "eval_data_path": "../data/test_cs4_closed_discovery_without_aggregators_mod",
             "model_load_path": "../cs4_crichton_hinton_softplus_model_fs",
             "model_save_path": "../cs4_crichton_hinton_softplus_model_fs_rf_1",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -36,8 +36,9 @@
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011170\tCHEBI:26523\tMESH:D010190\t0.0",
-            "separate_ids_by_input_type": "True",
-            "feature_scale_value": 10.0
+            "restrict_output": "True",
+            "feature_scale_value": 10.0,
+            "set_per_iteration_model_path": "True"
         }
     ]
 }

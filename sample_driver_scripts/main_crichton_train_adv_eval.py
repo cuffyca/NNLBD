@@ -55,7 +55,7 @@ def Main():
     # CS5: 'PR:000006066\tHOC:42\tMESH:D013964\t0.0'
 
     # Create Model With Default Settings Except Those Listed Below
-    model = LBD( network_model = "simple", model_type = "closed_discovery", activation_function = activation_function,
+    model = LBD( network_model = "cd2", model_type = "closed_discovery", activation_function = activation_function,
                  print_debug_log = False, write_log_to_file = False, per_epoch_saving = False,
                  use_csr_format = True, use_gpu = True, enable_early_stopping = False, loss_function = "binary_crossentropy",
                  early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, dropout = 0.0,
@@ -82,10 +82,10 @@ def Main():
     model.Get_Data_Loader().Generate_Token_IDs()
 
     # Vectorize Gold B Term And Entire Evaluation Data-set
-    gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Vectorize_Model_Data( data_list = [gold_b_instance], model_type = "closed_discovery",
-                                                                                    use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
-    eval_input_1, eval_input_2, eval_input_3, _       = model.Vectorize_Model_Data( data_list = eval_data, model_type = "closed_discovery",
-                                                                                    use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
+    gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Encode_Model_Data( data_list = [gold_b_instance], model_type = "closed_discovery",
+                                                                                 use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
+    eval_input_1, eval_input_2, eval_input_3, _       = model.Encode_Model_Data( data_list = eval_data, model_type = "closed_discovery",
+                                                                                 use_csr_format = True, is_crichton_format = True, keep_in_memory = False )
 
     # Checks
     if gold_b_input_1 is None or gold_b_input_2 is None or gold_b_input_3 is None:

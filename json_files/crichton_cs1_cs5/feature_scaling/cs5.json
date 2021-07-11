@@ -2,9 +2,9 @@
     "global_settings": [
         {
             "_comment": "Global Variable Settings",
-            "enable_gpu_polling": "True",
+            "enable_gpu_polling": "False",
             "acceptable_available_memory": 3000,
-            "device_name": "/gpu:0",
+            "device_name": "/gpu:6",
             "number_of_iterations": 5
         }
     ],
@@ -13,7 +13,7 @@
             "_comment": "Crichton: CS5",
             "print_debug_log": "False",
             "write_log_to_file": "False",
-            "network_model": "simple",
+            "network_model": "cd2",
             "model_type": "closed_discovery",
             "per_epoch_saving": "False",
             "use_gpu": "True",
@@ -39,7 +39,7 @@
             "use_batch_normalization": "False",
             "gold_b_instance": "PR:000006066\tHOC:42\tMESH:D013964\t0.0",
             "set_per_iteration_model_path": "True",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 10.0
         }
     ]

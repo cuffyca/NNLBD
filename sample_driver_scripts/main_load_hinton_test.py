@@ -73,10 +73,7 @@ def Main():
         prob_dict         = {}
 
         # For Closed Discovery, Secondary Dictionary Becomes The Output Dictionary (B Is Substituted With C In A-B-C Model)
-        if data_loader.Get_Separate_IDs_By_Input_Type():
-            unique_b_concepts = list( data_loader.Get_Secondary_ID_Dictionary().keys() )
-        else:
-            unique_b_concepts = list( data_loader.Get_Token_ID_Dictionary().keys() )
+        unique_b_concepts = list( data_loader.Get_Secondary_ID_Dictionary().keys() )
 
         if len( unique_b_concepts ) != len( model_predictions ):
             print( "Error: Unique Concept List != Number Of Model Predictions" )

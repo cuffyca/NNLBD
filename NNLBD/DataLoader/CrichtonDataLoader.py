@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 06/08/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Crichton Data Loader Class For The NNLBD Package.                                     #
 #                                                                                          #
@@ -19,7 +19,7 @@
 
 
 # Standard Modules
-import itertools, re, scipy, threading, types
+import re, scipy, threading
 import numpy as np
 from scipy.sparse import csr_matrix, hstack, vstack
 
@@ -35,11 +35,11 @@ from NNLBD.DataLoader import DataLoader
 
 class CrichtonDataLoader( DataLoader ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False,
-                  debug_log_file_handle = None, separate_ids_by_input_type = False ):
+                  debug_log_file_handle = None, restrict_outputs = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, shuffle = shuffle,
                           skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, debug_log_file_handle = debug_log_file_handle,
-                          separate_ids_by_input_type = separate_ids_by_input_type )
-        self.version = 0.02
+                          restrict_outputs = restrict_outputs )
+        self.version = 0.05
 
     """
         Performs Checks Against The Specified Data File/Data List To Ensure File Integrity Before Further Processing
@@ -112,27 +112,27 @@ class CrichtonDataLoader( DataLoader ):
             tertiary_input_vector  : CSR Matrix or Numpy Array
             output_vector          : CSR Matrix or Numpy Array
     """
-    def Vectorize_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
-                              pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
+                           pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
         # Check(s)
         if model_type == "open_discovery":
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: 'Crichton Data Format' Is Not Currently Supported For 'Open Discovery'", force_print = True )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: 'Crichton Data Format' Is Not Currently Supported For 'Open Discovery'", force_print = True )
             return None, None, None, None
 
         if len( data_list ) == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: No Data Specified By User / Using Data Stored In Memory" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: No Data Specified By User / Using Data Stored In Memory" )
             data_list = self.data_list
 
         if len( data_list ) == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Not Data To Vectorize / 'data_list' Is Empty", force_print = True )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: Not Data To Vectorize / 'data_list' Is Empty", force_print = True )
             return None, None, None, None
 
         if number_of_threads < 1:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: Number Of Threads < 1 / Setting Number Of Threads = 1", force_print = True )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: Number Of Threads < 1 / Setting Number Of Threads = 1", force_print = True )
             number_of_threads = 1
 
         if self.Check_Data_File_Format() == False:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Data Integrity Violation Found", force_print = True )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: Data Integrity Violation Found", force_print = True )
             return None, None, None, None
 
         threads          = []
@@ -142,39 +142,39 @@ class CrichtonDataLoader( DataLoader ):
         outputs          = []
 
         if self.Is_Embeddings_Loaded():
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Detected Loaded Embeddings / Setting 'pad_inputs' = False" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Detected Loaded Embeddings / Setting 'pad_inputs' = False" )
             pad_inputs = False
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Vectorizing Data Using Settings" )
-        self.Print_Log( "                                           - Model Type        : " + str( model_type         ) )
-        self.Print_Log( "                                           - Use CSR Format    : " + str( use_csr_format     ) )
-        self.Print_Log( "                                           - Pad Inputs        : " + str( pad_inputs         ) )
-        self.Print_Log( "                                           - Pad Output        : " + str( pad_output         ) )
-        self.Print_Log( "                                           - Stack Inputs      : " + str( stack_inputs       ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Vectorizing Data Using Settings" )
+        self.Print_Log( "                                        - Model Type        : " + str( model_type         ) )
+        self.Print_Log( "                                        - Use CSR Format    : " + str( use_csr_format     ) )
+        self.Print_Log( "                                        - Pad Inputs        : " + str( pad_inputs         ) )
+        self.Print_Log( "                                        - Pad Output        : " + str( pad_output         ) )
+        self.Print_Log( "                                        - Stack Inputs      : " + str( stack_inputs       ) )
 
         if pad_inputs:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: 'Pad Inputs == True' / Setting 'pad_inputs = False", force_print = True )
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: 'Pad Output == True' / Setting 'pad_output = False", force_print = True )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: 'Pad Inputs == True' / Setting 'pad_inputs = False", force_print = True )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: 'Pad Output == True' / Setting 'pad_output = False", force_print = True )
             pad_inputs = False
             pad_output = False
 
         total_number_of_lines = len( data_list )
 
         if number_of_threads > total_number_of_lines:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: 'number_of_threads > len( data_list )' / Setting 'number_of_threads = total_number_of_lines'" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: 'number_of_threads > len( data_list )' / Setting 'number_of_threads = total_number_of_lines'" )
             number_of_threads = total_number_of_lines
 
         lines_per_thread = int( ( total_number_of_lines + number_of_threads - 1 ) / number_of_threads )
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Number Of Threads: " + str( number_of_threads ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Lines Per Thread : " + str( lines_per_thread  ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Total Lines In File Data: " + str( total_number_of_lines ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Number Of Threads: " + str( number_of_threads ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Lines Per Thread : " + str( lines_per_thread  ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Total Lines In File Data: " + str( total_number_of_lines ) )
 
         ###########################################
         #          Start Worker Threads           #
         ###########################################
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Starting Worker Threads" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Starting Worker Threads" )
 
         # Create Storage Locations For Threaded Data Segments
         tmp_thread_data = [None for i in range( number_of_threads )]
@@ -192,7 +192,7 @@ class CrichtonDataLoader( DataLoader ):
         #           Join Worker Threads           #
         ###########################################
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Waiting For Worker Threads To Finish" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Waiting For Worker Threads To Finish" )
 
         for thread in threads:
             thread.join()
@@ -205,13 +205,13 @@ class CrichtonDataLoader( DataLoader ):
             outputs          = csr_matrix( outputs          )
 
         if len( tmp_thread_data ) == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error Vectorizing Model Data / No Data Returned From Worker Threads", force_print = True )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error Vectorizing Model Data / No Data Returned From Worker Threads", force_print = True )
             return None, None, None, None
 
         # Concatenate Vectorized Model Data Segments From Threads
         for model_data in tmp_thread_data:
             if model_data is None or len( model_data ) < 4:
-                self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Expected At Least Four Vectorized Elements / Received None Or < 4", force_print = True )
+                self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: Expected At Least Four Vectorized Elements / Received None Or < 4", force_print = True )
                 continue
 
             # Vectorized Inputs/Outputs
@@ -299,78 +299,78 @@ class CrichtonDataLoader( DataLoader ):
             outputs          = np.asarray( outputs          )
 
         if isinstance( primary_inputs, list ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Primary Input Length  : " + str( len( primary_inputs ) ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Primary Input Length  : " + str( len( primary_inputs ) ) )
         elif isinstance( primary_inputs, csr_matrix ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Primary Input Length  : " + str( primary_inputs.shape  ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Primary Input Length  : " + str( primary_inputs.shape  ) )
 
         if isinstance( secondary_inputs, list ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Secondary Input Length: " + str( len( secondary_inputs ) ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Secondary Input Length: " + str( len( secondary_inputs ) ) )
         elif isinstance( secondary_inputs, csr_matrix ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Secondary Input Length: " + str( secondary_inputs.shape  ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Secondary Input Length: " + str( secondary_inputs.shape  ) )
 
         if isinstance( tertiary_inputs, list ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Tertiary Input Length : " + str( len( tertiary_inputs ) ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Tertiary Input Length : " + str( len( tertiary_inputs ) ) )
         elif isinstance( tertiary_inputs, csr_matrix ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Tertiary Input Length : " + str( tertiary_inputs.shape  ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Tertiary Input Length : " + str( tertiary_inputs.shape  ) )
 
         if isinstance( outputs, list ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Output Length         : " + str( len( outputs.shape ) ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Output Length         : " + str( len( outputs.shape ) ) )
         elif isinstance( outputs, csr_matrix ):
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Output Length         : " + str( outputs.shape        ) )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Output Length         : " + str( outputs.shape        ) )
 
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Vectorized Primary Inputs  :\n" + str( primary_inputs   ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Vectorized Secondary Inputs:\n" + str( secondary_inputs ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Vectorized Tertiary Inputs :\n" + str( tertiary_inputs  ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Vectorized Outputs         :\n" + str( outputs          ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Vectorized Primary Inputs  :\n" + str( primary_inputs   ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Vectorized Secondary Inputs:\n" + str( secondary_inputs ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Vectorized Tertiary Inputs :\n" + str( tertiary_inputs  ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Vectorized Outputs         :\n" + str( outputs          ) )
 
 
         # Clean-Up
         threads         = []
         tmp_thread_data = []
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Complete" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Complete" )
 
         #####################
         # List Final Checks #
         #####################
         if isinstance( primary_inputs, list ) and len( primary_inputs ) == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Primary Input Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: Primary Input Matrix Is Empty" )
             return None, None, None, None
 
         if isinstance( secondary_inputs, list ) and len( secondary_inputs ) == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Secondary Input Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: Secondary Input Matrix Is Empty" )
             return None, None, None, None
 
         # Only Crichton Data-sets Use A Tertiary Input, So This Matrix Is Not Guaranteed To Be Non-Empty
         if isinstance( tertiary_inputs, list ) and len( tertiary_inputs ) == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
 
         if isinstance( outputs, list ) and len( outputs ) == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: Outputs Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: Outputs Matrix Is Empty" )
             return None, None, None, None
 
         ###########################
         # CSR Matrix Final Checks #
         ###########################
         if isinstance( primary_inputs, csr_matrix ) and primary_inputs.nnz == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Primary Input Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: Primary Input Matrix Is Empty" )
             return None, None, None, None
 
         if isinstance( secondary_inputs, csr_matrix ) and secondary_inputs.nnz == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Error: Secondary Input Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: Secondary Input Matrix Is Empty" )
             return None, None, None, None
 
         # Only Crichton Data-sets Use A Tertiary Input, So This Matrix Is Not Guaranteed To Be Non-Empty
         if isinstance( tertiary_inputs, csr_matrix ) and tertiary_inputs.nnz == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
 
         if isinstance( outputs, csr_matrix ) and outputs.nnz == 0:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Warning: Outputs Matrix Is Empty" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Warning: Outputs Matrix Is Empty" )
             return None, None, None, None
 
         if keep_in_memory:
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Data() - Storing In Memory" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Storing In Memory" )
             self.primary_inputs   = primary_inputs
             self.secondary_inputs = secondary_inputs
             self.tertiary_inputs  = tertiary_inputs
@@ -398,8 +398,8 @@ class CrichtonDataLoader( DataLoader ):
             tertiary_input_vector  : Numpy Array
             output_vector          : Numpy Array
     """
-    def Vectorize_Model_Inputs( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
-                                pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
+    def Encode_Model_Instance( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
+                               pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
         # Convert Inputs/Outputs To Lowercase
         primary_input    = primary_input.lower()
         secondary_input  = secondary_input.lower()
@@ -421,11 +421,11 @@ class CrichtonDataLoader( DataLoader ):
         tertiary_input_array  = []
         output_array          = []
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Vectorizing Inputs" )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() -                   Primary Input  : " + str( primary_input   ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() -                   Secondary Input: " + str( secondary_input ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() -                   Tertiary Input : " + str( tertiary_input  ) )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() -                   Outputs        : " + str( outputs         ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Vectorizing Inputs" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() -             Primary Input  : " + str( primary_input   ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() -             Secondary Input: " + str( secondary_input ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() -             Tertiary Input : " + str( tertiary_input  ) )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() -             Outputs        : " + str( outputs         ) )
 
         for primary_input, secondary_input, tertiary_input, outputs in zip( primary_input_instances, secondary_input_instances, tertiary_input_instances, output_instances ):
             primary_input_id   = self.Get_Token_ID( primary_input   )
@@ -433,14 +433,14 @@ class CrichtonDataLoader( DataLoader ):
             tertiary_input_id  = self.Get_Token_ID( tertiary_input  )
 
             # Check(s)
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Warning: Primary Input  : \"" + str( primary_input   ) + "\" Not In Token ID Dictionary" ) if primary_input_id   == -1 else None
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Warning: Secondary Input: \"" + str( secondary_input ) + "\" Not In Token ID Dictionary" ) if secondary_input_id == -1 else None
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Warning: Teritary Input : \"" + str( tertiary_input  ) + "\" Not In Token ID Dictionary" ) if tertiary_input_id  == -1 else None
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Warning: Primary Input  : \"" + str( primary_input   ) + "\" Not In Token ID Dictionary" ) if primary_input_id   == -1 else None
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Warning: Secondary Input: \"" + str( secondary_input ) + "\" Not In Token ID Dictionary" ) if secondary_input_id == -1 else None
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Warning: Teritary Input : \"" + str( tertiary_input  ) + "\" Not In Token ID Dictionary" ) if tertiary_input_id  == -1 else None
             if primary_input_id == -1 or secondary_input_id == -1 or ( tertiary_input != "" and tertiary_input_id == -1 ):
                 return [], [], [], []
 
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Vectorizing Inputs \"" + str( primary_input ) + "\" & \"" + str( secondary_input ) + "\" & \"" + str( tertiary_input ) + "\"" )
-            self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Vectorizing Outputs \"" + str( outputs ) + "\"" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Vectorizing Inputs \"" + str( primary_input ) + "\" & \"" + str( secondary_input ) + "\" & \"" + str( tertiary_input ) + "\"" )
+            self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Vectorizing Outputs \"" + str( outputs ) + "\"" )
 
             temp_primary_input_array   = []
             temp_secondary_input_array = []
@@ -586,11 +586,11 @@ class CrichtonDataLoader( DataLoader ):
             for instance in temp_output_array:
                 output_array.append( instance )
 
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Vectorized Primary Input   \"" + str( primary_input_array   ) + "\"" )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Vectorized Secondary Input \"" + str( secondary_input_array ) + "\"" )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Vectorized Tertiary Input  \"" + str( tertiary_input_array  ) + "\"" )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Vectorized Outputs         \"" + str( output_array          ) + "\"" )
-        self.Print_Log( "CrichtonDataLoader::Vectorize_Model_Inputs() - Complete" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Vectorized Primary Input   \"" + str( primary_input_array   ) + "\"" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Vectorized Secondary Input \"" + str( secondary_input_array ) + "\"" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Vectorized Tertiary Input  \"" + str( tertiary_input_array  ) + "\"" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Vectorized Outputs         \"" + str( output_array          ) + "\"" )
+        self.Print_Log( "CrichtonDataLoader::Encode_Model_Instance() - Complete" )
 
         return primary_input_array, secondary_input_array, tertiary_input_array, output_array
 
@@ -658,139 +658,102 @@ class CrichtonDataLoader( DataLoader ):
 
         Inputs:
             data_list                   : List Of Data By Line (List)
-            separate_ids_by_input_type  : Assigns Token IDs To All Inputs/Outputs Independently (Bool)
+            restrict_outputs            : Restricts Model Outputs To Only Unique Instances Within The Data (Bool)
             skip_association_value      : True - Skip Final Association Value ie. In Crichton Data-set, False - Keep Value (Bool)
             scale_embedding_weight_value: Scales Embedding Weights By Specified Value ie. embedding_weights *= scale_embedding_weight_value (Float)
 
         Outputs:
             None
     """
-    def Generate_Token_IDs( self, data_list = [], separate_ids_by_input_type = True, skip_association_value = False, scale_embedding_weight_value = 1.0 ):
+    def Generate_Token_IDs( self, data_list = [], restrict_outputs = True, skip_association_value = False, scale_embedding_weight_value = 1.0 ):
         # Check(s)
         if self.generated_embedding_ids:
             self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: Already Generated Embedding Token IDs" )
             return
 
-        if len( data_list ) > 0 and len( self.embeddings ) > 0 and self.generated_embedding_ids == False:
-            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: Token IDs Cannot Be Generated From Data List When Embeddings Have Been Loaded In Memory" )
-            return
-
-        if self.Is_Embeddings_Loaded() and separate_ids_by_input_type:
-            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: Cannot 'separate_ids_by_input_type' When Embeddings Have Been Loaded / Setting 'separate_ids_by_input_type = False'" )
-            separate_ids_by_input_type = False
-
         self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Parameter Settings:" )
-        self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() -          Separate IDs By Input Type: " + str( separate_ids_by_input_type ) )
-        self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() -          Skip Association Value    : " + str( skip_association_value     ) )
+        self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() -           Skip Association Value : " + str( skip_association_value ) )
+
+        # Insert Padding At First Index Of The Token ID Dictionaries
+        if "<*>padding<*>" not in self.token_id_dictionary    : self.token_id_dictionary["<*>padding<*>"]     = 0
+        if "<*>padding<*>" not in self.primary_id_dictionary  : self.primary_id_dictionary["<*>padding<*>"]   = 0
+        if "<*>padding<*>" not in self.secondary_id_dictionary: self.secondary_id_dictionary["<*>padding<*>"] = 0
+        if "<*>padding<*>" not in self.tertiary_id_dictionary : self.tertiary_id_dictionary["<*>padding<*>"]  = 0
+        if "<*>padding<*>" not in self.output_id_dictionary   : self.output_id_dictionary["<*>padding<*>"]    = 0
 
         # Generate Embeddings Based On Embeddings (Assumes Word2vec Format)
         if len( self.embeddings ) > 0 and self.generated_embedding_ids == False:
-            self.separated_by_input_type = separate_ids_by_input_type
-
-            embeddings = np.zeros( ( len( self.embeddings ), len( self.embeddings[1].split() ) - 1 ) )
+            # Index 0 Of Embeddings Matrix Is Padding
+            embeddings = np.zeros( ( len( self.embeddings ) + 1, len( self.embeddings[1].split() ) - 1 ) )
 
             self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Generating Token IDs Using Embeddings" )
 
-            for index, embedding in enumerate( self.embeddings ):
+            for embedding in self.embeddings:
+                index              = len( self.token_id_dictionary )
                 embedding_elements = embedding.split()
                 embeddings[index]  = np.asarray( embedding_elements[1:], dtype = 'float32' )
 
                 # Check To See If Element Is Already In Dictionary, If Not Add The Element
                 if embedding_elements[0] not in self.token_id_dictionary:
-                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Token: \"" + str( embedding_elements[0] ) + "\" Value: " + str( self.number_of_primary_tokens ) )
-                    self.token_id_dictionary[embedding_elements[0]] = self.number_of_primary_tokens
-                    self.number_of_primary_tokens += 1
+                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Token: \"" + str( embedding_elements[0] ) + "\" => Embedding Row Index: " + str( index ) )
+                    self.token_id_dictionary[embedding_elements[0]] = index
                 else:
                     self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Token - Warning: \"" + str( embedding_elements[0] ) + "\" Already In Dictionary" )
 
-            # Iterate Through The Data And Generate The Input/Output Specific Embedding Lists
-            if separate_ids_by_input_type:
-                # Check(s)
-                # If User Does Not Specify Data, Use The Data Stored In Memory
-                if len( data_list ) == 0:
-                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: No Data Specified By User / Using Data Stored In Memory" )
-                    data_list = self.data_list
-                pass
-            # Set Number Of Secondary Tokens = Number Of Primary Tokens Since They're Using The Same Embeddings
-            else:
-                self.number_of_secondary_tokens = self.number_of_primary_tokens
-                self.number_of_tertiary_tokens  = self.number_of_primary_tokens
-                self.number_of_output_tokens    = self.number_of_primary_tokens
-
-
-
             self.embeddings = []
-            self.embeddings = np.asarray( embeddings ) * scale_embedding_weight_value
+            self.embeddings = np.asarray( embeddings ) * scale_embedding_weight_value if scale_embedding_weight_value != 1.0 else np.asarray( embeddings )
 
             self.generated_embedding_ids = True
 
-        # Generate One-Hot Encoding Using Data
-        else:
-            # Check(s)
-            # If User Does Not Specify Data, Use The Data Stored In Memory
-            if len( data_list ) == 0:
-                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: No Data Specified By User / Using Data Stored In Memory" )
-                data_list = self.data_list
+        # Build Unique Per Input/Output Token ID Dictionaries
+        # Iterate Through The Data And Generate The Unique Input/Output Lists
+        # Check(s) - If User Does Not Specify Data, Use The Data Stored In Memory
+        if len( data_list ) == 0:
+            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: No Data Specified By User / Using Data Stored In Memory" )
+            data_list = self.data_list
 
-            self.is_cui_data = self.Is_Data_Composed_Of_CUIs( data_list )
+        self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Building Token ID Dictionaries" )
 
-            if self.Get_Is_CUI_Data() == False:
-                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: No CUIs Detected In Data / Setting 'separate_ids_by_input_type = False'" )
-                separate_ids_by_input_type = False
+        # Process Elements In Data List, Line-By-Line
+        self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Building Unique Input/Output Dictionaries" )
 
-            self.separated_by_input_type = separate_ids_by_input_type
+        for sequence in data_list:
+            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Processing Sequence: " + str( sequence ) )
 
-            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Generating Token IDs Using Data" )
-            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Separate IDs By Input Type: " + str( separate_ids_by_input_type ) )
-            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Skip Association Value    : " + str( skip_association_value     ) )
+            sequence_tokens = sequence.split()
 
-            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Processing Data List Elements" )
+            # IF We're Not Using Embeddings, Build Unique Token ID Dictionary
+            if self.generated_embedding_ids == False:
+                for token in sequence_tokens:
+                    # Check To See If Element Is Already In Dictionary, If Not Add The Element
+                    if token not in self.token_id_dictionary:
+                        index = len( self.token_id_dictionary )
+                        self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Token: \"" + str( token ) + "\" => Embedding Row Index: " + str( index ) )
+                        self.token_id_dictionary[token] = index
 
-            # Process Elements In Data List, Line-By-Line
-            for elements in data_list:
-                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Processing Element: " + str( elements ) )
+            # Build Unique Primary Input ID Dictionary
+            if sequence_tokens[0] not in self.primary_id_dictionary:
+                index = len( self.primary_id_dictionary )
+                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Primary Dictionary: " + str( sequence_tokens[0] ) + " => " + str( index ) )
+                self.primary_id_dictionary[sequence_tokens[0]] = index
 
-                element_tokens = elements.split()
+            # Build Unique Secondary Input ID Dictionary
+            if sequence_tokens[1] not in self.secondary_id_dictionary:
+                index = len( self.secondary_id_dictionary )
+                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Secondary Dictionary: " + str( sequence_tokens[1] ) + " => " + str( index ) )
+                self.secondary_id_dictionary[sequence_tokens[1]] = index
 
-                for element in element_tokens:
-                    # Check For Crichton Format (Skip Associated Value)
-                    if skip_association_value and element == element_tokens[-1]: continue
+            # Build Unique Tertiary Input ID Dictionary
+            if sequence_tokens[1] not in self.tertiary_id_dictionary:
+                index = len( self.tertiary_id_dictionary )
+                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Tertiary Dictionary: " + str( sequence_tokens[1] ) + " => " + str( index ) )
+                self.tertiary_id_dictionary[sequence_tokens[1]] = index
 
-                    if element not in self.token_id_dictionary:
-                        if separate_ids_by_input_type:
-                            # Element Is CUI
-                            if re.search( r'^[Cc]\d+', element ):
-                                # Check To See If Element Is Already In Dictionary, If Not Add The Element
-                                if element not in self.token_id_dictionary:
-                                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding CUI: \"" + str( element ) + "\" Value: " + str( self.number_of_primary_tokens ) )
-                                    self.token_id_dictionary[element] = self.number_of_primary_tokens
-                                    self.number_of_primary_tokens += 1
-                                else:
-                                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding CUI - Warning: \"" + str( element ) + "\" Already In Dictionary" )
+            self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Dictionaries Built" )
 
-                            # Element Is Not CUI (Relation)
-                            else:
-                                # Check To See If Element Is Already In Dictionary, If Not Add The Element
-                                if element not in self.token_id_dictionary:
-                                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Relation: \"" + str( element ) + "\" Value: " + str( self.number_of_secondary_tokens ) )
-                                    self.token_id_dictionary[element] = self.number_of_secondary_tokens
-                                    self.number_of_secondary_tokens += 1
-                                else:
-                                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Relation - Warning: \"" + str( element ) + "\" Already In Dictionary" )
-
-                        else:
-                            # Check To See If Element Is Already In Dictionary, If Not Add The Element
-                            if element not in self.token_id_dictionary:
-                                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Token: \"" + str( element ) + "\" Value: " + str( self.number_of_primary_tokens + self.number_of_secondary_tokens ) )
-                                self.token_id_dictionary[element] = self.number_of_primary_tokens + self.number_of_secondary_tokens
-
-                                if self.Get_Is_CUI_Data():
-                                    if     re.search( r'^[Cc]\d+', element ): self.number_of_primary_tokens   += 1
-                                    if not re.search( r'^[Cc]\d+', element ): self.number_of_secondary_tokens += 1
-                                else:
-                                    self.number_of_primary_tokens   += 1
-                            else:
-                                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding Token - Warning: \"" + str( element ) + "\" Already In Dictionary" )
+            self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
+            self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
+            self.number_of_tertiary_tokens  = len( self.tertiary_id_dictionary  )
 
         self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Complete" )
 
@@ -947,26 +910,17 @@ class CrichtonDataLoader( DataLoader ):
 
         Inputs:
             index_value  : Token ID Value (Integer)
-            get_relation : True = Get Relation Token Based On ID Value, False = Get CUI Token Based On ID Value (Bool)
 
         Outputs:
             key          : Token String (String)
     """
-    def Get_Token_From_ID( self, index_value, get_relation = False ):
-        self.Print_Log( "CrichtonDataLoader::Get_Token_From_ID() - Searching For ID: " + str( index_value ) + " - Get_Relation = " + str( get_relation ) )
+    def Get_Token_From_ID( self, index_value):
+        self.Print_Log( "CrichtonDataLoader::Get_Token_From_ID() - Searching For ID: " + str( index_value ) )
 
         for key, val in self.token_id_dictionary.items():
-            if self.separated_by_input_type == True:
-                if val == index_value and get_relation == False and re.search( r'^[Cc]\d+', key ):
-                    self.Print_Log( "CrichtonDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
-                    return key
-                elif val == index_value and get_relation and not re.search( r'^[Cc]\d+', key ):
-                    self.Print_Log( "CrichtonDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
-                    return key
-            else:
-                if val == index_value:
-                    self.Print_Log( "CrichtonDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
-                    return key
+            if val == index_value:
+                self.Print_Log( "CrichtonDataLoader::Get_Token_From_ID() - Found: \"" + str( key ) + "\"" )
+                return key
 
         self.Print_Log( "CrichtonDataLoader::Get_Token_From_ID() - Warning: Key Not Found In Dictionary" )
 
@@ -1068,7 +1022,7 @@ class CrichtonDataLoader( DataLoader ):
 
         Inputs:
             thread_id              : Thread Identification Number (Integer)
-            data_list              : List Of String Instances To Vectorize (Data Chunk Determined By CrichtonDataLoader::Vectorize_Model_Data() Function)
+            data_list              : List Of String Instances To Vectorize (Data Chunk Determined By CrichtonDataLoader::Encode_Model_Data() Function)
             dest_array             : Placeholder For Threaded Function To Store Outputs (Do Not Modify) (List)
             model_type             : Model Type (String)
             use_csr_format         : True = Output Model Inputs/Output As Scipy CSR Matrices, False = Output Model Inputs/Outputs As Numpy Arrays
@@ -1084,7 +1038,7 @@ class CrichtonDataLoader( DataLoader ):
             outputs                : CSR Matrix or Numpy Array
 
         Note:
-            Outputs Are Stored In A List Per Thread Which Is Managed By CrichtonDataLoader::Vectorize_Model_Data() Function.
+            Outputs Are Stored In A List Per Thread Which Is Managed By CrichtonDataLoader::Encode_Model_Data() Function.
 
     """
     def Worker_Thread_Function( self, thread_id, data_list, dest_array, model_type = "open_discovery", use_csr_format = False,
@@ -1152,9 +1106,9 @@ class CrichtonDataLoader( DataLoader ):
             tertiary_input_array  = []
             output_array          = []
 
-            primary_input_array, secondary_input_array, tertiary_input_array, output_array = self.Vectorize_Model_Inputs( elements[0], elements[1], elements[2], " ".join( elements[3:] ),
-                                                                                                                          model_type = model_type, pad_inputs = temp_pad_inputs,
-                                                                                                                          pad_output = temp_pad_output, separate_outputs = separate_outputs )
+            primary_input_array, secondary_input_array, tertiary_input_array, output_array = self.Encode_Model_Instance( elements[0], elements[1], elements[2], " ".join( elements[3:] ),
+                                                                                                                         model_type = model_type, pad_inputs = temp_pad_inputs,
+                                                                                                                         pad_output = temp_pad_output, separate_outputs = separate_outputs )
 
             # Check(s)
             if self.skip_out_of_vocabulary_words == False and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
@@ -1413,7 +1367,7 @@ class CrichtonDataLoader( DataLoader ):
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
     print( "     Example Code Below:\n" )
-    print( "     from models import DataLoader\n" )
+    print( "     from NNLBD.Models import DataLoader\n" )
     print( "     data_loader = DataLoader( print_debug_log = True )" )
     print( "     data = data_loader.Read_Data( \"path_to_file\" )" )
     exit()

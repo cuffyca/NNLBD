@@ -31,7 +31,7 @@ from NNLBD import LBD
 
 def Main():
     # Create Model With Default Settings Except (network_model = 'rumelhart', per_epoch_saving = True, and skip_out_of_vocabulary_words = True)
-    model = LBD( print_debug_log = True, write_log_to_file = False, network_model = "cosface", final_layer_type = "arcface",
+    model = LBD( print_debug_log = True, write_log_to_file = False, network_model = "mlp", final_layer_type = "arcface",
                  per_epoch_saving = False, use_gpu = True, skip_out_of_vocabulary_words = True, activation_function = 'sigmoid',
                  loss_function = "binary_crossentropy", model_type = "open_discovery", trainable_weights = False,
                  embedding_path = "../vectors/crichton_orig/test_modified_cs1.reduced_embeddings", device_name = "/gpu:0",

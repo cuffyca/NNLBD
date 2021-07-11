@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 06/21/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -57,7 +57,7 @@ if re.search( r'2.\d+', tf.__version__ ):
 else:
     import keras.backend as K
     from keras import regularizers
-    from keras.layers import Layer
+    from keras.layers import Layer, Dense
     from keras.metrics import categorical_accuracy
 
 # Custom Modules
@@ -114,12 +114,12 @@ class BaseModel( object ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, network_model = "N/A", model_type = "open_discovery",
                   optimizer = 'adam', activation_function = 'sigmoid', loss_function = "binary_crossentropy", number_of_embedding_dimensions = 200,
                   number_of_hidden_dimensions = 200, bilstm_merge_mode = "concat", bilstm_dimension_size = 64, learning_rate = 0.005, epochs = 30,
-                  momentum = 0.05, dropout = 1.0, batch_size = 32, prediction_threshold = 0.5, shuffle = True, use_csr_format = True, final_layer_type = "N/A",
+                  momentum = 0.05, dropout = 1.0, batch_size = 32, prediction_threshold = 0.5, shuffle = True, use_csr_format = True, final_layer_type = "dense",
                   per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0", verbose = 2, debug_log_file_handle = None, embedding_modification = "concatenate",
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss", early_stopping_persistence = 3,
                   use_batch_normalization = False, checkpoint_directory = "./ckpt_models", trainable_weights = False, embedding_path = "",
-                  scale = 30.0, margin = 0.35, feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
-        self.version                         = 0.15
+                  scale = 30.0, margin = 0.35, feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001 ):
+        self.version                         = 0.18
         self.network_model                   = network_model
         self.model                           = None                            # Automatically Set After Calling 'Build_Model()' Function
         self.epochs                          = epochs                          # Integer Value ie. 10, 32, 64, 200, etc.
@@ -136,6 +136,7 @@ class BaseModel( object ):
         self.learning_rate                   = learning_rate                   # Known Good: 0.005
         self.feature_scale_value             = feature_scale_value             # Default: 1.0 (Float)
         self.learning_rate_decay             = learning_rate_decay             # Default: 0.004 (Float)
+        self.weight_decay                    = weight_decay                    # Default: 0.0001 (Float)
         self.model_type                      = model_type                      # Options: "open_discovery" or "closed_discovery"
         self.prediction_threshold            = prediction_threshold            # Float Value: 0.5 (Default) => Inflection Point Of The Sigmoid Function
         self.trainable_weights               = trainable_weights               # Options: True, False
@@ -155,7 +156,7 @@ class BaseModel( object ):
         self.number_of_features              = -1                              # Automatically Set While Building Model
         self.number_of_primary_inputs        = -1                              # Automatically Set After Training Data Has Been Parsed
         self.number_of_secondary_inputs      = -1                              # Automatically Set After Training Data Has Been Parsed
-        self.number_of_tertiary_inputs       = -1                              # Automatically Set After Training Data Has Been Parsed (Used With SimpleModel class)
+        self.number_of_tertiary_inputs       = -1                              # Automatically Set After Training Data Has Been Parsed (Used With CD2Model class)
         self.number_of_outputs               = -1                              # Automatically Set After Training Data Has Been Parsed
         self.debug_log_file_handle           = debug_log_file_handle           # Debug Log File Handle
         self.debug_log_file_name             = "Model_Log.txt"                 # File Name (String)
@@ -171,6 +172,9 @@ class BaseModel( object ):
         self.printed_gpu_polling_message     = False                           # Debug Statement Printing Which Notifies User The Model Is Polling For Available GPU(s)
         self.checkpoint_directory            = checkpoint_directory            # Path (String)
         self.callback_list                   = []                              # Keras Model Callback List - Set During Model 'Build_Model()' Call.
+
+        # Specify Final Layer Types Available
+        self.final_layer_type_list           = ["dense", "cosface", "arcface", "sphereface"]
 
         # Create New Utils Class
         self.utils                           = Utils()
@@ -563,6 +567,7 @@ class BaseModel( object ):
             if key == "LossFunction"               : self.loss_function                   = str( value )
             if key == "LearningRate"               : self.learning_rate                   = float( value )
             if key == "LearningRateDecay"          : self.learning_rate_decay             = float( value )
+            if key == "WeightDecay"                : self.weight_decay                    = float( value )
             if key == "PredictionThreshold"        : self.prediction_threshold            = float( value )
             if key == "TrainableWeights"           : self.trainable_weights               = True if value == "True" else False
             if key == "EmbeddingsLoaded"           : self.embeddings_loaded               = True if value == "True" else False
@@ -624,6 +629,7 @@ class BaseModel( object ):
         fh.write( "LossFunction<:>"                + str( self.loss_function                  ) + "\n" )
         fh.write( "LearningRate<:>"                + str( self.learning_rate                  ) + "\n" )
         fh.write( "LearningRateDecay<:>"           + str( self.learning_rate_decay            ) + "\n" )
+        fh.write( "WeightDecay>:>"                 + str( self.weight_decay                   ) + "\n" )
         fh.write( "PredictionThreshold<:>"         + str( self.prediction_threshold           ) + "\n" )
         fh.write( "TrainableWeights<:>"            + str( self.trainable_weights              ) + "\n" )
         fh.write( "EmbeddingPath<:>"               + str( self.embedding_path                 ) + "\n" )
@@ -690,6 +696,7 @@ class BaseModel( object ):
         self.Print_Log( "BaseModel::    Activation Function           : " + str( self.activation_function            ), force_print = True )
         self.Print_Log( "BaseModel::    Learning Rate                 : " + str( self.learning_rate                  ), force_print = True )
         self.Print_Log( "BaseModel::    Learning Rate Decay           : " + str( self.learning_rate_decay            ), force_print = True )
+        self.Print_Log( "BaseModel::    Weight Decay                  : " + str( self.weight_decay                   ), force_print = True )
         self.Print_Log( "BaseModel::    Feature Scaling Value         : " + str( self.feature_scale_value            ), force_print = True )
         self.Print_Log( "BaseModel::    Loss Function                 : " + str( self.loss_function                  ), force_print = True )
         self.Print_Log( "BaseModel::    Prediction Threshold          : " + str( self.prediction_threshold           ), force_print = True )
@@ -759,8 +766,13 @@ class BaseModel( object ):
         Trains Model Using Training Data, Fits Model To Data
     """
     def Fit( self ):
-        self.Print_Log( "BaseModel::Fit() - Error: Function Not Implemented / Calling Parent Function", force_print = True )
-        raise NotImplementedError
+        self.Print_Log( "BaseModel::Fit() - Adding Cosine Annealing Scheduler To Callback List" )
+        self.callback_list.append( Cosine_Annealing_Scheduler( lr = self.learning_rate, T_max = self.epochs, eta_max = self.learning_rate, eta_min = self.learning_rate_decay ) )
+
+        # Setup Saving The Model After Each Epoch
+        if self.per_epoch_saving:
+            self.Print_Log( "BaseModel::Fit() - Adding Per Epoch Model Saving Callback" )
+            self.callback_list.append( Model_Saving_Callback() )
 
     """
         Outputs Model's Prediction Vector Given Inputs
@@ -788,6 +800,42 @@ class BaseModel( object ):
     def Build_Model( self ):
         self.Print_Log( "BaseModel::Build_Model() - Error: Function Not Implemented / Calling Parent Function", force_print = True )
         raise NotImplementedError
+
+    ############################################################################################
+    #                                                                                          #
+    #    Keras Model(s)                                                                        #
+    #                                                                                          #
+    ############################################################################################
+
+    """
+        Specifies Many Options Among Final Layers: Dense, CosFace, ArcFace or SphereFace
+
+        Note: Requires Previous Dense Layer To Have An Included Regularizer For Weight Regularization
+    """
+    def Multi_Option_Final_Layer( self, number_of_outputs = None, cosface_input_layer = None, batch_norm_layer = None, final_dense_layer = None ):
+        output_layer = None
+
+        if self.use_batch_normalization:
+            if self.final_layer_type == "arcface":
+                output_layer = ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+            elif self.final_layer_type == "sphereface":
+                output_layer = SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+            elif self.final_layer_type == "cosface":
+                output_layer = CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+            else:
+                output_layer = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( batch_norm_layer )
+        else:
+            if self.final_layer_type == "arcface":
+                output_layer = ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [final_dense_layer, cosface_input_layer] )
+            elif self.final_layer_type == "sphereface":
+                output_layer = SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [final_dense_layer, cosface_input_layer] )
+            elif self.final_layer_type == "cosface":
+                output_layer = CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [final_dense_layer, cosface_input_layer] )
+            else:
+                output_layer = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( final_dense_layer )
+
+        return output_layer
+
 
     ############################################################################################
     #                                                                                          #
@@ -945,6 +993,8 @@ class BaseModel( object ):
 
     def Get_Learning_Rate_Decay( self ):            return self.learning_rate_decay
 
+    def Get_Weight_Decay( self ):                   return self.weight_decay
+
     def Get_Feature_Scaling_Value( self ):          return self.feature_scale_value
 
     def Get_Model_Type( self ):                     return self.model_type
@@ -1009,6 +1059,8 @@ class BaseModel( object ):
 
     def Get_Callback_List( self ):                  return self.callback_list
 
+    def Get_Final_Layer_Type_List( self ):          return self.final_layer_type_list
+
     def Get_Utils( self ):                          return self.utils
 
 
@@ -1045,6 +1097,8 @@ class BaseModel( object ):
     def Set_Learning_Rate( self, value ):                      self.learning_rate = value
 
     def Set_Learning_Rate_Decay( self, value ):                self.learning_rate_decay = value
+
+    def Set_Weight_Decay( self, value ):                       self.weight_decay = value
 
     def Set_Feature_Scaling_Value( self, value ):              self.feature_scale_value = value
 

@@ -35,10 +35,10 @@ def Main():
     # Create Model With Default Settings Except Those Listed Below
     model = LBD( network_model = "hinton", model_type = "open_discovery", bilstm_merge_mode = "concat",
                  print_debug_log = True, write_log_to_file = True, per_epoch_saving = False,
-                 use_csr_format = True, use_gpu = True, enable_early_stopping = False,
+                 use_csr_format = True, use_gpu = True, enable_early_stopping = False, final_layer_type = "dense",
                  early_stopping_metric_monitor = "F1_Score", early_stopping_persistence = 3, dropout = 0.5,
                  use_batch_normalization = False, trainable_weights = True, embedding_path = "../vectors/vectors_random_cui_mini",
-                 separate_ids_by_input_type = False )
+                 restrict_outputs = True )
 
     # Train Model Over Data: "data/cui_mini"
     model.Fit( "../data/cui_mini", epochs = 40, batch_size = 32, verbose = 1 )
@@ -62,13 +62,13 @@ def Main():
     print( "Using Embeddings:", str( model.Is_Embeddings_Loaded() ) )
 
     if model.Get_Network_Model() == "bilstm" or model.Is_Embeddings_Loaded():
-        cui_input, predicate_input, _, cui_outputs = model.Vectorize_Model_Inputs( cui_input, predicate_input, "", cui_outputs,
-                                                                                   pad_inputs = False, pad_output = True,
-                                                                                   model_type = model.Get_Model_Type() )
+        cui_input, predicate_input, _, cui_outputs = model.Encode_Model_Instance( cui_input, predicate_input, "", cui_outputs,
+                                                                                  pad_inputs = False, pad_output = True,
+                                                                                  model_type = model.Get_Model_Type() )
     elif model.Get_Network_Model() == "rumelhart" or model.Get_Network_Model() == "hinton":
-        cui_input, predicate_input, _, cui_outputs = model.Vectorize_Model_Inputs( cui_input, predicate_input, "", cui_outputs,
-                                                                                   pad_inputs = False, pad_output = True,
-                                                                                   model_type = model.Get_Model_Type() )
+        cui_input, predicate_input, _, cui_outputs = model.Encode_Model_Instance( cui_input, predicate_input, "", cui_outputs,
+                                                                                  pad_inputs = False, pad_output = True,
+                                                                                  model_type = model.Get_Model_Type() )
 
     print( "Prediction Inputs (Vectorized):"      )
     print( "         (CUI) ->", cui_input         )
@@ -80,7 +80,7 @@ def Main():
     if model.Get_Model_Type() == "open_discovery":
         model_prediction = model.Predict_Vector( cui_input, predicate_input, return_vector = True, return_raw_values = False )
         print( "Model Prediction Vector:", model_prediction )
-    # Print CLosed Discovery Prediction Vectors
+    # Print Closed Discovery Prediction Vectors
     else:
         for index in range( len( cui_input ) ):
             model_prediction = model.Predict_Vector( cui_input[index], predicate_input[index], return_vector = True, return_raw_values = False )

@@ -2,10 +2,10 @@
     "global_settings": [
         {
             "_comment": "Global Variable Settings",
-            "enable_gpu_polling": "True",
+            "enable_gpu_polling": "False",
             "acceptable_available_memory": 3000,
-            "device_name": "/gpu:0",
-            "number_of_iterations": 1
+            "device_name": "/gpu:6",
+            "number_of_iterations": 5
         }
     ],
     "train_1": [
@@ -31,7 +31,7 @@
             "learning_rate": 0.001,
             "batch_size": 256,
             "dropout": 0.1,
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ]

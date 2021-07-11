@@ -6,18 +6,19 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/02/2020                                                                   #
-#    Revised: 06/02/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
+#    Reduplicates Crichton, et al (2020) - CD-2 Model                                      #
 #                                                                                          #
 #    Expected Format:                                                                      #
-#         C001	TREATS	C002	C004	C009                                               #
-#         C001	ISA	    C003                                                               #
-#         C002	TREATS	C005	C006	C010                                               #
+#         C001	TREATS	C002	0.1                                                        #
+#         C001	ISA	    C003    0.9                                                        #
+#         C002	TREATS	C005	1.0                                                        #
 #         ...                                                                              #
-#         C004	ISA	    C010                                                               #
-#         C005	TREATS	C003	C004	C006                                               #
-#         C005	AFFECTS	C001	C009	C010                                               #
+#         C004	ISA	    C010    0.2                                                        #
+#         C005	TREATS	C003	0.0                                                        #
+#         C005	AFFECTS	C001	0.8                                                        #
 #                                                                                          #
 #    How To Run:                                                                           #
 #        See 'main.py' For Running Example. Execute Via:                                   #
@@ -73,8 +74,7 @@ else:
     from keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
 
 # Custom Modules
-from NNLBD.Models           import BaseModel
-from NNLBD.Models.BaseModel import Model_Saving_Callback
+from NNLBD.Models import BaseModel
 
 
 ############################################################################################
@@ -83,14 +83,14 @@ from NNLBD.Models.BaseModel import Model_Saving_Callback
 #                                                                                          #
 ############################################################################################
 
-class SimpleModel( BaseModel ):
-    def __init__( self, print_debug_log = False, write_log_to_file = False, network_model = "simple", model_type = "open_discovery",
+class CD2Model( BaseModel ):
+    def __init__( self, print_debug_log = False, write_log_to_file = False, network_model = "cd2", model_type = "open_discovery",
                   optimizer = 'adam', activation_function = 'softplus', loss_function = "binary_crossentropy", number_of_hidden_dimensions = 200,
                   number_of_embedding_dimensions = 200, learning_rate = 0.005, epochs = 30, momentum = 0.05, dropout = 0.5, batch_size = 32,
                   prediction_threshold = 0.5, shuffle = True, use_csr_format = True, per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0",
                   verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False, embedding_path = "", embedding_modification = "concatenate",
-                  final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
+                  final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001 ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           activation_function = activation_function, loss_function = loss_function, number_of_hidden_dimensions = number_of_hidden_dimensions,
                           prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, optimizer = optimizer,
@@ -100,9 +100,9 @@ class SimpleModel( BaseModel ):
                           enable_early_stopping = enable_early_stopping, early_stopping_metric_monitor = early_stopping_metric_monitor, batch_size = batch_size,
                           early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization, final_layer_type = final_layer_type,
                           trainable_weights = trainable_weights, embedding_path = embedding_path, embedding_modification = embedding_modification,
-                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
-        self.version       = 0.09
-        self.network_model = "simple"   # Force Setting Model To 'Simple' Model.
+                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay )
+        self.version       = 0.19
+        self.network_model = "cd2"   # Force Setting Model To 'CD2' Model.
 
 
     ############################################################################################
@@ -154,7 +154,7 @@ class SimpleModel( BaseModel ):
             Y_batch     = Y[batch_index,:].todense()
             counter     += 1
 
-            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+            if self.final_layer_type in ["mlp", "arcface", "sphereface"]:
                 yield [X_1_batch, X_2_batch, X_3_batch, Y_batch], Y_batch
             else:
                 yield [X_1_batch, X_2_batch, X_3_batch], Y_batch
@@ -209,14 +209,14 @@ class SimpleModel( BaseModel ):
             number_of_train_3_input_instances = len( train_input_3 )
             number_of_train_output_instances  = len( train_outputs )
 
-        self.Print_Log( "SimpleModel::Fit() - Model Training Settings" )
-        self.Print_Log( "                   - Epochs             : " + str( self.epochs            ) )
-        self.Print_Log( "                   - Batch Size         : " + str( self.batch_size        ) )
-        self.Print_Log( "                   - Verbose            : " + str( self.verbose           ) )
-        self.Print_Log( "                   - Shuffle            : " + str( self.shuffle           ) )
-        self.Print_Log( "                   - Use CSR Format     : " + str( self.use_csr_format    ) )
-        self.Print_Log( "                   - Per Epoch Saving   : " + str( self.per_epoch_saving  ) )
-        self.Print_Log( "                   - No. of Train Inputs: " + str( self.trained_instances ) )
+        self.Print_Log( "CD2Model::Fit() - Model Training Settings" )
+        self.Print_Log( "                - Epochs             : " + str( self.epochs            ) )
+        self.Print_Log( "                - Batch Size         : " + str( self.batch_size        ) )
+        self.Print_Log( "                - Verbose            : " + str( self.verbose           ) )
+        self.Print_Log( "                - Shuffle            : " + str( self.shuffle           ) )
+        self.Print_Log( "                - Use CSR Format     : " + str( self.use_csr_format    ) )
+        self.Print_Log( "                - Per Epoch Saving   : " + str( self.per_epoch_saving  ) )
+        self.Print_Log( "                - No. of Train Inputs: " + str( self.trained_instances ) )
 
         # Compute Number Of Steps Per Batch (Use CSR Format == True)
         steps_per_batch = 0
@@ -232,7 +232,7 @@ class SimpleModel( BaseModel ):
             self.callback_list.append( Model_Saving_Callback() )
 
         # Perform Model Training
-        self.Print_Log( "SimpleModel::Fit() - Executing Model Training", force_print = True )
+        self.Print_Log( "CD2Model::Fit() - Executing Model Training", force_print = True )
 
         with tf.device( self.device_name ):
             if self.use_csr_format:
@@ -247,14 +247,14 @@ class SimpleModel( BaseModel ):
             final_epoch = self.model_history.epoch[-1]
             history     = self.model_history.history
             self.Print_Log( "", force_print = True )
-            self.Print_Log( "SimpleModel::Final Training Metric(s) At Epoch: " + str( final_epoch ), force_print = True )
+            self.Print_Log( "CD2Model::Final Training Metric(s) At Epoch: " + str( final_epoch ), force_print = True )
 
             # Iterate Through Available Metrics And Print Their Formatted Values
             for metric in history.keys():
-                self.Print_Log( "SimpleModel::  - " + str( metric.capitalize() ) + ":\t{:.4f}" . format( history[metric][-1] ), force_print = True )
+                self.Print_Log( "CD2Model::  - " + str( metric.capitalize() ) + ":\t{:.4f}" . format( history[metric][-1] ), force_print = True )
 
-        self.Print_Log( "SimpleModel::Fit() - Finished Model Training", force_print = True )
-        self.Print_Log( "SimpleModel::Fit() - Complete" )
+        self.Print_Log( "CD2Model::Fit() - Finished Model Training", force_print = True )
+        self.Print_Log( "CD2Model::Fit() - Complete" )
 
     """
         Outputs Model's Prediction Vector Given Inputs
@@ -264,12 +264,12 @@ class SimpleModel( BaseModel ):
             secondary_input_vector : Vectorized Secondary Model Input (Numpy Array)
 
         Outputs:
-            prediction              : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
+            prediction             : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
     """
     def Predict( self, primary_input_vector, secondary_input_vector, tertiary_input_vector ):
-        self.Print_Log( "SimpleModel::Predict() - Predicting Using Input #1: " + str( primary_input_vector ) )
-        self.Print_Log( "SimpleModel::Predict() - Predicting Using Input #2: " + str( secondary_input_vector ) )
-        self.Print_Log( "SimpleModel::Predict() - Predicting Using Input #3: " + str( tertiary_input_vector ) )
+        self.Print_Log( "CD2Model::Predict() - Predicting Using Input #1: " + str( primary_input_vector ) )
+        self.Print_Log( "CD2Model::Predict() - Predicting Using Input #2: " + str( secondary_input_vector ) )
+        self.Print_Log( "CD2Model::Predict() - Predicting Using Input #3: " + str( tertiary_input_vector ) )
 
         with tf.device( self.device_name ):
             return self.model.predict( [primary_input_vector, secondary_input_vector, tertiary_input_vector] )
@@ -284,12 +284,12 @@ class SimpleModel( BaseModel ):
             Metrics        : Loss, Accuracy, Precision, Recall & F1-Score
     """
     def Evaluate( self, inputs_1, inputs_2, inputs_3, outputs, verbose ):
-        self.Print_Log( "SimpleModel::Evaluate() - Executing Model Evaluation" )
+        self.Print_Log( "CD2Model::Evaluate() - Executing Model Evaluation" )
 
         with tf.device( self.device_name ):
             loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs_1, inputs_2, inputs_3], outputs, verbose = verbose )
 
-            self.Print_Log( "SimpleModel::Evaluate() - Complete" )
+            self.Print_Log( "CD2Model::Evaluate() - Complete" )
 
             return loss, accuracy, precision, recall, f1_score
 
@@ -321,7 +321,7 @@ class SimpleModel( BaseModel ):
             None
     """
     def Build_Model( self, number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_train_3_inputs, number_of_hidden_dimensions, number_of_outputs,
-                     embeddings = [], sparse_mode = False, embedding_modification = "concatenate", weight_decay = 0.004 ):
+                     embeddings = [], embedding_modification = "concatenate", weight_decay = None ):
         # Store Model Values
         if number_of_features          != self.number_of_features:          self.number_of_features          = number_of_features
         if number_of_train_1_inputs    != self.number_of_primary_inputs:    self.number_of_primary_inputs    = number_of_train_1_inputs
@@ -330,26 +330,27 @@ class SimpleModel( BaseModel ):
         if number_of_hidden_dimensions != self.number_of_hidden_dimensions: self.number_of_hidden_dimensions = number_of_hidden_dimensions
         if number_of_outputs           != self.number_of_outputs:           self.number_of_outputs           = number_of_outputs
         if embedding_modification      != "concatenate":                    self.embedding_modification      = embedding_modification
+        if weight_decay                is not None:                         self.weight_decay                = weight_decay
 
 
-        self.Print_Log( "SimpleModel::Build_Model() - Model Settings" )
-        self.Print_Log( "                           - Network Model           : " + str( self.network_model               ) )
-        self.Print_Log( "                           - Sparse Mode             : " + str( sparse_mode                      ) )
-        self.Print_Log( "                           - Embedding Modification  : " + str( self.embedding_modification      ) )
-        self.Print_Log( "                           - Learning Rate           : " + str( self.learning_rate               ) )
-        self.Print_Log( "                           - Final Layer Type        : " + str( self.final_layer_type            ) )
-        self.Print_Log( "                           - Dropout                 : " + str( self.dropout                     ) )
-        self.Print_Log( "                           - Momentum                : " + str( self.momentum                    ) )
-        self.Print_Log( "                           - Optimizer               : " + str( self.optimizer                   ) )
-        self.Print_Log( "                           - Activation Function     : " + str( self.activation_function         ) )
-        self.Print_Log( "                           - Number Of Features      : " + str( self.number_of_features          ) )
-        self.Print_Log( "                           - No. of Primary Inputs   : " + str( self.number_of_primary_inputs    ) )
-        self.Print_Log( "                           - No. of Secondary Inputs : " + str( self.number_of_secondary_inputs  ) )
-        self.Print_Log( "                           - No. of Tertiary Inputs  : " + str( self.number_of_tertiary_inputs   ) )
-        self.Print_Log( "                           - No. of Hidden Dimensions: " + str( self.number_of_hidden_dimensions ) )
-        self.Print_Log( "                           - No. of Outputs          : " + str( self.number_of_outputs           ) )
-        self.Print_Log( "                           - Trainable Weights       : " + str( self.trainable_weights           ) )
-        self.Print_Log( "                           - Feature Scaling Value   : " + str( self.feature_scale_value         ) )
+        self.Print_Log( "CD2Model::Build_Model() - Model Settings" )
+        self.Print_Log( "                        - Network Model           : " + str( self.network_model               ) )
+        self.Print_Log( "                        - Embedding Modification  : " + str( self.embedding_modification      ) )
+        self.Print_Log( "                        - Learning Rate           : " + str( self.learning_rate               ) )
+        self.Print_Log( "                        - Final Layer Type        : " + str( self.final_layer_type            ) )
+        self.Print_Log( "                        - Dropout                 : " + str( self.dropout                     ) )
+        self.Print_Log( "                        - Momentum                : " + str( self.momentum                    ) )
+        self.Print_Log( "                        - Optimizer               : " + str( self.optimizer                   ) )
+        self.Print_Log( "                        - Weight Decay            : " + str( self.weight_decay                ) )
+        self.Print_Log( "                        - Activation Function     : " + str( self.activation_function         ) )
+        self.Print_Log( "                        - Number Of Features      : " + str( self.number_of_features          ) )
+        self.Print_Log( "                        - No. of Primary Inputs   : " + str( self.number_of_primary_inputs    ) )
+        self.Print_Log( "                        - No. of Secondary Inputs : " + str( self.number_of_secondary_inputs  ) )
+        self.Print_Log( "                        - No. of Tertiary Inputs  : " + str( self.number_of_tertiary_inputs   ) )
+        self.Print_Log( "                        - No. of Hidden Dimensions: " + str( self.number_of_hidden_dimensions ) )
+        self.Print_Log( "                        - No. of Outputs          : " + str( self.number_of_outputs           ) )
+        self.Print_Log( "                        - Trainable Weights       : " + str( self.trainable_weights           ) )
+        self.Print_Log( "                        - Feature Scaling Value   : " + str( self.feature_scale_value         ) )
 
         # Check(s)
         embedding_modification_list = ["average", "concatenate", "hadamard"]
@@ -360,10 +361,7 @@ class SimpleModel( BaseModel ):
             self.Print_Log( "                            - Specified Option: " + str( self.embedding_modification ), force_print = True )
             return
 
-        use_regularizer = False
-
-        if self.final_layer_type in [ "cosface", "arcface", "sphereface" ]:
-            use_regularizer = True
+        use_regularizer = True if self.final_layer_type in [ "cosface", "arcface", "sphereface" ] else False
 
         #######################
         #                     #
@@ -371,70 +369,38 @@ class SimpleModel( BaseModel ):
         #                     #
         #######################
 
-        primary_input_layer     = None
-        secondary_input_layer   = None
-        tertiary_input_layer    = None
-        cosface_input_layer     = None
+        primary_input_layer     = Input( shape = ( 1, ), name = "Localist_Concept_1_Input" )
+        secondary_input_layer   = Input( shape = ( 1, ), name = "Localist_Concept_2_Input" )
+        tertiary_input_layer    = Input( shape = ( 1, ), name = "Localist_Concept_3_Input" )
+        cosface_input_layer     = Input( shape = ( number_of_outputs, ), name = "Cosface_Input_Layer"  )
 
-        primary_flatten_layer   = None
-        secondary_flatten_layer = None
-        tertiary_flatten_layer  = None
-
-        primary_concept_layer   = None
-        secondary_concept_layer = None
-        tertiary_concept_layer  = None
-
-        embedding_input_layer   = None
-
-        if sparse_mode:
-            primary_input_layer     = Input( shape = ( number_of_train_1_inputs, ), name = "Localist_Concept_1_Input" )
-            secondary_input_layer   = Input( shape = ( number_of_train_2_inputs, ), name = "Localist_Concept_2_Input" )
-            tertiary_input_layer    = Input( shape = ( number_of_train_3_inputs, ), name = "Localist_Concept_3_Input" )
-            cosface_input_layer     = Input( shape = ( number_of_outputs,        ), name = "Cosface_Input_Layer"      )
-
-            primary_concept_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_train_1_inputs, activation = 'relu', name = 'Internal_Distributed_Concept_1_Representation' )( primary_input_layer   )
-            secondary_concept_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_train_2_inputs, activation = 'relu', name = 'Internal_Distributed_Concept_2_Representation' )( secondary_input_layer )
-            tertiary_concept_layer  = Dense( units = number_of_hidden_dimensions, input_dim = number_of_train_3_inputs, activation = 'relu', name = 'Internal_Distributed_Concept_3_Representation' )( tertiary_input_layer  )
-
-            if self.embedding_modification == "average":
-                embedding_input_layer   = Average( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_concept_layer, secondary_concept_layer, tertiary_concept_layer] )
-            elif self.embedding_modification == "hadamard":
-                embedding_input_layer   = Multiply( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_concept_layer, secondary_concept_layer, tertiary_concept_layer] )
-            else:
-                embedding_input_layer   = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer, tertiary_concept_layer] )
+        # Add Embeddings Or Embeddings Initialized As Random Weights
+        if len( embeddings ) > 0:
+            embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer',   weights = [embeddings], trainable = self.trainable_weights )( primary_input_layer   )
+            embedding_layer_2   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( secondary_input_layer )
+            embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer',  weights = [embeddings], trainable = self.trainable_weights )( tertiary_input_layer  )
         else:
-            primary_input_layer     = Input( shape = ( 1, ), name = "Localist_Concept_1_Input" )
-            secondary_input_layer   = Input( shape = ( 1, ), name = "Localist_Concept_2_Input" )
-            tertiary_input_layer    = Input( shape = ( 1, ), name = "Localist_Concept_3_Input" )
-            cosface_input_layer     = Input( shape = ( number_of_outputs, ), name = "Cosface_Input_Layer"  )
+            embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer',   trainable = self.trainable_weights )( primary_input_layer   )
+            embedding_layer_2   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
+            embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer',  trainable = self.trainable_weights )( tertiary_input_layer  )
 
-            # Add Embeddings Or Embeddings Initialized As Random Weights
-            if len( embeddings ) > 0:
-                embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer',   weights = [embeddings], trainable = self.trainable_weights )( primary_input_layer   )
-                embedding_layer_2   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( secondary_input_layer )
-                embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer',  weights = [embeddings], trainable = self.trainable_weights )( tertiary_input_layer  )
-            else:
-                embedding_layer_1   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer',   trainable = self.trainable_weights )( primary_input_layer   )
-                embedding_layer_2   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
-                embedding_layer_3   = Embedding( number_of_features, number_of_hidden_dimensions, input_length = 1, name = 'Tertiary_Concept_Embedding_Layer',  trainable = self.trainable_weights )( tertiary_input_layer  )
+        primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction"   )( embedding_layer_1 )
+        secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( embedding_layer_2 )
+        tertiary_flatten_layer  = Flatten( name = "Tertiary_Embedding_Dimensionality_Reduction"  )( embedding_layer_3 )
 
-            primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction"   )( embedding_layer_1 )
-            secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( embedding_layer_2 )
-            tertiary_flatten_layer  = Flatten( name = "Tertiary_Embedding_Dimensionality_Reduction"  )( embedding_layer_3 )
+        # Perform Feature Scaling Prior To Generating An Embedding Representation
+        if self.feature_scale_value != 1.0:
+            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer   )
+            secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
+            tertiary_flatten_layer  = Lambda( lambda x: x * feature_scale_value )( tertiary_flatten_layer  )
 
-            # Perform Feature Scaling Prior To Generating An Embedding Representation
-            if self.feature_scale_value != 1.0:
-                feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
-                primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer   )
-                secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
-                tertiary_flatten_layer  = Lambda( lambda x: x * feature_scale_value )( tertiary_flatten_layer  )
-
-            if self.embedding_modification == "average":
-                embedding_input_layer = Average( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer, tertiary_flatten_layer] )
-            elif self.embedding_modification == "hadamard":
-                embedding_input_layer = Multiply( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer, tertiary_flatten_layer] )
-            else:
-                embedding_input_layer = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_flatten_layer, secondary_flatten_layer, tertiary_flatten_layer] )
+        if self.embedding_modification == "average":
+            embedding_input_layer = Average( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer, tertiary_flatten_layer] )
+        elif self.embedding_modification == "hadamard":
+            embedding_input_layer = Multiply( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer, tertiary_flatten_layer] )
+        else:
+            embedding_input_layer = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_flatten_layer, secondary_flatten_layer, tertiary_flatten_layer] )
 
         dense_layer       = None
         batch_norm_layer  = None
@@ -451,7 +417,7 @@ class SimpleModel( BaseModel ):
 
             if use_regularizer:
                 final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
-                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( weight_decay ) )( dropout_layer )
+                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
             else:
                 final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
 
@@ -462,31 +428,15 @@ class SimpleModel( BaseModel ):
 
             if use_regularizer:
                 final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
-                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( weight_decay ) )( dropout_layer )
+                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
             else:
                 final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
 
-        # Final Model Output Used For Prediction
-        if self.use_batch_normalization:
-            if self.final_layer_type == "arcface":
-                output_layer = BaseModel.ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
-            elif self.final_layer_type == "sphereface":
-                output_layer = BaseModel.SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
-            elif self.final_layer_type == "cosface":
-                output_layer = BaseModel.CosFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
-            else:
-                output_layer = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( batch_norm_layer )
-        else:
-            if self.final_layer_type == "arcface":
-                output_layer = BaseModel.ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            elif self.final_layer_type == "sphereface":
-                output_layer = BaseModel.SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            elif self.final_layer_type == "cosface":
-                output_layer = BaseModel.CosFace( number_of_outputs, margin = self.margin, scale = self.scale, regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            else:
-                output_layer = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( final_dense_layer )
+        # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
+        output_layer          = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
+                                                               batch_norm_layer = batch_norm_layer, final_dense_layer = final_dense_layer )
 
-        if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+        if self.final_layer_type in ["mlp", "arcface", "sphereface"]:
             self.model = Model( inputs = [primary_input_layer, secondary_input_layer, tertiary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
         else:
             self.model = Model( inputs = [primary_input_layer, secondary_input_layer, tertiary_input_layer], outputs = output_layer, name = self.network_model + "_model" )
@@ -499,15 +449,15 @@ class SimpleModel( BaseModel ):
             self.model.compile( loss = self.loss_function, optimizer = sgd, metrics = [ 'accuracy', super().Precision, super().Recall, super().F1_Score ] )
 
         # Print Model Summary
-        self.Print_Log( "SimpleModel::Build_Model() - =========================================================" )
-        self.Print_Log( "SimpleModel::Build_Model() - =                     Model Summary                     =" )
-        self.Print_Log( "SimpleModel::Build_Model() - =========================================================" )
+        self.Print_Log( "CD2Model::Build_Model() - =========================================================" )
+        self.Print_Log( "CD2Model::Build_Model() - =                     Model Summary                     =" )
+        self.Print_Log( "CD2Model::Build_Model() - =========================================================" )
 
-        self.model.summary( print_fn = lambda x:  self.Print_Log( "SimpleModel::Build_Model() - " + str( x ) ) )      # Capture Model.Summary()'s Print Output As A Function And Store In Variable 'x'
+        self.model.summary( print_fn = lambda x:  self.Print_Log( "CD2Model::Build_Model() - " + str( x ) ) )      # Capture Model.Summary()'s Print Output As A Function And Store In Variable 'x'
 
-        self.Print_Log( "SimpleModel::Build_Model() - =========================================================" )
-        self.Print_Log( "SimpleModel::Build_Model() - =                                                       =" )
-        self.Print_Log( "SimpleModel::Build_Model() - =========================================================" )
+        self.Print_Log( "CD2Model::Build_Model() - =========================================================" )
+        self.Print_Log( "CD2Model::Build_Model() - =                                                       =" )
+        self.Print_Log( "CD2Model::Build_Model() - =========================================================" )
 
 
     ############################################################################################
@@ -535,8 +485,8 @@ class SimpleModel( BaseModel ):
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
     print( "     Example Code Below:\n" )
-    print( "     from models import SimpleModel\n" )
-    print( "     model = SimpleModel( network_model = \"simple\", print_debug_log = True," )
-    print( "                          per_epoch_saving = False, use_csr_format = False )" )
+    print( "     from NNLBD.Models import CD2Model\n" )
+    print( "     model = CD2Model( network_model = \"cd2\", print_debug_log = True," )
+    print( "                       per_epoch_saving = False, use_csr_format = False )" )
     print( "     model.Fit( \"data/cui_mini\", epochs = 30, batch_size = 4, verbose = 1 )" )
     exit()

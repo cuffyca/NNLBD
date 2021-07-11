@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    08/05/2020                                                                   #
-#    Revised: 06/02/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -74,9 +74,7 @@ else:
     from keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
 
 # Custom Modules
-from NNLBD.Models           import BaseModel
-from NNLBD.Misc             import Utils
-from NNLBD.Models.BaseModel import Model_Saving_Callback
+from NNLBD.Models import BaseModel
 
 
 ############################################################################################
@@ -92,7 +90,7 @@ class RumelhartHintonModel( BaseModel ):
                   prediction_threshold = 0.5, shuffle = True, use_csr_format = True, per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0",
                   verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False, embedding_path = "", final_layer_type = "dense",
-                  feature_scale_value = 1.0, learning_rate_decay = 0.004, embedding_modification = "concatenate" ):
+                  feature_scale_value = 1.0, learning_rate_decay = 0.004, embedding_modification = "concatenate", weight_decay = 0.0001 ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format,
                           optimizer = optimizer, activation_function = activation_function, loss_function = loss_function, momentum = momentum,
@@ -102,9 +100,9 @@ class RumelhartHintonModel( BaseModel ):
                           enable_early_stopping = enable_early_stopping, early_stopping_metric_monitor = early_stopping_metric_monitor,
                           early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization,
                           trainable_weights = trainable_weights, embedding_path = embedding_path, final_layer_type = final_layer_type,
-                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
+                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay,
                           embedding_modification = embedding_modification )
-        self.version       = 0.28
+        self.version       = 0.29
 
         # Check(s) - Set Default Parameters If Not Specified
         self.network_model = "hinton" if self.network_model != "hinton" and self.network_model != "rumelhart" else self.network_model
@@ -156,11 +154,16 @@ class RumelhartHintonModel( BaseModel ):
             batch_index = sample_index[start_index:end_index]
             X_1_batch   = X_1[batch_index,:].todense()
             X_2_batch   = X_2[batch_index,:].todense()
-            Y_batch     = Y[batch_index,:].todense()
-
+            Y_input     = Y[batch_index,:].todense()
+            Y_output    = Y_input
             counter     += 1
 
-            yield [X_1_batch, X_2_batch], Y_batch
+            # CosFace, ArcFace & SphereFae Final Layers
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                yield [X_1_batch, X_2_batch, Y_input], Y_output
+            # Dense Final Layer
+            else:
+                yield [X_1_batch, X_2_batch], Y_output
 
             # Reset The Batch Index After Final Batch Has Been Reached
             if counter == steps_per_batch:
@@ -199,6 +202,9 @@ class RumelhartHintonModel( BaseModel ):
         if use_csr_format   != True:  self.Set_Use_CSR_Format( use_csr_format )
         if per_epoch_saving != False: self.Set_Per_Epoch_Saving( per_epoch_saving )
 
+        # Add Model Callback Functions
+        super().Fit()
+
         if self.use_csr_format:
             self.trained_instances            = train_input_1.shape[0]
             number_of_train_1_input_instances = train_input_1.shape[0]
@@ -227,11 +233,6 @@ class RumelhartHintonModel( BaseModel ):
         else:
             steps_per_batch = self.trained_instances // self.batch_size if self.trained_instances % self.batch_size == 0 else self.trained_instances // self.batch_size + 1
 
-        # Setup Saving The Model After Each Epoch
-        if self.per_epoch_saving:
-            self.Print_Log( "                            - Adding Model Saving Callback" )
-            self.callback_list.append( Model_Saving_Callback() )
-
         # Perform Model Training
         self.Print_Log( "RumelhartHintonModel::Fit() - Executing Model Training", force_print = True )
 
@@ -240,8 +241,14 @@ class RumelhartHintonModel( BaseModel ):
                 self.model_history = self.model.fit_generator( generator = self.Batch_Generator( train_input_1, train_input_2, train_outputs, batch_size = self.batch_size, steps_per_batch = steps_per_batch, shuffle = self.shuffle ),
                                                                epochs = self.epochs, steps_per_epoch = steps_per_batch, verbose = self.verbose, callbacks = self.callback_list )
             else:
-                self.model_history = self.model.fit( [train_input_1, train_input_2], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
-                                                     epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # CosFace, ArcFace & SphereFae Final Layers
+                if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                    self.model_history = self.model.fit( [train_input_1, train_input_2, train_outputs], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # Dense Final Layer
+                else:
+                    self.model_history = self.model.fit( [train_input_1, train_input_2], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
 
         # Print Last Epoch Metrics
         if self.verbose == False:
@@ -272,7 +279,12 @@ class RumelhartHintonModel( BaseModel ):
         self.Print_Log( "RumelhartHintonModel::Predict() - Predicting Using Input #2: " + str( secondary_input_vector ) )
 
         with tf.device( self.device_name ):
-            return self.model.predict( [primary_input_vector, secondary_input_vector] )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                # Give The Network False Output Instance Since They're Not Used For Inference Anyway
+                outputs = np.zeros( ( primary_input_vector.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                return self.model.predict( [primary_input_vector, secondary_input_vector, outputs] )
+            else:
+                return self.model.predict( [primary_input_vector, secondary_input_vector] )
 
     """
         Evaluates Model's Ability To Predict Evaluation Data
@@ -287,7 +299,10 @@ class RumelhartHintonModel( BaseModel ):
         self.Print_Log( "RumelhartHintonModel::Evaluate() - Executing Model Evaluation" )
 
         with tf.device( self.device_name ):
-            loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs_1, inputs_2], outputs, verbose = verbose )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs_1, inputs_2, outputs], outputs, verbose = verbose )
+            else:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs_1, inputs_2], outputs, verbose = verbose )
 
             self.Print_Log( "RumelhartHintonModel::Evaluate() - Complete" )
 
@@ -321,22 +336,27 @@ class RumelhartHintonModel( BaseModel ):
             None
     """
     def Build_Model( self, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions, number_of_outputs,
-                     number_of_primary_embeddings = 0, number_of_secondary_embeddings = 0, primary_embeddings = [], secondary_embeddings = [], sparse_mode = False ):
+                     number_of_primary_embeddings = 0, number_of_secondary_embeddings = 0, primary_embeddings = [], secondary_embeddings = [],
+                     embedding_modification = None, final_layer_type = None, weight_decay = None ):
         # Update 'BaseModel' Class Variables
         if number_of_train_1_inputs       != self.number_of_primary_inputs       : self.number_of_primary_inputs       = number_of_train_1_inputs
         if number_of_train_2_inputs       != self.number_of_secondary_inputs     : self.number_of_secondary_inputs     = number_of_train_2_inputs
         if number_of_hidden_dimensions    != self.number_of_hidden_dimensions    : self.number_of_hidden_dimensions    = number_of_hidden_dimensions
         if number_of_outputs              != self.number_of_outputs              : self.number_of_outputs              = number_of_outputs
+        if embedding_modification is not None: self.embedding_modification = embedding_modification
+        if final_layer_type       is not None: self.final_layer_type       = final_layer_type
+        if weight_decay           is not None: self.weight_decay           = weight_decay
 
         self.Print_Log( "RumelhartHintonModel::Build_Model() - Model Settings" )
         self.Print_Log( "                                    - Network Model             : " + str( self.network_model                  ) )
-        self.Print_Log( "                                    - Sparse Mode               : " + str( sparse_mode                         ) )
         self.Print_Log( "                                    - Embedding Modification    : " + str( self.embedding_modification         ) )
+        self.Print_Log( "                                    - Final Layer Type          : " + str( self.final_layer_type               ) )
         self.Print_Log( "                                    - Learning Rate             : " + str( self.learning_rate                  ) )
         self.Print_Log( "                                    - Dropout                   : " + str( self.dropout                        ) )
         self.Print_Log( "                                    - Momentum                  : " + str( self.momentum                       ) )
         self.Print_Log( "                                    - Optimizer                 : " + str( self.optimizer                      ) )
         self.Print_Log( "                                    - Activation Function       : " + str( self.activation_function            ) )
+        self.Print_Log( "                                    - Weight Decay              : " + str( self.weight_decay                   ) )
         self.Print_Log( "                                    - # Of Primary Embeddings   : " + str( number_of_primary_embeddings        ) )
         self.Print_Log( "                                    - # Of Secondary Embeddings : " + str( number_of_secondary_embeddings      ) )
         self.Print_Log( "                                    - No. of Primary Inputs     : " + str( self.number_of_primary_inputs       ) )
@@ -349,11 +369,19 @@ class RumelhartHintonModel( BaseModel ):
         # Check(s)
         embedding_modification_list = ["average", "concatenate", "hadamard"]
 
+        if self.final_layer_type not in self.final_layer_type_list:
+            self.Print_Log( "RumelhartHintonModel::Build_Model() - Error: Invalid Final Layer Type", force_print = True )
+            self.Print_Log( "                                    - Options: " + str( self.final_layer_type_list ), force_print = True )
+            self.Print_Log( "                                    - Specified Option: " + str( self.final_layer_type ), force_print = True )
+            return
+
         if self.embedding_modification not in embedding_modification_list:
             self.Print_Log( "RumelhartHintonModel::Build_Model() - Error: Invalid Embedding Modification Type", force_print = True )
             self.Print_Log( "                                    - Options: " + str( embedding_modification_list ), force_print = True )
             self.Print_Log( "                                    - Specified Option: " + str( self.embedding_modification ), force_print = True )
             return
+
+        use_regularizer = True if self.final_layer_type in [ "cosface", "arcface", "sphereface" ] else False
 
         #######################
         #                     #
@@ -361,77 +389,57 @@ class RumelhartHintonModel( BaseModel ):
         #                     #
         #######################
 
-        primary_input_layer           = None
-        primary_flatten_layer         = None
-        primary_concept_layer         = None
-        secondary_input_layer         = None
-        secondary_concept_layer       = None
-        distributed_concept_layer     = None
-        distributed_concept_layer_dim = 0
+        primary_input_layer     = Input( shape = ( 1, ), name = "Localist_Concept_Input"  )
+        secondary_input_layer   = Input( shape = ( 1, ), name = "Localist_Relation_Input" )
+        cosface_input_layer     = Input( shape = ( number_of_outputs, ), name = "CosFace_Input" )
 
-        if sparse_mode:
-            primary_input_layer     = Input( shape = ( number_of_train_1_inputs, ), name = "Localist_Concept_Input"  )
-            secondary_input_layer   = Input( shape = ( number_of_train_2_inputs, ), name = "Localist_Relation_Input" )
-            primary_concept_layer   = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_train_1_inputs, name = 'Internal_Distributed_Concept_Representation' )( primary_input_layer )
-
-            if self.network_model == "hinton":
-                secondary_concept_layer = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_train_2_inputs, name = 'Internal_Distributed_Relation_Representation' )( secondary_input_layer )
-                distributed_concept_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
-                distributed_concept_layer_dim   = number_of_hidden_dimensions * 2
-            elif self.network_model == "rumelhart":
-                distributed_concept_layer       = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_input_layer] )
-                distributed_concept_layer_dim   = number_of_hidden_dimensions + number_of_train_2_inputs
+        # Add Primary Embeddings Or Initialize Primary Embeddings As Random Weights
+        if len( primary_embeddings ) > 0:
+            embedding_layer     = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', weights = [primary_embeddings], trainable = self.trainable_weights )( primary_input_layer )
         else:
-            primary_input_layer     = Input( shape = ( 1, ), name = "Localist_Concept_Input"  )
-            secondary_input_layer   = Input( shape = ( 1, ), name = "Localist_Relation_Input" )
+            embedding_layer     = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', trainable = self.trainable_weights )( primary_input_layer )
 
-            # Add Primary Embeddings Or Initialize Primary Embeddings As Random Weights
-            if len( primary_embeddings ) > 0:
-                embedding_layer     = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', weights = [primary_embeddings], trainable = self.trainable_weights )( primary_input_layer )
+        primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction" )( embedding_layer )
+
+        # Perform Feature Scaling On Embedding Representation (Selected Primary Embedding)
+        if self.feature_scale_value != 1.0:
+            feature_scale_value   = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            primary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer )
+
+        primary_concept_layer   = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Concept_Representation' )( primary_flatten_layer )
+
+        # Add Secondary Embeddings Or Initialize Secondary Embeddings As Random Weights
+        if len( secondary_embeddings ) > 0:
+            embedding_layer_2   = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [secondary_embeddings], trainable = self.trainable_weights )( secondary_input_layer )
+        else:
+            embedding_layer_2   = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
+
+        secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( embedding_layer_2 )
+
+        # Perform Feature Scaling On Embedding Representation (Selected Secondary Embedding)
+        if self.feature_scale_value != 1.0:
+            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
+
+        # Perform Embedding Modification Based On User-Specified Setting 'self.embedding_modification'
+        if self.network_model == "hinton":
+            secondary_concept_layer = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Relation_Representation' )( secondary_flatten_layer )
+
+            if self.embedding_modification == "average":
+                distributed_concept_layer = Average( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
+            elif self.embedding_modification == "hadamard":
+                distributed_concept_layer = Multiply( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
             else:
-                embedding_layer     = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', trainable = self.trainable_weights )( primary_input_layer )
-
-            primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction" )( embedding_layer )
-
-            # Perform Feature Scaling On Embedding Representation (Selected Primary Embedding)
-            if self.feature_scale_value != 1.0:
-                feature_scale_value   = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
-                primary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer )
-
-            primary_concept_layer   = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Concept_Representation' )( primary_flatten_layer )
-
-            # Add Secondary Embeddings Or Initialize Secondary Embeddings As Random Weights
-            if len( secondary_embeddings ) > 0:
-                embedding_layer_2   = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [secondary_embeddings], trainable = self.trainable_weights )( secondary_input_layer )
+                distributed_concept_layer = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
+        elif self.network_model == "rumelhart":
+            if self.embedding_modification == "average":
+                distributed_concept_layer = Average( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_flatten_layer] )
+            elif self.embedding_modification == "hadamard":
+                distributed_concept_layer = Multiply( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_flatten_layer] )
             else:
-                embedding_layer_2   = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
+                distributed_concept_layer = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_flatten_layer] )
 
-            secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( embedding_layer_2 )
-
-            # Perform Feature Scaling On Embedding Representation (Selected Secondary Embedding)
-            if self.feature_scale_value != 1.0:
-                feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
-                secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
-
-            # Perform Embedding Modification Based On User-Specified Setting 'self.embedding_modification'
-            if self.network_model == "hinton":
-                secondary_concept_layer = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Relation_Representation' )( secondary_flatten_layer )
-
-                if self.embedding_modification == "average":
-                    distributed_concept_layer = Average( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
-                elif self.embedding_modification == "hadamard":
-                    distributed_concept_layer = Multiply( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
-                else:
-                    distributed_concept_layer = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
-            elif self.network_model == "rumelhart":
-                if self.embedding_modification == "average":
-                    distributed_concept_layer = Average( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_flatten_layer] )
-                elif self.embedding_modification == "hadamard":
-                    distributed_concept_layer = Multiply( name = "Internal_Distributed_Proposition_Representation_Input" )( [primary_concept_layer, secondary_flatten_layer] )
-                else:
-                    distributed_concept_layer = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_flatten_layer] )
-
-            distributed_concept_layer_dim = number_of_hidden_dimensions * 2 if self.embedding_modification == "concatenate" else number_of_hidden_dimensions
+        distributed_concept_layer_dim = number_of_hidden_dimensions * 2 if self.embedding_modification == "concatenate" else number_of_hidden_dimensions
 
         dense_layer       = None
         batch_norm_layer  = None
@@ -444,31 +452,45 @@ class RumelhartHintonModel( BaseModel ):
                 dense_layer         = Dense( units = number_of_hidden_dimensions, input_dim = distributed_concept_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
                 batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_1" )( dense_layer )
                 dropout_layer       = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
-                final_dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation', use_bias = True )( dropout_layer )
+
+                if use_regularizer:
+                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                               kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                else:
+                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+
                 batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_2" )( final_dense_layer )
             elif self.network_model == "rumelhart":
-                dense_layer         = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation', use_bias = False )( dropout_layer )
+                if use_regularizer:
+                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Relation_Representation',
+                                             kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                else:
+                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation' )( dropout_layer )
         else:
             if self.network_model == "hinton":
                 dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = distributed_concept_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
                 dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation', use_bias = True )( dropout_layer )
+
+                if use_regularizer:
+                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                               kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                else:
+                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+
             elif self.network_model == "rumelhart":
-                dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation', use_bias = False )( dropout_layer )
+                if use_regularizer:
+                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Relation_Representation',
+                                             kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                else:
+                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation' )( dropout_layer )
 
         # Final Model Output Used For Prediction
-        if self.use_batch_normalization:
-            if self.network_model == "hinton":
-                output_layer      = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( batch_norm_layer )
-            elif self.network_model == "rumelhart":
-                output_layer      = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( dense_layer )
-        else:
-            if self.network_model == "hinton":
-                output_layer      = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( final_dense_layer )
-            elif self.network_model == "rumelhart":
-                output_layer      = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( dense_layer )
+        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, batch_norm_layer = batch_norm_layer, final_dense_layer = dense_layer )
 
-        self.model = Model( inputs = [primary_input_layer, secondary_input_layer], outputs = output_layer, name = self.network_model + "_model" )
+        if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+            self.model = Model( inputs = [primary_input_layer, secondary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
+        else:
+            self.model = Model( inputs = [primary_input_layer, secondary_input_layer], outputs = output_layer, name = self.network_model + "_model" )
 
         if self.optimizer == "adam":
             adam_opt = optimizers.Adam( lr = self.learning_rate )
@@ -514,7 +536,7 @@ class RumelhartHintonModel( BaseModel ):
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
     print( "     Example Code Below:\n" )
-    print( "     from models import RumelhartHintonModel\n" )
+    print( "     from NNLBD.Models import RumelhartHintonModel\n" )
     print( "     model = RumelhartHintonModel( network_model = \"hinton\", print_debug_log = True," )
     print( "                                per_epoch_saving = False, use_csr_format = False )" )
     print( "     model.Fit( \"data/cui_mini\", epochs = 30, batch_size = 4, verbose = 1 )" )

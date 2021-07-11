@@ -31,15 +31,15 @@ from NNLBD import LBD
 
 def Main():
     # Create Model With Default Settings Except Those Listed Below
-    model = LBD( network_model = "simple", model_type = "closed_discovery", activation_function = "relu",
+    model = LBD( network_model = "cd2", model_type = "closed_discovery", activation_function = "relu",
                  print_debug_log = False, write_log_to_file = False, per_epoch_saving = False,
                  use_csr_format = True, use_gpu = True, enable_early_stopping = False, loss_function = "sparse_categorical_crossentropy",
-                 early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, dropout = 0.0, final_layer_type = "cosface",
+                 early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, dropout = 0.0, final_layer_type = "mlp",
                  use_batch_normalization = False, trainable_weights = False, embedding_path = "../vectors/crichton_orig/test_modified_cs1.reduced_embeddings" )
 
     # model.Get_Data_Loader().Read_Data( "../data/train_cs1_closed_discovery_without_aggregators_original_test" )
     # model.Get_Data_Loader().Load_Embeddings( "../vectors/test_modified_cs1.reduced_embeddings" )
-    # model.Get_Data_Loader().Generate_Token_IDs( separate_ids_by_input_type = False )
+    # model.Get_Data_Loader().Generate_Token_IDs( restrict_outputs = False )
     # input_1, input_2, input_3, outputs = model.Get_Data_Loader().Vectorize_Model_Inputs( "MESH:C116288", "MESH:D005354", "CHEBI:29108", "0.00036253776435",
     #                                                                         is_crichton_format = True, pad_inputs = False, model_type = model.Get_Model_Type() )
     #

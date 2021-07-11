@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 06/21/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -137,6 +137,19 @@ class NNLBD_Driver:
         plt.clf()
 
     """
+        Prints Model Metrics To File
+    """
+    def Generate_Model_Metric_File( self, file_path, metric_list ):
+        file_path = re.sub( r'\\+', "/", file_path )
+        if not re.search( r'\/$|\\$', file_path ): file_path += "/"
+
+        metric_file_path = file_path + "model_metrics.txt"
+
+        with open( metric_file_path, "w" ) as file_handle:
+            file_handle.writelines( metric_list )
+            file_handle.close()
+
+    """
         Run Extracted Experiment Setups From JSON Data
     """
     def Run_Experiments( self, json_dict = None ):
@@ -152,7 +165,7 @@ class NNLBD_Driver:
         early_stopping_metric_monitor, early_stopping_persistence, use_batch_normalization          = "loss", 3, False
         embedding_modification, skip_out_of_vocabulary_words, eval_data_path, checkpoint_directory  = "concatenate", True, "", "ckpt_models"
         model_save_path, model_load_path, set_per_iteration_model_path, learning_rate_decay         = "", "", False, 0.004
-        feature_scale_value, separate_ids_by_input_type                                             = 1.0, False
+        feature_scale_value, restrict_outputs                                                       = 1.0, False
 
         # Model Variables
         run_eval_number_epoch = 1
@@ -182,7 +195,7 @@ class NNLBD_Driver:
                 if "enable_early_stopping"         in run_dict: enable_early_stopping         = True if run_dict["enable_early_stopping"]        == "True" else False
                 if "use_batch_normalization"       in run_dict: use_batch_normalization       = True if run_dict["use_batch_normalization"]      == "True" else False
                 if "set_per_iteration_model_path"  in run_dict: set_per_iteration_model_path  = True if run_dict["set_per_iteration_model_path"] == "True" else False
-                if "separate_ids_by_input_type"    in run_dict: separate_ids_by_input_type    = True if run_dict["separate_ids_by_input_type"]   == "True" else False
+                if "restrict_outputs"              in run_dict: restrict_outputs              = True if run_dict["restrict_outputs"]             == "True" else False
                 if "network_model"                 in run_dict: network_model                 = run_dict["network_model"]
                 if "model_type"                    in run_dict: model_type                    = run_dict["model_type"]
                 if "activation_function"           in run_dict: activation_function           = run_dict["activation_function"]
@@ -237,7 +250,7 @@ class NNLBD_Driver:
                              margin = margin, scale = scale, enable_early_stopping = enable_early_stopping,  early_stopping_metric_monitor = early_stopping_metric_monitor,
                              use_batch_normalization = use_batch_normalization, embedding_modification = embedding_modification,  enable_tensorboard_logs = enable_tensorboard_logs,
                              early_stopping_persistence = early_stopping_persistence, skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, learning_rate_decay = learning_rate_decay,
-                             feature_scale_value = feature_scale_value, separate_ids_by_input_type = separate_ids_by_input_type )
+                             feature_scale_value = feature_scale_value, restrict_outputs = restrict_outputs )
 
                 ######################################################
                 # Determine What Type Of Experiment Will Be Executed #
@@ -333,7 +346,7 @@ class NNLBD_Driver:
                             model.Save_Model( model_save_path )
                             model.Generate_Model_Metric_Plots( model_save_path )
 
-                # Run Crichton Closed Discovery Train And Eval - (Simple Model)
+                # Run Crichton Closed Discovery Train And Eval - (CD2 Model)
                 elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
@@ -349,7 +362,7 @@ class NNLBD_Driver:
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
 
-                # Run Crichton Closed Discovery Refine And Eval - (Simple Model Refinement)
+                # Run Crichton Closed Discovery Refine And Eval - (CD2 Model Refinement)
                 elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
@@ -377,7 +390,7 @@ class NNLBD_Driver:
                     else:
                         print( "Error: Unable To Load Model To Refine / No Model Path Specified" )
 
-                # Run Closed Discovery Train And Eval - (All Models Except 'Simple' Model)
+                # Run Closed Discovery Train And Eval - (All Models Except 'CD2' Model)
                 elif re.match( r"^[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
@@ -396,7 +409,7 @@ class NNLBD_Driver:
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
 
-                # Run Closed Discovery Refine And Eval - (All Models Except 'Simple' Model)
+                # Run Closed Discovery Refine And Eval - (All Models Except 'CD2' Model)
                 elif re.match( r"^[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
                         print( " Error: No Gold B Instance Defined" )
@@ -486,7 +499,7 @@ class NNLBD_Driver:
     #                                                                                          #
     ############################################################################################
 
-    ''' Reduplicates Crichton's Proposed MLP Closed Discovery Model
+    ''' Reduplicates Crichton's Proposed MLP Closed Discovery CD-2 Model
         This Is Intended To Be Utilized With Their CS1-CS5 Closed Discovery Data-sets '''
     def Crichton_Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
                                                   train_data_path, eval_data_path, model_save_path, embedding_path, gold_b_instance ):
@@ -699,23 +712,32 @@ class NNLBD_Driver:
         eval_ranking_per_epoch        = []
         eval_ranking_per_epoch_value  = []
         eval_number_of_ties_per_epoch = []
+        model_metrics                 = []
 
         # Load Evaluation Data (Use Temporary Data Loader / Outside Of Model's Data Loader)
         if eval_data_path != "":
+            # Set 'restrict_outputs = True'. This Implies The DataLoader Will Only Fetch The Unique B Concepts
+            #   From The Evaluation Data. This Simulates The Crichton Approach For A Direct Comparison Against Their Results.
             eval_data_loader = StdDataLoader( skip_out_of_vocabulary_words = model.Get_Data_Loader().Get_Skip_Out_Of_Vocabulary_Words(),
-                                              separate_ids_by_input_type = model.Get_Data_Loader().Get_Separate_IDs_By_Input_Type() )
+                                              restrict_outputs = True )
             eval_data_loader.Read_Data( eval_data_path )
             eval_data_loader.Load_Embeddings( embedding_path )
             eval_data_loader.Generate_Token_IDs()
 
             # Closed Discovery Substitutes B Concepts (Secondary ID Dictionary) For Output
             #   So We Must Grab The Secondary ID Dictionary Concepts To Evaluate Against.
-            if eval_data_loader.Get_Separate_IDs_By_Input_Type():
-                eval_token_list = eval_data_loader.Get_Secondary_ID_Dictionary().keys()
-            else:
-                eval_token_list = eval_data_loader.Get_Token_ID_Dictionary().keys()
+            eval_token_list = eval_data_loader.Get_Secondary_ID_Dictionary().keys()
 
+            # Clear Data From DataLoader
             eval_data_loader.Clear_Data()
+
+            # Add Header Informatio To Model Metric List
+            model_metrics.append( "Epoch\tGold B\tRank\t# Of Ties\tScore\t# Of B Terms\tEval Rank\t# Of Ties" +
+                                  "\tScore\t# Of Eval B Terms\tLoss\tAccuracy\tPrecision\tRecall\tF1_Score\n" )
+        else:
+            # Add Header Informatio To Model Metric List
+            model_metrics.append( "Epoch\tGold B\tRank\t# Of Ties\tScore\t# Of B Terms" +
+                                  "\tLoss\tAccuracy\tPrecision\tRecall\tF1_Score\n" )
 
         # Create Directory
         model.utils.Create_Path( model_save_path )
@@ -748,7 +770,7 @@ class NNLBD_Driver:
 
             # Fetch All Unique Terms From DataLoader Dictionary
             #   For Closed Discovery The Secondary ID Dictionary Is Substituted With The Output Dictionary i.e. A & C Used To Predict B
-            if model.Get_Data_Loader().Get_Separate_IDs_By_Input_Type():
+            if model.Get_Data_Loader().Get_Restrict_Outputs():
                 unique_token_list = list( model.Get_Data_Loader().Get_Secondary_ID_Dictionary().keys() )
             else:
                 unique_token_list = list( model.Get_Data_Loader().Get_Token_ID_Dictionary().keys() )
@@ -769,11 +791,11 @@ class NNLBD_Driver:
                 # print( str( token ) + "\t:\t" + str( prediction ) )   # Used For Debugging Purposes
                 prob_dict[token] = prediction
 
-            # Sort Concept And Probability Dictionary In Reverse Order To Rank Concepts.
-            prob_dict  = { k: v for k, v in sorted( prob_dict.items(), key = lambda x: x[1], reverse = True ) }
+            # Sort Concept And Probability Dictionary In Reverse Order To Rank Concepts
+            prob_dict    = { k: v for k, v in sorted( prob_dict.items(), key = lambda x: x[1], reverse = True ) }
 
             # Get Index Of Desired Gold B
-            gold_b_rank  = list( prob_dict.keys() ).index( gold_b_term.lower() )
+            gold_b_rank  = list( prob_dict.keys() ).index( gold_b_term.lower() ) + 1
             gold_b_value = prob_dict[gold_b_term.lower()]
 
             # Get Number Of Ties With Gold B Prediction Value
@@ -795,7 +817,7 @@ class NNLBD_Driver:
             if eval_data_path != "":
                 eval_prob_dict    = { token: prob_dict[token] for token in eval_token_list if token in prob_dict }
                 eval_prob_dict    = { k: v for k, v in sorted( eval_prob_dict.items(), key = lambda x: x[1], reverse = True ) }
-                eval_gold_b_rank  = list( eval_prob_dict.keys() ).index( gold_b_term.lower() ) if gold_b_term.lower() in eval_prob_dict else -1
+                eval_gold_b_rank  = list( eval_prob_dict.keys() ).index( gold_b_term.lower() ) + 1 if gold_b_term.lower() in eval_prob_dict else -1
                 eval_gold_b_value = eval_prob_dict[gold_b_term.lower()] if gold_b_term.lower() in eval_prob_dict else -1
                 eval_gold_b_ties  = list( eval_prob_dict.values() ).count( eval_gold_b_value ) - 1
 
@@ -813,10 +835,23 @@ class NNLBD_Driver:
                     " - Number Of Ties: " + str( gold_b_ties ) + "\n          - Eval Rank: " + str( eval_gold_b_rank ) + \
                     " Of " + str( len( eval_prob_dict ) ) + " Number Of Eval B Terms - Score: " + str( eval_gold_b_value ) + \
                     " - Number Of Ties: " + str( eval_gold_b_ties ) )
+
+                # Store Data In Model Metric List
+                model_metrics.append( str( iteration ) + "\t" + str( gold_b_term ) + "\t" +  str( gold_b_rank ) + "\t" + str( gold_b_ties ) +
+                                      "\t" + str( gold_b_value ) + "\t" + str( len( prob_dict ) ) + "\t" + str( eval_gold_b_rank ) +
+                                      "\t" + str( eval_gold_b_ties ) + "\t" + str( eval_gold_b_value ) + "\t" + str( len( eval_prob_dict ) ) +
+                                      "\t" + str( history['loss'][-1] ) + "\t" + str( accuracy_score ) + "\t" + str( history['Precision'][-1] ) +
+                                      "\t" + str( history['Recall'][-1] ) + "\t" + str( history['F1_Score'][-1] ) + "\n" )
             else:
                 print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
                    " Of " + str( len( prob_dict ) ) + " Number Of B Terms - Score: " + str( gold_b_value ) + \
                    " - Number Of Ties: " + str( gold_b_ties ) )
+
+                # Store Data In Model Metric List
+                model_metrics.append( str( iteration ) + "\t" + str( gold_b_term ) + "\t" +  str( gold_b_rank ) + "\t" + str( gold_b_ties ) +
+                                      "\t" + str( gold_b_value ) + "\t" + str( len( prob_dict ) ) + "\t" + str( history['loss'][-1] ) +
+                                      "\t" + str( accuracy_score ) + "\t" + str( history['Precision'][-1] ) + "\t" + str( history['Recall'][-1] ) +
+                                      "\t" + str( history['F1_Score'][-1] ) + "\n" )
 
         # Print Ranking Information Per Epoch
         print( "" )
@@ -864,6 +899,9 @@ class NNLBD_Driver:
             print( "Eval Best Rank: " + str( eval_best_ranking ) )
             print( "Eval Best Ranking Epoch: " + str( eval_best_ranking_epoch ) )
             print( "Eval Number Of Ties With Best Rank: " + str( eval_best_number_of_ties ) )
+
+        # Save Model Metrics To File
+        self.Generate_Model_Metric_File( file_path = model_save_path, metric_list = model_metrics )
 
 
 ############################################################################################

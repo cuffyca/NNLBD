@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 06/02/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -74,8 +74,7 @@ else:
     from keras.layers import Activation, Average, BatchNormalization, Bidirectional, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, Multiply
 
 # Custom Modules
-from NNLBD.Models           import BaseModel
-from NNLBD.Models.BaseModel import Model_Saving_Callback
+from NNLBD.Models import BaseModel
 
 
 
@@ -92,7 +91,7 @@ class BiLSTMModel( BaseModel ):
                   batch_size = 32, prediction_threshold = 0.5, shuffle = True, use_csr_format = True, per_epoch_saving = False, use_gpu = True,
                   device_name = "/gpu:0", verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False,
                   early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False,
-                  embedding_path = "", final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
+                  embedding_path = "", final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001 ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           momentum = momentum, bilstm_merge_mode = bilstm_merge_mode, optimizer = optimizer, activation_function = activation_function,
                           batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format,
@@ -102,8 +101,8 @@ class BiLSTMModel( BaseModel ):
                           enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, final_layer_type = final_layer_type,
                           early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                           use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
-                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
-        self.version       = 0.13
+                          feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay )
+        self.version       = 0.15
         self.network_model = "bilstm"   # Force Setting Model To 'Bi-LSTM' Model.
 
 
@@ -148,10 +147,16 @@ class BiLSTMModel( BaseModel ):
 
             batch_index = sample_index[start_index:end_index]
             X_batch     = X[batch_index,:]
-            Y_batch     = Y[batch_index,:].todense()
+            Y_input     = Y[batch_index,:].todense()
+            Y_output    = Y_input
             counter     += 1
 
-            yield X_batch, Y_batch
+            # CosFace, ArcFace & SphereFae Final Layers
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                yield [X_batch, Y_input], Y_output
+            # Dense Final Layer
+            else:
+                yield X_batch, Y_output
 
             # Reset The Batch Index After Final Batch Has Been Reached
             if counter == steps_per_batch:
@@ -190,6 +195,9 @@ class BiLSTMModel( BaseModel ):
         if use_csr_format   != True:  self.Set_Use_CSR_Format( use_csr_format )
         if per_epoch_saving != False: self.Set_Per_Epoch_Saving( per_epoch_saving )
 
+        # Add Model Callback Functions
+        super().Fit()
+
         if self.use_csr_format:
             self.trained_instances           = train_input_1.shape[0]
             number_of_train_output_instances = train_outputs.shape[0]
@@ -215,11 +223,6 @@ class BiLSTMModel( BaseModel ):
         else:
             steps_per_batch = self.trained_instances // self.batch_size if self.trained_instances % self.batch_size == 0 else self.trained_instances // self.batch_size + 1
 
-        # Setup Saving The Model After Each Epoch
-        if self.per_epoch_saving:
-            self.Print_Log( "                   - Adding Model Saving Callback" )
-            self.callback_list.append( Model_Saving_Callback() )
-
         # Perform Model Training
         self.Print_Log( "BiLSTMModel::Fit() - Executing Model Training", force_print = True )
 
@@ -228,8 +231,14 @@ class BiLSTMModel( BaseModel ):
                 self.model_history = self.model.fit_generator( generator = self.Batch_Generator( train_input_1, train_outputs, batch_size = self.batch_size, steps_per_batch = steps_per_batch, shuffle = self.shuffle ),
                                                                epochs = self.epochs, steps_per_epoch = steps_per_batch, verbose = self.verbose, callbacks = self.callback_list )
             else:
-                self.model_history = self.model.fit( train_input_1, train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
-                                                     epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # CosFace, ArcFace & SphereFae Final Layers
+                if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                    self.model_history = self.model.fit( [train_input_1, train_outputs], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # Dense Final Layer
+                else:
+                    self.model_history = self.model.fit( train_input_1, train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
 
         # Print Last Epoch Metrics
         if self.verbose == False:
@@ -259,7 +268,11 @@ class BiLSTMModel( BaseModel ):
         self.Print_Log( "BiLSTMModel::Predict() - Predicting Using Inputs: " + str( inputs ) )
 
         with tf.device( self.device_name ):
-            return self.model.predict( [inputs] )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                outputs = np.zeros( ( inputs.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                return self.model.predict( [inputs, outputs] )
+            else:
+                return self.model.predict( [inputs] )
 
     """
         Evaluates Model's Ability To Predict Evaluation Data
@@ -276,7 +289,10 @@ class BiLSTMModel( BaseModel ):
         inputs = np.hstack( ( inputs_1, inputs_2 ) )
 
         with tf.device( self.device_name ):
-            loss, accuracy, precision, recall, f1_score = self.model.evaluate( inputs, outputs, verbose = verbose )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs, outputs], outputs, verbose = verbose )
+            else:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( inputs, outputs, verbose = verbose )
 
             self.Print_Log( "BiLSTMModel::Evaluate() - Complete" )
 
@@ -300,20 +316,25 @@ class BiLSTMModel( BaseModel ):
         Outputs:
             None
     """
-    def Build_Model( self, number_of_features, number_of_embedding_dimensions, number_of_outputs, bilstm_dimension_size = 64, bilstm_merge_mode = "concat", max_sequence_length = 2, embeddings = [] ):
+    def Build_Model( self, number_of_features, number_of_embedding_dimensions, number_of_outputs, bilstm_dimension_size = 64, bilstm_merge_mode = "concat", max_sequence_length = 2,
+                     embeddings = [], final_layer_type = None, weight_decay = None ):
         # Update 'BaseModel' Class Variables
-        self.number_of_features             = number_of_features             if number_of_features             != self.number_of_features             else self.number_of_features
-        self.number_of_embedding_dimensions = number_of_embedding_dimensions if number_of_embedding_dimensions != self.number_of_embedding_dimensions else self.number_of_embedding_dimensions
-        self.bilstm_dimension_size          = bilstm_dimension_size          if bilstm_dimension_size          != 64                                  else self.bilstm_dimension_size
-        self.bilstm_merge_mode              = bilstm_merge_mode              if bilstm_merge_mode              != "concat"                            else self.bilstm_merge_mode
-        self.number_of_outputs              = number_of_outputs              if number_of_outputs              != self.number_of_outputs              else self.number_of_outputs
+        if number_of_features             != self.number_of_features:             self.number_of_features             = number_of_features
+        if number_of_embedding_dimensions != self.number_of_embedding_dimensions: self.number_of_embedding_dimensions = number_of_embedding_dimensions
+        if bilstm_dimension_size          != 64:                                  self.bilstm_dimension_size          = bilstm_dimension_size
+        if bilstm_merge_mode              != "concat":                            self.bilstm_merge_mode              = bilstm_merge_mode
+        if number_of_outputs              != self.number_of_outputs:              self.number_of_outputs              = number_of_outputs
+        if final_layer_type               is not None:                            self.final_layer_type               = final_layer_type
+        if weight_decay                   is not None:                            self.weight_decay                   = weight_decay
 
         self.Print_Log( "BiLSTMModel::Build_Model() - Model Settings" )
         self.Print_Log( "                           - Network Model              : " + str( self.network_model                  ) )
+        self.Print_Log( "                           - Final Layer Type           : " + str( self.final_layer_type               ) )
         self.Print_Log( "                           - Learning Rate              : " + str( self.learning_rate                  ) )
         self.Print_Log( "                           - Dropout                    : " + str( self.dropout                        ) )
         self.Print_Log( "                           - Momentum                   : " + str( self.momentum                       ) )
         self.Print_Log( "                           - Optimizer                  : " + str( self.optimizer                      ) )
+        self.Print_Log( "                           - Weight Decay               : " + str( self.weight_decay                   ) )
         self.Print_Log( "                           - Activation Function        : " + str( self.activation_function            ) )
         self.Print_Log( "                           - No. of Features            : " + str( self.number_of_features             ) )
         self.Print_Log( "                           - No. of Embedding Dimensions: " + str( self.number_of_embedding_dimensions ) )
@@ -324,53 +345,59 @@ class BiLSTMModel( BaseModel ):
         self.Print_Log( "                           - Feature Scaling Value      : " + str( self.feature_scale_value            ) )
         self.Print_Log( "                           - Max Sequence Length        : " + str( max_sequence_length                 ) )
 
+        # Check(s)
+        if self.final_layer_type not in self.final_layer_type_list:
+            self.Print_Log( "MLPModel::Build_Model() - Error: Invalid Final Layer Type", force_print = True )
+            self.Print_Log( "                            - Options: " + str( self.final_layer_type_list ), force_print = True )
+            self.Print_Log( "                            - Specified Option: " + str( self.final_layer_type ), force_print = True )
+            return
+
+        use_regularizer = True if self.final_layer_type in [ "cosface", "arcface", "sphereface" ] else False
+
         #######################
         #                     #
         #  Build Keras Model  #
         #                     #
         #######################
 
+        input_layer             = Input( shape = ( None, ), name = "Input_Layer" )
+        cosface_input_layer     = Input( shape = ( number_of_outputs, ), name = "CosFace_Input" )
+
+        if( len( embeddings ) > 0 ):
+            embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
+        else:
+            embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', trainable = self.trainable_weights )( input_layer )
+
+        # Perform Feature Scaling Prior To Generating An Embedding Representation
+        if self.feature_scale_value != 1.0:
+            feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variables When Used With Lambda Function)
+            embedding_layer     = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
+
+        bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, return_sequences = True, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_1' )( embedding_layer )
+
         # Batch Normalization Model
         if self.use_batch_normalization:
-            input_layer             = Input( shape = ( None, ), name = "Input_Layer" )
+            bilstm_layer        = BatchNormalization( name = "Batch_Norm_Layer_1" )( bilstm_layer )
 
-            if( len( embeddings ) > 0 ):
-                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
-            else:
-                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', trainable = self.trainable_weights )( input_layer )
+        bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_2' )( bilstm_layer )
 
-            # Perform Feature Scaling Prior To Generating An Embedding Representation
-            if self.feature_scale_value != 1.0:
-                feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variables When Used With Lambda Function)
-                embedding_layer     = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
-
-            bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, return_sequences = True, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_1' )( embedding_layer )
-            batch_norm_layer        = BatchNormalization( name = "Batch_Norm_Layer_1" )( bilstm_layer )
-            bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_2' )( batch_norm_layer )
-            dense_layer             = Dense( units = 256, activation = 'relu', name = 'Internal_Proposition_Representation', use_bias = True )( bilstm_layer )
-            batch_norm_layer        = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
-            output_layer            = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( batch_norm_layer )
-
-        # Traditional Model Without Batch Normalization Using Functional API
+        if use_regularizer:
+            dense_layer         = Dense( units = 256, activation = 'tanh', name = 'Internal_Proposition_Representation',
+                                         kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( bilstm_layer )
         else:
-            input_layer             = Input( shape = ( None, ), name = "Input_Layer" )
+            dense_layer         = Dense( units = 256, activation = 'relu', name = 'Internal_Proposition_Representation' )( bilstm_layer )
 
-            if( len( embeddings ) > 0 ):
-                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
-            else:
-                embedding_layer     = Embedding( input_dim = number_of_features, output_dim = number_of_embedding_dimensions, input_length = max_sequence_length, name = 'Embedding_Layer', trainable = self.trainable_weights )( input_layer )
+        if self.use_batch_normalization:
+            batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
 
-            # Perform Feature Scaling Prior To Generating An Embedding Representation
-            if self.feature_scale_value != 1.0:
-                feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variables When Used With Lambda Function)
-                embedding_layer     = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
+        # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
+        output_layer            = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
+                                                                 batch_norm_layer = batch_norm_layer, final_dense_layer = dense_layer )
 
-            bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, return_sequences = True, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_1' )( embedding_layer )
-            bilstm_layer            = Bidirectional( LSTM( self.bilstm_dimension_size, dropout = self.dropout ), merge_mode = self.bilstm_merge_mode, name = 'BiLSTM_Layer_2' )( bilstm_layer )
-            dense_layer             = Dense( units = 256, activation = 'relu', name = 'Internal_Proposition_Representation', use_bias = True )( bilstm_layer )
-            output_layer            = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( dense_layer )
-
-        self.model = Model( inputs = input_layer, outputs = output_layer, name = self.network_model + "_model" )
+        if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+            self.model = Model( inputs = [input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
+        else:
+            self.model = Model( inputs = input_layer, outputs = output_layer, name = self.network_model + "_model" )
 
         if self.optimizer == "adam":
             adam_opt = optimizers.Adam( lr = self.learning_rate )
@@ -415,4 +442,9 @@ class BiLSTMModel( BaseModel ):
 # Runs main function when running file directly
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
+    print( "     Example Code Below:\n" )
+    print( "     from NNLBD.Models import BiLSTMModel\n" )
+    print( "     model = BiLSTMModel( network_model = \"bilstm\", print_debug_log = True," )
+    print( "                          per_epoch_saving = False, use_csr_format = False )" )
+    print( "     model.Fit( \"data/cui_mini\", epochs = 30, batch_size = 4, verbose = 1 )" )
     exit()

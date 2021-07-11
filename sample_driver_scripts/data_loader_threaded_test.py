@@ -56,9 +56,9 @@ def Main():
     data_loader.Generate_Token_IDs()
 
     print( "Vectorizing Data" )
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Data( number_of_threads = 1, use_csr_format = True,
-                                                                                                   model_type = "open_discovery",
-                                                                                                   pad_inputs = True, pad_output = True )
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Data( number_of_threads = 1, use_csr_format = True,
+                                                                                                model_type = "open_discovery",
+                                                                                                pad_inputs = True, pad_output = True )
 
     # Check(s)
     if primary_inputs is None or secondary_inputs is None or tertiary_inputs is None or outputs is None:

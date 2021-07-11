@@ -52,7 +52,7 @@ def Main():
     print( "# Testing DataLoader With Embeddings Loaded #" )
     print( "#############################################" )
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = False', 'separate_outputs = False'" )
@@ -63,7 +63,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1,3,7]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = False', 'separate_outputs = False'" )
@@ -82,7 +82,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1,3,7]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = True', 'separate_outputs = False'" )
@@ -97,7 +97,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = True', 'separate_outputs = False'" )
@@ -120,7 +120,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = False, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = False', 'separate_outputs = True'" )
@@ -131,7 +131,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1], [3], [7]]    else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = False, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = False', 'separate_outputs = True'" )
@@ -154,7 +154,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1], [3], [7]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = True, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = True', 'separate_outputs = True'" )
@@ -171,7 +171,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = True, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = True', 'separate_outputs = True'" )
@@ -200,7 +200,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = False, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = False', 'pad_output = False', 'separate_outputs = False'" )
@@ -211,7 +211,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[10], [10], [10]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = True, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = True', 'pad_output = False', 'separate_outputs = False'" )
@@ -234,7 +234,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[10], [10], [10]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = False, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = False', 'pad_output = True', 'separate_outputs = False'" )
@@ -251,7 +251,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = True, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = True', 'pad_output = True', 'separate_outputs = False'" )
@@ -291,7 +291,7 @@ def Main():
     print( "################################################" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = False', 'separate_outputs = False'" )
@@ -302,7 +302,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1,2,9]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = False', 'separate_outputs = False'" )
@@ -321,7 +321,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1,2,9]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = True', 'separate_outputs = False'" )
@@ -336,7 +336,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = True', 'separate_outputs = False'" )
@@ -359,7 +359,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = False, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = False', 'separate_outputs = True'" )
@@ -370,7 +370,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1], [2], [9]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = False, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = False', 'separate_outputs = True'" )
@@ -393,7 +393,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[1], [2], [9]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = False, pad_output = True, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = False', 'pad_output = True', 'separate_outputs = True'" )
@@ -410,7 +410,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "open_discovery",
                                                                                                      pad_inputs = True, pad_output = True, separate_outputs = True )
 
     print( "\nChecking Open Discovery: 'pad_inputs = True', 'pad_output = True', 'separate_outputs = True'" )
@@ -439,7 +439,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = False, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = False', 'pad_output = False', 'separate_outputs = False'" )
@@ -450,7 +450,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[0], [0], [0]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = True, pad_output = False, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = True', 'pad_output = False', 'separate_outputs = False'" )
@@ -473,7 +473,7 @@ def Main():
     print( "  Output         : OK" ) if outputs          == [[0], [0], [0]] else print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = False, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = False', 'pad_output = True', 'separate_outputs = False'" )
@@ -490,7 +490,7 @@ def Main():
         print( "  Output         : Error" )
 
 
-    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Vectorize_Model_Inputs( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
+    primary_inputs, secondary_inputs, tertiary_inputs, outputs = data_loader.Encode_Model_Instance( "C001", "treats", "", "C002 C004 C008", model_type = "closed_discovery",
                                                                                                      pad_inputs = True, pad_output = True, separate_outputs = False )
 
     print( "\nChecking Closed Discovery: 'pad_inputs = True', 'pad_output = True', 'separate_outputs = False'" )

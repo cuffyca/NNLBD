@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 06/02/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -74,8 +74,7 @@ else:
     from keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
 
 # Custom Modules
-from NNLBD.Models           import BaseModel
-from NNLBD.Models.BaseModel import ArcFace, CosFace, SphereFace, Cosine_Annealing_Scheduler, Model_Saving_Callback
+from NNLBD.Models import BaseModel
 
 
 ############################################################################################
@@ -84,14 +83,14 @@ from NNLBD.Models.BaseModel import ArcFace, CosFace, SphereFace, Cosine_Annealin
 #                                                                                          #
 ############################################################################################
 
-class CosFaceModel( BaseModel ):
-    def __init__( self, print_debug_log = False, write_log_to_file = False, network_model = "cosface", model_type = "open_discovery", margin = 30.0,
+class MLPModel( BaseModel ):
+    def __init__( self, print_debug_log = False, write_log_to_file = False, network_model = "mlp", model_type = "open_discovery", margin = 30.0,
                   optimizer = 'adam', activation_function = 'sigmoid', loss_function = "binary_crossentropy", number_of_hidden_dimensions = 200,
                   number_of_embedding_dimensions = 200, learning_rate = 0.005, epochs = 30, momentum = 0.05, dropout = 0.5, batch_size = 32, scale = 0.35,
                   prediction_threshold = 0.5, shuffle = True, use_csr_format = True, per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0",
                   verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False, embedding_path = "", embedding_modification = "concatenate",
-                  final_layer_type = "cosface", feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
+                  final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001 ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, model_type = model_type, optimizer = optimizer,
                           activation_function = activation_function, loss_function = loss_function, number_of_hidden_dimensions = number_of_hidden_dimensions,
                           prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, batch_size = batch_size,
@@ -101,9 +100,10 @@ class CosFaceModel( BaseModel ):
                           enable_early_stopping = enable_early_stopping, early_stopping_metric_monitor = early_stopping_metric_monitor, margin = margin,
                           early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization, scale = scale,
                           trainable_weights = trainable_weights, embedding_path = embedding_path, embedding_modification = embedding_modification,
-                          final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
-        self.version       = 0.09
-        self.network_model = network_model
+                          final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
+                          weight_decay = weight_decay )
+        self.version       = 0.11
+        self.network_model = "mlp"
 
 
     ############################################################################################
@@ -154,7 +154,12 @@ class CosFaceModel( BaseModel ):
             Y_output    = Y_input
             counter     += 1
 
-            yield [X_1_batch, X_2_batch, Y_input], Y_output
+            # CosFace, ArcFace & SphereFae Final Layers
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                yield [X_1_batch, X_2_batch, Y_input], Y_output
+            # Dense Final Layer
+            else:
+                yield [X_1_batch, X_2_batch], Y_output
 
             # Reset The Batch Index After Final Batch Has Been Reached
             if counter == steps_per_batch:
@@ -193,6 +198,9 @@ class CosFaceModel( BaseModel ):
         if use_csr_format   != True:  self.Set_Use_CSR_Format( use_csr_format )
         if per_epoch_saving != False: self.Set_Per_Epoch_Saving( per_epoch_saving )
 
+        # Add Model Callback Functions
+        super().Fit()
+
         if self.use_csr_format:
             self.trained_instances            = train_input_1.shape[0]
             number_of_train_1_input_instances = train_input_1.shape[0]
@@ -204,14 +212,14 @@ class CosFaceModel( BaseModel ):
             number_of_train_2_input_instances = len( train_input_2 )
             number_of_train_output_instances  = len( train_outputs )
 
-        self.Print_Log( "CosFaceModel::Fit() - Model Training Settings" )
-        self.Print_Log( "                    - Epochs             : " + str( self.epochs             ) )
-        self.Print_Log( "                    - Batch Size         : " + str( self.batch_size         ) )
-        self.Print_Log( "                    - Verbose            : " + str( self.verbose            ) )
-        self.Print_Log( "                    - Shuffle            : " + str( self.shuffle            ) )
-        self.Print_Log( "                    - Use CSR Format     : " + str( self.use_csr_format     ) )
-        self.Print_Log( "                    - Per Epoch Saving   : " + str( self.per_epoch_saving   ) )
-        self.Print_Log( "                    - No. of Train Inputs: " + str( self.trained_instances  ) )
+        self.Print_Log( "MLPModel::Fit() - Model Training Settings" )
+        self.Print_Log( "                - Epochs             : " + str( self.epochs             ) )
+        self.Print_Log( "                - Batch Size         : " + str( self.batch_size         ) )
+        self.Print_Log( "                - Verbose            : " + str( self.verbose            ) )
+        self.Print_Log( "                - Shuffle            : " + str( self.shuffle            ) )
+        self.Print_Log( "                - Use CSR Format     : " + str( self.use_csr_format     ) )
+        self.Print_Log( "                - Per Epoch Saving   : " + str( self.per_epoch_saving   ) )
+        self.Print_Log( "                - No. of Train Inputs: " + str( self.trained_instances  ) )
 
         # Compute Number Of Steps Per Batch (Use CSR Format == True)
         steps_per_batch = 0
@@ -221,37 +229,36 @@ class CosFaceModel( BaseModel ):
         else:
             steps_per_batch = self.trained_instances // self.batch_size if self.trained_instances % self.batch_size == 0 else self.trained_instances // self.batch_size + 1
 
-        # Setup Saving The Model After Each Epoch
-        if self.per_epoch_saving:
-            self.Print_Log( "                            - Adding Model Saving Callback" )
-            self.callback_list.append( Model_Saving_Callback() )
-
-        self.callback_list.append( Cosine_Annealing_Scheduler( lr = self.learning_rate, T_max = self.epochs, eta_max = self.learning_rate, eta_min = self.learning_rate_decay ) )
-
         # Perform Model Training
-        self.Print_Log( "CosFaceModel::Fit() - Executing Model Training", force_print = True )
+        self.Print_Log( "MLPModel::Fit() - Executing Model Training", force_print = True )
 
         with tf.device( self.device_name ):
             if self.use_csr_format:
                 self.model_history = self.model.fit_generator( generator = self.Batch_Generator( train_input_1, train_input_2, train_outputs, batch_size = self.batch_size, steps_per_batch = steps_per_batch, shuffle = self.shuffle ),
                                                                epochs = self.epochs, steps_per_epoch = steps_per_batch, verbose = self.verbose, callbacks = self.callback_list )
             else:
-                self.model_history = self.model.fit( [train_input_1, train_input_2, train_outputs], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
-                                                     epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # CosFace, ArcFace & SphereFae Final Layers
+                if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                    self.model_history = self.model.fit( [train_input_1, train_input_2, train_outputs], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # Dense Final Layer
+                else:
+                    self.model_history = self.model.fit( [train_input_1, train_input_2], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
 
         # Print Last Epoch Metrics
         if self.verbose == False:
             final_epoch = self.model_history.epoch[-1]
             history     = self.model_history.history
             self.Print_Log( "", force_print = True )
-            self.Print_Log( "CosFaceModel::Final Training Metric(s) At Epoch: " + str( final_epoch ), force_print = True )
+            self.Print_Log( "MLPModel::Final Training Metric(s) At Epoch: " + str( final_epoch ), force_print = True )
 
             # Iterate Through Available Metrics And Print Their Formatted Values
             for metric in history.keys():
-                self.Print_Log( "CosFaceModel::  - " + str( metric.capitalize() ) + ":\t{:.4f}" . format( history[metric][-1] ), force_print = True )
+                self.Print_Log( "MLPModel::  - " + str( metric.capitalize() ) + ":\t{:.4f}" . format( history[metric][-1] ), force_print = True )
 
-        self.Print_Log( "CosFaceModel::Fit() - Finished Model Training", force_print = True )
-        self.Print_Log( "CosFaceModel::Fit() - Complete" )
+        self.Print_Log( "MLPModel::Fit() - Finished Model Training", force_print = True )
+        self.Print_Log( "MLPModel::Fit() - Complete" )
 
     """
         Outputs Model's Prediction Vector Given Inputs
@@ -263,13 +270,16 @@ class CosFaceModel( BaseModel ):
         Outputs:
             prediction              : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
     """
-    def Predict( self, primary_input_vector, secondary_input_vector, output_vector ):
-        self.Print_Log( "CosFaceModel::Predict() - Predicting Using Input #1: " + str( primary_input_vector   ) )
-        self.Print_Log( "CosFaceModel::Predict() - Predicting Using Input #2: " + str( secondary_input_vector ) )
-        self.Print_Log( "CosFaceModel::Predict() - Predicting Using Output  : " + str( output_vector          ) )
+    def Predict( self, primary_input_vector, secondary_input_vector ):
+        self.Print_Log( "MLPModel::Predict() - Predicting Using Input #1: " + str( primary_input_vector   ) )
+        self.Print_Log( "MLPModel::Predict() - Predicting Using Input #2: " + str( secondary_input_vector ) )
 
         with tf.device( self.device_name ):
-            return self.model.predict( [primary_input_vector, secondary_input_vector, output_vector] )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                output_vector = np.zeros( ( primary_input_vector.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                return self.model.predict( [primary_input_vector, secondary_input_vector, output_vector] )
+            else:
+                return self.model.predict( [primary_input_vector, secondary_input_vector] )
 
     """
         Evaluates Model's Ability To Predict Evaluation Data
@@ -281,12 +291,15 @@ class CosFaceModel( BaseModel ):
             Metrics        : Loss, Accuracy, Precision, Recall & F1-Score
     """
     def Evaluate( self, inputs_1, inputs_2, inputs_3, outputs, verbose ):
-        self.Print_Log( "CosFaceModel::Evaluate() - Executing Model Evaluation" )
+        self.Print_Log( "MLPModel::Evaluate() - Executing Model Evaluation" )
 
         with tf.device( self.device_name ):
-            loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs_1, inputs_2, inputs_3], outputs, verbose = verbose )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs_1, inputs_2, inputs_3, outputs], outputs, verbose = verbose )
+            else:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs_1, inputs_2, inputs_3], outputs, verbose = verbose )
 
-            self.Print_Log( "CosFaceModel::Evaluate() - Complete" )
+            self.Print_Log( "MLPModel::Evaluate() - Complete" )
 
             return loss, accuracy, precision, recall, f1_score
 
@@ -319,51 +332,52 @@ class CosFaceModel( BaseModel ):
     """
     def Build_Model( self, number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions, number_of_outputs,
                      number_of_primary_embeddings = 0, number_of_secondary_embeddings = 0, primary_embeddings = [], secondary_embeddings = [],
-                     sparse_mode = False, embedding_modification = "concatenate", final_layer_type = "cosface", weight_decay = 0.0001 ):
+                     embedding_modification = None, final_layer_type = None, weight_decay = None ):
         # Update 'BaseModel' Class Variables
         if number_of_train_1_inputs    != self.number_of_primary_inputs:    self.number_of_primary_inputs    = number_of_train_1_inputs
         if number_of_train_2_inputs    != self.number_of_secondary_inputs:  self.number_of_secondary_inputs  = number_of_train_2_inputs
         if number_of_hidden_dimensions != self.number_of_hidden_dimensions: self.number_of_hidden_dimensions = number_of_hidden_dimensions
         if number_of_outputs           != self.number_of_outputs:           self.number_of_outputs           = number_of_outputs
-        if embedding_modification      != self.embedding_modification:      self.embedding_modification      = embedding_modification
-        if final_layer_type            != self.final_layer_type:            self.final_layer_type            = final_layer_type
+        if embedding_modification is not None: self.embedding_modification = embedding_modification
+        if final_layer_type       is not None: self.final_layer_type       = final_layer_type
+        if weight_decay           is not None: self.weight_decay           = weight_decay
 
-        self.Print_Log( "CosFaceModel::Build_Model() - Model Settings" )
-        self.Print_Log( "                            - Network Model             : " + str( self.network_model               ) )
-        self.Print_Log( "                            - Sparse Mode               : " + str( sparse_mode                      ) )
-        self.Print_Log( "                            - Embedding Modification    : " + str( self.embedding_modification      ) )
-        self.Print_Log( "                            - Final Layer Type          : " + str( self.final_layer_type            ) )
-        self.Print_Log( "                            - Learning Rate             : " + str( self.learning_rate               ) )
-        self.Print_Log( "                            - Dropout                   : " + str( self.dropout                     ) )
-        self.Print_Log( "                            - Momentum                  : " + str( self.momentum                    ) )
-        self.Print_Log( "                            - Optimizer                 : " + str( self.optimizer                   ) )
-        self.Print_Log( "                            - Margin                    : " + str( self.margin                      ) )
-        self.Print_Log( "                            - Scale                     : " + str( self.scale                       ) )
-        self.Print_Log( "                            - Weight Decay              : " + str( weight_decay                     ) )
-        self.Print_Log( "                            - # Of Primary Embeddings   : " + str( number_of_primary_embeddings     ) )
-        self.Print_Log( "                            - # Of Secondary Embeddings : " + str( number_of_secondary_embeddings   ) )
-        self.Print_Log( "                            - No. of Primary Inputs     : " + str( self.number_of_primary_inputs    ) )
-        self.Print_Log( "                            - No. of Secondary Inputs   : " + str( self.number_of_secondary_inputs  ) )
-        self.Print_Log( "                            - No. of Hidden Dimensions  : " + str( self.number_of_hidden_dimensions ) )
-        self.Print_Log( "                            - No. of Outputs            : " + str( self.number_of_outputs           ) )
-        self.Print_Log( "                            - Trainable Weights         : " + str( self.trainable_weights           ) )
-        self.Print_Log( "                            - Feature Scaling Value     : " + str( self.feature_scale_value         ) )
+        self.Print_Log( "MLPModel::Build_Model() - Model Settings" )
+        self.Print_Log( "                        - Network Model             : " + str( self.network_model               ) )
+        self.Print_Log( "                        - Embedding Modification    : " + str( self.embedding_modification      ) )
+        self.Print_Log( "                        - Final Layer Type          : " + str( self.final_layer_type            ) )
+        self.Print_Log( "                        - Learning Rate             : " + str( self.learning_rate               ) )
+        self.Print_Log( "                        - Dropout                   : " + str( self.dropout                     ) )
+        self.Print_Log( "                        - Momentum                  : " + str( self.momentum                    ) )
+        self.Print_Log( "                        - Optimizer                 : " + str( self.optimizer                   ) )
+        self.Print_Log( "                        - Margin                    : " + str( self.margin                      ) )
+        self.Print_Log( "                        - Scale                     : " + str( self.scale                       ) )
+        self.Print_Log( "                        - Weight Decay              : " + str( self.weight_decay                ) )
+        self.Print_Log( "                        - # Of Primary Embeddings   : " + str( number_of_primary_embeddings     ) )
+        self.Print_Log( "                        - # Of Secondary Embeddings : " + str( number_of_secondary_embeddings   ) )
+        self.Print_Log( "                        - No. of Primary Inputs     : " + str( self.number_of_primary_inputs    ) )
+        self.Print_Log( "                        - No. of Secondary Inputs   : " + str( self.number_of_secondary_inputs  ) )
+        self.Print_Log( "                        - No. of Hidden Dimensions  : " + str( self.number_of_hidden_dimensions ) )
+        self.Print_Log( "                        - No. of Outputs            : " + str( self.number_of_outputs           ) )
+        self.Print_Log( "                        - Trainable Weights         : " + str( self.trainable_weights           ) )
+        self.Print_Log( "                        - Feature Scaling Value     : " + str( self.feature_scale_value         ) )
 
         # Check(s)
         embedding_modification_list = ["average", "concatenate", "hadamard"]
-        final_layer_type_list       = ["arcface", "cosface", "sphereface"]
 
-        if self.final_layer_type not in final_layer_type_list:
-            self.Print_Log( "CosFaceModel::Build_Model() - Error: Invalid Final Layer Type", force_print = True )
-            self.Print_Log( "                            - Options: " + str( final_layer_type_list ), force_print = True )
+        if self.final_layer_type not in self.final_layer_type_list:
+            self.Print_Log( "MLPModel::Build_Model() - Error: Invalid Final Layer Type", force_print = True )
+            self.Print_Log( "                            - Options: " + str( self.final_layer_type_list ), force_print = True )
             self.Print_Log( "                            - Specified Option: " + str( self.final_layer_type ), force_print = True )
             return
 
         if self.embedding_modification not in embedding_modification_list:
-            self.Print_Log( "CosFaceModel::Build_Model() - Error: Invalid Embedding Modification Type", force_print = True )
+            self.Print_Log( "MLPModel::Build_Model() - Error: Invalid Embedding Modification Type", force_print = True )
             self.Print_Log( "                            - Options: " + str( embedding_modification_list ), force_print = True )
             self.Print_Log( "                            - Specified Option: " + str( self.embedding_modification ), force_print = True )
             return
+
+        use_regularizer = True if self.final_layer_type in [ "cosface", "arcface", "sphereface" ] else False
 
         #######################
         #                     #
@@ -371,60 +385,33 @@ class CosFaceModel( BaseModel ):
         #                     #
         #######################
 
-        primary_input_layer     = None
-        secondary_input_layer   = None
+        primary_input_layer   = Input( shape = ( 1, ), name = "Localist_Concept_1_Input" )
+        secondary_input_layer = Input( shape = ( 1, ), name = "Localist_Concept_2_Input" )
+        cosface_input_layer   = Input( shape = ( number_of_outputs, ), name = "CosFace_Input" )
 
-        primary_flatten_layer   = None
-        secondary_flatten_layer = None
-
-        primary_concept_layer   = None
-        secondary_concept_layer = None
-        cosface_input_layer     = None
-
-        embedding_input_layer   = None
-
-        if sparse_mode:
-            primary_input_layer     = Input( shape = ( number_of_train_1_inputs, ), name = "Localist_Concept_1_Input" )
-            secondary_input_layer   = Input( shape = ( number_of_train_2_inputs, ), name = "Localist_Concept_2_Input" )
-            cosface_input_layer     = Input( shape = ( number_of_outputs,        ), name = "CosFace_Input" )
-
-            primary_concept_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_train_1_inputs, activation = 'relu', name = 'Internal_Distributed_Concept_1_Representation' )( primary_input_layer   )
-            secondary_concept_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_train_2_inputs, activation = 'relu', name = 'Internal_Distributed_Concept_2_Representation' )( secondary_input_layer )
-
-            if self.embedding_modification == "average":
-                embedding_input_layer   = Average( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
-            elif self.embedding_modification == "hadamard":
-                embedding_input_layer   = Multiply( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_concept_layer, secondary_concept_layer] )
-            else:
-                embedding_input_layer   = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_concept_layer] )
+        # Add Embeddings Or Embeddings Initialized As Random Weights
+        if len( primary_embeddings ) > 0 and len( secondary_embeddings > 0 ):
+            primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', weights = [primary_embeddings], trainable = self.trainable_weights )( primary_input_layer     )
+            secondary_embedding_layer = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [secondary_embeddings], trainable = self.trainable_weights )( secondary_input_layer )
         else:
-            primary_input_layer     = Input( shape = ( 1, ), name = "Localist_Concept_1_Input" )
-            secondary_input_layer   = Input( shape = ( 1, ), name = "Localist_Concept_2_Input" )
-            cosface_input_layer     = Input( shape = ( number_of_outputs, ), name = "CosFace_Input" )
+            primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', trainable = self.trainable_weights )( primary_input_layer     )
+            secondary_embedding_layer = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
 
-            # Add Embeddings Or Embeddings Initialized As Random Weights
-            if len( primary_embeddings ) > 0 and len( secondary_embeddings > 0 ):
-                primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', weights = [primary_embeddings], trainable = self.trainable_weights )( primary_input_layer     )
-                secondary_embedding_layer = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [secondary_embeddings], trainable = self.trainable_weights )( secondary_input_layer )
-            else:
-                primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', trainable = self.trainable_weights )( primary_input_layer     )
-                secondary_embedding_layer = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
+        primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction"   )( primary_embedding_layer )
+        secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( secondary_embedding_layer )
 
-            primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction"   )( primary_embedding_layer )
-            secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( secondary_embedding_layer )
+        # Perform Feature Scaling Prior To Generating An Embedding Representation
+        if self.feature_scale_value != 1.0:
+            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer   )
+            secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
 
-            # Perform Feature Scaling Prior To Generating An Embedding Representation
-            if self.feature_scale_value != 1.0:
-                feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
-                primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer   )
-                secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
-
-            if self.embedding_modification == "average":
-                embedding_input_layer = Average( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer] )
-            elif self.embedding_modification == "hadamard":
-                embedding_input_layer = Multiply( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer] )
-            else:
-                embedding_input_layer = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_flatten_layer, secondary_flatten_layer] )
+        if self.embedding_modification == "average":
+            embedding_input_layer = Average( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer] )
+        elif self.embedding_modification == "hadamard":
+            embedding_input_layer = Multiply( name = "Internal_Distributed_Embedding_Representation_Input" )( [primary_flatten_layer, secondary_flatten_layer] )
+        else:
+            embedding_input_layer = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_flatten_layer, secondary_flatten_layer] )
 
         dense_layer       = None
         batch_norm_layer  = None
@@ -438,32 +425,32 @@ class CosFaceModel( BaseModel ):
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
             batch_norm_layer  = BatchNormalization( name = "Batch_Norm_Layer_1" )( dense_layer )
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
-            final_dense_layer = Dense( units = number_of_outputs, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation',
-                                       kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( weight_decay ) )( dropout_layer )
+
+            if use_regularizer:
+                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+            else:
+                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+
             batch_norm_layer  = BatchNormalization( name = "Batch_Norm_Layer_2" )( final_dense_layer )
         else:
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
-            final_dense_layer = Dense( units = number_of_outputs, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation',
-                                       kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( weight_decay ) )( dropout_layer )
 
-        # Final Model Output Used For Prediction
-        if self.use_batch_normalization:
-            if self.final_layer_type == "arcface":
-                output_layer = ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
-            elif self.final_layer_type == "sphereface":
-                output_layer = SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+            if use_regularizer:
+                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
             else:
-                output_layer = CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
+                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+
+        # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
+        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
+                                                        batch_norm_layer = batch_norm_layer, final_dense_layer = final_dense_layer )
+
+        if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+            self.model = Model( inputs = [primary_input_layer, secondary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
         else:
-            if self.final_layer_type == "arcface":
-                output_layer = ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            elif self.final_layer_type == "sphereface":
-                output_layer = SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            else:
-                output_layer = CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-
-        self.model = Model( inputs = [primary_input_layer, secondary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
+            self.model = Model( inputs = [primary_input_layer, secondary_input_layer], outputs = output_layer, name = self.network_model + "_model" )
 
         if self.optimizer == "adam":
             adam_opt = optimizers.Adam( lr = self.learning_rate )
@@ -473,15 +460,15 @@ class CosFaceModel( BaseModel ):
             self.model.compile( loss = self.loss_function, optimizer = sgd, metrics = [ 'accuracy', super().Precision, super().Recall, super().F1_Score ] )
 
         # Print Model Summary
-        self.Print_Log( "CosFaceModel::Build_Model() - =========================================================" )
-        self.Print_Log( "CosFaceModel::Build_Model() - =                     Model Summary                     =" )
-        self.Print_Log( "CosFaceModel::Build_Model() - =========================================================" )
+        self.Print_Log( "MLPModel::Build_Model() - =========================================================" )
+        self.Print_Log( "MLPModel::Build_Model() - =                     Model Summary                     =" )
+        self.Print_Log( "MLPModel::Build_Model() - =========================================================" )
 
-        self.model.summary( print_fn = lambda x:  self.Print_Log( "CosFaceModel::Build_Model() - " + str( x ) ) )      # Capture Model.Summary()'s Print Output As A Function And Store In Variable 'x'
+        self.model.summary( print_fn = lambda x:  self.Print_Log( "MLPModel::Build_Model() - " + str( x ) ) )      # Capture Model.Summary()'s Print Output As A Function And Store In Variable 'x'
 
-        self.Print_Log( "CosFaceModel::Build_Model() - =========================================================" )
-        self.Print_Log( "CosFaceModel::Build_Model() - =                                                       =" )
-        self.Print_Log( "CosFaceModel::Build_Model() - =========================================================" )
+        self.Print_Log( "MLPModel::Build_Model() - =========================================================" )
+        self.Print_Log( "MLPModel::Build_Model() - =                                                       =" )
+        self.Print_Log( "MLPModel::Build_Model() - =========================================================" )
 
 
     ############################################################################################
@@ -509,8 +496,8 @@ class CosFaceModel( BaseModel ):
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
     print( "     Example Code Below:\n" )
-    print( "     from models import CosFaceModel\n" )
-    print( "     model = CosFaceModel( network_model = \"simple\", print_debug_log = True," )
-    print( "                           per_epoch_saving = False, use_csr_format = False )" )
+    print( "     from NNLBD.Models import MLPModel\n" )
+    print( "     model = MLPModel( network_model = \"mlp\", print_debug_log = True," )
+    print( "                       per_epoch_saving = False, use_csr_format = False )" )
     print( "     model.Fit( \"data/cui_mini\", epochs = 30, batch_size = 4, verbose = 1 )" )
     exit()

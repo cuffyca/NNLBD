@@ -2,10 +2,10 @@
     "global_settings": [
         {
             "_comment": "Global Variable Settings",
-            "enable_gpu_polling": "True",
+            "enable_gpu_polling": "False",
             "acceptable_available_memory": 3000,
-            "device_name": "/gpu:0",
-            "number_of_iterations": 1
+            "device_name": "/gpu:6",
+            "number_of_iterations": 5
         }
     ],
     "closed_discovery_train_and_eval_1": [
@@ -27,7 +27,7 @@
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs1_crichton_rumelhart_sigmoid_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -36,7 +36,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -59,7 +59,7 @@
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs2_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs2_crichton_rumelhart_sigmoid_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -68,7 +68,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011331\tHOC:42\tPR:000005308\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -91,7 +91,7 @@
             "train_data_path": "../data/train_cs3_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs3_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs3_crichton_rumelhart_sigmoid_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -100,7 +100,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001138\tPR:000003107\tPR:000006736\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -123,7 +123,7 @@
             "train_data_path": "../data/train_cs4_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs4_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs4_crichton_rumelhart_sigmoid_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -132,7 +132,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011170\tCHEBI:26523\tMESH:D010190\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -155,7 +155,7 @@
             "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs5_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs5_crichton_rumelhart_sigmoid_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -164,7 +164,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000006066\tHOC:42\tMESH:D013964\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -187,7 +187,7 @@
             "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs1_crichton_rumelhart_softplus_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -196,7 +196,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -219,7 +219,7 @@
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs2_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs2_crichton_rumelhart_softplus_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -228,7 +228,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011331\tHOC:42\tPR:000005308\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -251,7 +251,7 @@
             "train_data_path": "../data/train_cs3_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs3_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs3_crichton_rumelhart_softplus_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -260,7 +260,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000001138\tPR:000003107\tPR:000006736\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -283,7 +283,7 @@
             "train_data_path": "../data/train_cs4_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs4_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs4_crichton_rumelhart_softplus_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -292,7 +292,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000011170\tCHEBI:26523\tMESH:D010190\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],
@@ -315,7 +315,7 @@
             "train_data_path": "../data/train_cs5_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs5_closed_discovery_without_aggregators_mod",
             "model_save_path": "../cs5_crichton_rumelhart_softplus_model",
-            "epochs": 200,
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
             "batch_size": 256,
@@ -324,7 +324,7 @@
             "embedding_modification": "hadamard",
             "gold_b_instance": "PR:000006066\tHOC:42\tMESH:D013964\t0.0",
             "set_per_iteration_model_path": "False",
-            "separate_ids_by_input_type": "True",
+            "restrict_output": "True",
             "feature_scale_value": 1.0
         }
     ],

@@ -6,9 +6,9 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/08/2020                                                                   #
-#    Revised: 05/21/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
-#    Base Data Loader Classs For The NNLBD Package.                                         #
+#    Base Data Loader Classs For The NNLBD Package.                                        #
 #                                                                                          #
 #                                                                                          #
 #    Authors:                                                                              #
@@ -36,8 +36,8 @@ from NNLBD.Misc import Utils
 
 class DataLoader( object ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False,
-                  debug_log_file_handle = None, separate_ids_by_input_type = False ):
-        self.version                      = 0.15
+                  debug_log_file_handle = None, restrict_outputs = True ):
+        self.version                      = 0.16
         self.debug_log                    = print_debug_log                 # Options: True, False
         self.write_log                    = write_log_to_file               # Options: True, False
         self.debug_log_file_handle        = debug_log_file_handle           # Debug Log File Handle
@@ -48,7 +48,7 @@ class DataLoader( object ):
         self.tertiary_id_dictionary       = {}
         self.output_id_dictionary         = {}
         self.skip_out_of_vocabulary_words = skip_out_of_vocabulary_words    # Options: True, False
-        self.separate_ids_by_input_type   = separate_ids_by_input_type
+        self.restrict_outputs             = restrict_outputs                # Reduces Outputs To Unique Tokens Seen Within The Model Data
         self.number_of_primary_tokens     = 0
         self.number_of_secondary_tokens   = 0
         self.number_of_tertiary_tokens    = 0
@@ -62,11 +62,11 @@ class DataLoader( object ):
         self.embeddings_loaded            = False
         self.simulate_embeddings_loaded   = False
         self.is_cui_data                  = False
+        self.shuffle                      = shuffle                         # Not Used Currently
         self.current_line_index           = 0
         self.reached_eof                  = False
         self.read_file_handle             = None
         self.generated_embedding_ids      = False
-        self.separated_by_input_type      = False
         self.utils                        = Utils()
 
         # Create Log File Handle
@@ -105,9 +105,9 @@ class DataLoader( object ):
             number_of_threads      : Number Of Threads To Deploy For Data Vectorization (Integer)
             str_delimiter          : String Delimiter - Used To Separate Elements Within An Instance (String)
     """
-    def Vectorize_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, is_crichton_format = False, pad_inputs = True,
-                              pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
-        print( "DataLoader::Vectorize_Model_Data() - Called Parent Function / Not Implemented / Call Child Function" )
+    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, is_crichton_format = False, pad_inputs = True,
+                           pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+        print( "DataLoader::Encode_Model_Data() - Called Parent Function / Not Implemented / Call Child Function" )
         raise NotImplementedError
 
     """
@@ -125,9 +125,9 @@ class DataLoader( object ):
             separate_outputs       : Separates Outputs By Into Individual Vectorized Instances = True, Combine Outputs Per Instance = False. (Only Valid For 'Open Discovery')
             instance_separator     : String Delimiter - Used To Separate Instances (String)
     """
-    def Vectorize_Model_Inputs( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
-                                is_crichton_format = False, pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
-        print( "DataLoader::Vectorize_Model_Inputs() - Called Parent Function / Not Implemented / Call Child Function" )
+    def Encode_Model_Instance( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
+                               is_crichton_format = False, pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
+        print( "DataLoader::Encode_Model_Instance() - Called Parent Function / Not Implemented / Call Child Function" )
         raise NotImplementedError
 
 
@@ -296,9 +296,56 @@ class DataLoader( object ):
     """
         Generates IDs For Each Token Given The Following File Format
     """
-    def Generate_Token_IDs( self ):
-        print( "DataLoader::Generate_Token_IDs() - Called Parent Function / Not Implemented / Call Child Function" )
-        raise NotImplementedError
+    def Generate_Token_IDs( self, data_list ):
+        # Iterate Through The Data And Generate The Unique Input/Output Lists
+        # Check(s) - If User Does Not Specify Data, Use The Data Stored In Memory
+        if len( data_list ) == 0:
+            self.Print_Log( "DataLoader::Generate_Token_IDs() - Warning: No Data Specified By User / Using Data Stored In Memory" )
+            data_list = self.data_list
+
+        self.Print_Log( "DataLoader::Generate_Token_IDs() - Building Token ID Dictionaries" )
+
+        # Process Elements In Data List, Line-By-Line
+        self.Print_Log( "DataLoader::Generate_Token_IDs() - Building Unique Input/Output Dictionaries" )
+
+        for sequence in data_list:
+            self.Print_Log( "DataLoader::Generate_Token_IDs() - Processing Sequence: " + str( sequence ) )
+
+            sequence_tokens = sequence.split()
+
+            # IF We're Not Using Embeddings, Build Unique Token ID Dictionary
+            if self.generated_embedding_ids == False:
+                for token in sequence_tokens:
+                    # Check To See If Element Is Already In Dictionary, If Not Add The Element
+                    if token not in self.token_id_dictionary:
+                        index = len( self.token_id_dictionary )
+                        self.Print_Log( "DataLoader::Generate_Token_IDs() - Adding Token: \"" + str( token ) + "\" => Embedding Row Index: " + str( index ) )
+                        self.token_id_dictionary[token] = index
+
+            # Build Unique Primary Input ID Dictionary
+            if sequence_tokens[0] not in self.primary_id_dictionary:
+                index = len( self.primary_id_dictionary )
+                self.Print_Log( "DataLoader::Generate_Token_IDs() - Adding To Primary Dictionary: " + str( sequence_tokens[0] ) + " => " + str( index ) )
+                self.primary_id_dictionary[sequence_tokens[0]] = index
+
+            # Build Unique Secondary Input ID Dictionary
+            if sequence_tokens[1] not in self.secondary_id_dictionary:
+                index = len( self.secondary_id_dictionary )
+                self.Print_Log( "DataLoader::Generate_Token_IDs() - Adding To Secondary Dictionary: " + str( sequence_tokens[1] ) + " => " + str( index ) )
+                self.secondary_id_dictionary[sequence_tokens[1]] = index
+
+            # Build Unique Output ID Dictionary
+            for token in sequence_tokens[2:]:
+                if token not in self.output_id_dictionary:
+                    index = len( self.output_id_dictionary )
+                    self.Print_Log( "DataLoader::Generate_Token_IDs() - Adding To Output Dictionary: " + str( token ) + " => " + str( index ) )
+                    self.output_id_dictionary[token] = index
+
+            self.Print_Log( "DataLoader::Generate_Token_IDs() - Dictionaries Built" )
+
+            self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
+            self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
+            self.number_of_output_tokens    = len( self.output_id_dictionary    )
 
     """
         Load Vectorized Model Inputs/Outputs To File. This Favors CSR_Matrix Files Before Numpy Arrays.
@@ -446,12 +493,11 @@ class DataLoader( object ):
 
         Inputs:
             index_value  : Token ID Value (Integer)
-            get_relation : True = Get Relation Token Based On ID Value, False = Get CUI Token Based On ID Value (Bool)
 
         Outputs:
             key          : Token String (String)
     """
-    def Get_Token_From_ID( self, index_value, get_relation = False ):
+    def Get_Token_From_ID( self, index_value ):
         print( "DataLoader::Get_Token_From_ID() - Called Parent Function / Not Implemented / Call Child Function" )
         raise NotImplementedError
 
@@ -741,7 +787,6 @@ class DataLoader( object ):
     def Clear_Embedding_Data( self ):
         self.embeddings              = []
         self.embeddings_loaded       = False
-        self.separated_by_input_type = False
 
     """
         Clears Data From Memory
@@ -773,8 +818,6 @@ class DataLoader( object ):
         self.reached_eof                  = False
         self.read_file_handle             = None
         self.generated_embedding_ids      = False
-        self.separated_by_input_type      = False
-        self.separate_ids_by_input_type   = False
 
 
     ############################################################################################
@@ -811,11 +854,6 @@ class DataLoader( object ):
             self.Print_Log( "DataLoader::Get_Embeddings() - Error: Unknown Embedding Type: " + str( embedding_type ), force_print = True )
             return []
 
-        # Check
-        if self.separated_by_input_type == False:
-            self.Print_Log( "DataLoader::Get_Embeddings() - Warning: self.separated_by_input_type == False / Setting embedding_type = None" )
-            embedding_type = None
-
         embeddings = None
 
         # 0th Element Is Padding / Shifts Embedding Matrix Down A Row By 1
@@ -827,20 +865,20 @@ class DataLoader( object ):
         # Only Fetch Embedding If There Exists Something In The Respective Dictionary Outside Of The '<*>PADDING<*>' Token
         if embedding_type == "primary" and len( self.primary_id_dictionary ) > 1:
             for index, token in enumerate( self.primary_id_dictionary ):
-                if index == 0: continue
-                embeddings[index] = np.asarray( self.embeddings[self.primary_id_dictionary[token]], dtype = 'float32' )
+                if index == 0: continue # Skip Padding
+                embeddings[index] = np.asarray( self.embeddings[self.token_id_dictionary[token]], dtype = 'float32' )
         elif embedding_type == "secondary" and len( self.secondary_id_dictionary ) > 1:
             for index, token in enumerate( self.secondary_id_dictionary ):
-                if index == 0: continue
-                embeddings[index] = np.asarray( self.embeddings[self.secondary_id_dictionary[token]], dtype = 'float32' )
+                if index == 0: continue # Skip Padding
+                embeddings[index] = np.asarray( self.embeddings[self.token_id_dictionary[token]], dtype = 'float32' )
         elif embedding_type == "tertiary" and len( self.tertiary_id_dictionary ) > 1:
             for index, token in enumerate( self.tertiary_id_dictionary ):
-                if index == 0: continue
-                embeddings[index] = np.asarray( self.embeddings[self.tertiary_id_dictionary[token]], dtype = 'float32' )
+                if index == 0: continue # Skip Padding
+                embeddings[index] = np.asarray( self.embeddings[self.token_id_dictionary[token]], dtype = 'float32' )
         elif embedding_type == "output" and len( self.output_id_dictionary ) > 1:
             for index, token in enumerate( self.output_id_dictionary ):
-                if index == 0: continue
-                embeddings[index] = np.asarray( self.embeddings[self.output_id_dictionary[token]], dtype = 'float32' )
+                if index == 0: continue # Skip Padding
+                embeddings[index] = np.asarray( self.embeddings[self.token_id_dictionary[token]], dtype = 'float32' )
         elif embedding_type is None:
             return self.embeddings
         else:
@@ -870,7 +908,7 @@ class DataLoader( object ):
 
     def Get_Skip_Out_Of_Vocabulary_Words( self ):   return self.skip_out_of_vocabulary_words
 
-    def Get_Separate_IDs_By_Input_Type( self ):     return self.separate_ids_by_input_type
+    def Get_Restrict_Outputs( self ):               return self.restrict_outputs
 
     def Get_Data( self ):                           return self.data_list
 
@@ -908,7 +946,7 @@ class DataLoader( object ):
 
     def Set_Token_ID_Dictionary( self, id_dictionary ):     self.token_id_dictionary   = id_dictionary
 
-    def Set_Separate_IDs_By_Input_Type( self, value ):      self.separate_ids_by_input_type = value
+    def Set_Restrict_Outputs( self, value ):                self.restrict_outputs = value
 
     def Set_Debug_Log_File_Handle( self, file_handle ):     self.debug_log_file_handle = file_handle
 
@@ -928,7 +966,7 @@ class DataLoader( object ):
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
     print( "     Example Code Below:\n" )
-    print( "     from models import DataLoader\n" )
+    print( "     from NNLBD.Models import DataLoader\n" )
     print( "     data_loader = DataLoader( print_debug_log = True )" )
     print( "     data = data_loader.Read_Data( \"path_to_file\" )" )
     exit()

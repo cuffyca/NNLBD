@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    12/08/2020                                                                   #
-#    Revised: 06/02/2021                                                                   #
+#    Revised: 07/10/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -74,8 +74,7 @@ else:
     from keras.layers import Activation, Average, BatchNormalization, Concatenate, Conv1D, Dense, Dropout, Embedding, Flatten, Input, Lambda, MaxPooling1D, Multiply
 
 # Custom Modules
-from NNLBD.Models           import BaseModel
-from NNLBD.Models.BaseModel import Model_Saving_Callback
+from NNLBD.Models import BaseModel
 
 
 
@@ -91,18 +90,18 @@ class CNNModel( BaseModel ):
                   learning_rate = 0.005, epochs = 30, momentum = 0.05, dropout = 0.8, batch_size = 32, prediction_threshold = 0.5, shuffle = True,
                   use_csr_format = True, per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0", verbose = 2,
                   debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False,
-                  early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, use_batch_normalization = False,
+                  early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, use_batch_normalization = False, weight_decay = 0.0001,
                   trainable_weights = False, embedding_path = "", final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004 ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,  learning_rate = learning_rate,
                           batch_size = batch_size, use_csr_format = use_csr_format, prediction_threshold = prediction_threshold, shuffle = shuffle,
                           number_of_embedding_dimensions = number_of_embedding_dimensions, momentum = momentum, epochs = epochs, per_epoch_saving = per_epoch_saving,
-                          device_name = device_name, verbose = verbose, debug_log_file_handle = debug_log_file_handle, dropout = dropout,
+                          device_name = device_name, verbose = verbose, debug_log_file_handle = debug_log_file_handle, dropout = dropout, weight_decay = weight_decay,
                           enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, use_gpu = use_gpu,
                           early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                           use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                           final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay )
-        self.version       = 0.10
+        self.version       = 0.12
         self.network_model = "cnn"   # Force Setting Model To 'CNN' Model.
 
 
@@ -146,10 +145,16 @@ class CNNModel( BaseModel ):
 
             batch_index = sample_index[start_index:end_index]
             X_batch     = X[batch_index,:]
-            Y_batch     = Y[batch_index,:].todense()
+            Y_input     = Y[batch_index,:].todense()
+            Y_output    = Y_input
             counter     += 1
 
-            yield X_batch, Y_batch
+            # CosFace, ArcFace & SphereFae Final Layers
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                yield [X_batch, Y_input], Y_output
+            # Dense Final Layer
+            else:
+                yield X_batch, Y_output
 
             # Reset The Batch Index After Final Batch Has Been Reached
             if counter == steps_per_batch:
@@ -188,6 +193,9 @@ class CNNModel( BaseModel ):
         if use_csr_format   != True:  self.Set_Use_CSR_Format( use_csr_format )
         if per_epoch_saving != False: self.Set_Per_Epoch_Saving( per_epoch_saving )
 
+        # Add Model Callback Functions
+        super().Fit()
+
         self.Print_Log( "Error: CNN Model Is Not Implemented / Exiting Program", force_print = True )
         # raise( NotImplementedError )
         exit()
@@ -216,11 +224,6 @@ class CNNModel( BaseModel ):
         else:
             steps_per_batch = self.trained_instances // self.batch_size if self.trained_instances % self.batch_size == 0 else self.trained_instances // self.batch_size + 1
 
-        # Setup Saving The Model After Each Epoch
-        if self.per_epoch_saving:
-            self.Print_Log( "                - Adding Model Saving Callback" )
-            self.callback_list.append( Model_Saving_Callback() )
-
         # Perform Model Training
         self.Print_Log( "CNNModel::Fit() - Executing Model Training", force_print = True )
 
@@ -229,8 +232,14 @@ class CNNModel( BaseModel ):
                 self.model_history = self.model.fit_generator( generator = self.Batch_Generator( train_input_1, train_outputs, batch_size = self.batch_size, steps_per_batch = steps_per_batch, shuffle = self.shuffle ),
                                                                epochs = self.epochs, steps_per_epoch = steps_per_batch, verbose = self.verbose, callbacks = self.callback_list )
             else:
-                self.model_history = self.model.fit( train_input_1, train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
-                                                     epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # CosFace, ArcFace & SphereFae Final Layers
+                if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                    self.model_history = self.model.fit( [train_input_1, train_outputs], train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
+                # Dense Final Layer
+                else:
+                    self.model_history = self.model.fit( train_input_1, train_outputs, shuffle = self.shuffle, batch_size = self.batch_size,
+                                                         epochs = self.epochs, verbose = self.verbose, callbacks = self.callback_list )
 
         # Print Last Epoch Metrics
         if self.verbose == False:
@@ -260,7 +269,11 @@ class CNNModel( BaseModel ):
         self.Print_Log( "CNNModel::Predict() - Predicting Using Inputs: " + str( inputs ) )
 
         with tf.device( self.device_name ):
-            return self.model.predict( [inputs] )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                outputs = np.zeros( ( inputs.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                return self.model.predict( [inputs, outputs] )
+            else:
+                return self.model.predict( [inputs] )
 
     """
         Evaluates Model's Ability To Predict Evaluation Data
@@ -277,7 +290,10 @@ class CNNModel( BaseModel ):
         inputs = np.hstack( ( inputs_1, inputs_2 ) )
 
         with tf.device( self.device_name ):
-            loss, accuracy, precision, recall, f1_score = self.model.evaluate( inputs, outputs, verbose = verbose )
+            if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( [inputs, outputs], outputs, verbose = verbose )
+            else:
+                loss, accuracy, precision, recall, f1_score = self.model.evaluate( inputs, outputs, verbose = verbose )
 
             self.Print_Log( "CNNModel::Evaluate() - Complete" )
 
@@ -301,19 +317,24 @@ class CNNModel( BaseModel ):
         Outputs:
             None
     """
-    def Build_Model( self, number_of_features, number_of_embedding_dimensions, number_of_outputs, embeddings = [] ):
+    def Build_Model( self, number_of_features, number_of_embedding_dimensions, number_of_outputs, embeddings = [],
+                     final_layer_type = None, weight_decay = None ):
         # Update 'BaseModel' Class Variables
-        self.number_of_features             = number_of_features             if number_of_features             != self.number_of_features             else self.number_of_features
-        self.number_of_embedding_dimensions = number_of_embedding_dimensions if number_of_embedding_dimensions != self.number_of_embedding_dimensions else self.number_of_embedding_dimensions
-        self.number_of_outputs              = number_of_outputs              if number_of_outputs              != self.number_of_outputs              else self.number_of_outputs
+        if number_of_features             != self.number_of_features:             self.number_of_features             = number_of_features
+        if number_of_embedding_dimensions != self.number_of_embedding_dimensions: self.number_of_embedding_dimensions = number_of_embedding_dimensions
+        if number_of_outputs              != self.number_of_outputs:              self.number_of_outputs              = number_of_outputs
+        if final_layer_type is not None: self.final_layer_type = final_layer_type
+        if weight_decay     is not None: self.weight_decay     = weight_decay
 
         # Change Me
         self.Print_Log( "CNNModel::Build_Model() - Model Settings" )
         self.Print_Log( "                           - Network Model              : " + str( self.network_model                  ) )
+        self.Print_Log( "                           - Final Layer Type           : " + str( self.final_layer_type               ) )
         self.Print_Log( "                           - Learning Rate              : " + str( self.learning_rate                  ) )
         self.Print_Log( "                           - Dropout                    : " + str( self.dropout                        ) )
         self.Print_Log( "                           - Momentum                   : " + str( self.momentum                       ) )
         self.Print_Log( "                           - Optimizer                  : " + str( self.optimizer                      ) )
+        self.Print_Log( "                           - Weight Decay               : " + str( self.weight_decay                   ) )
         self.Print_Log( "                           - Activation Function        : " + str( self.activation_function            ) )
         self.Print_Log( "                           - No. of Features            : " + str( self.number_of_features             ) )
         self.Print_Log( "                           - No. of Embedding Dimensions: " + str( self.number_of_embedding_dimensions ) )
@@ -321,21 +342,31 @@ class CNNModel( BaseModel ):
         self.Print_Log( "                           - Trainable Weights          : " + str( self.trainable_weights              ) )
         self.Print_Log( "                           - Feature Scaling Value      : " + str( self.feature_scale_value            ) )
 
+        if self.final_layer_type not in self.final_layer_type_list:
+            self.Print_Log( "MLPModel::Build_Model() - Error: Invalid Final Layer Type", force_print = True )
+            self.Print_Log( "                            - Options: " + str( self.final_layer_type_list ), force_print = True )
+            self.Print_Log( "                            - Specified Option: " + str( self.final_layer_type ), force_print = True )
+            return
+
+        use_regularizer = True if self.final_layer_type in [ "cosface", "arcface", "sphereface" ] else False
+
         #######################
         #                     #
         #  Build Keras Model  #
         #                     #
         #######################
 
+        input_layer         = Input( shape = ( number_of_features, ), name = "Input_Layer"   )
+        cosface_input_layer = Input( shape = ( number_of_outputs,  ), name = "CosFace_Input" )
+        embedding_layer     = Embedding( number_of_features, number_of_embedding_dimensions, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
+
+        # Perform Feature Scaling Prior To Generating An Embedding Representation
+        if self.feature_scale_value != 1.0:
+            feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            embedding_layer = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
+
         # Batch Normalization Model
         if self.use_batch_normalization:
-            input_layer         = Input( shape = ( number_of_features, ), name = "Input_Layer" )
-            embedding_layer     = Embedding( number_of_features, number_of_embedding_dimensions, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
-
-            # Perform Feature Scaling Prior To Generating An Embedding Representation
-            if self.feature_scale_value != 1.0:
-                feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
-                embedding_layer = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
 
             convolution_layer_1 = Conv1D( filters = 24, kernel_size = 2, activation = 'relu', name = "Convolution_Layer_1" )( embedding_layer )
             batch_norm_layer_1  = BatchNormalization( name = "Batch_Norm_Layer_1" )( convolution_layer_1 )
@@ -346,19 +377,17 @@ class CNNModel( BaseModel ):
             convolution_layer_3 = Conv1D( filters = 6, kernel_size = 2, activation = 'relu', name = "Convolution_Layer_3" )( pooling_layer_2 )
             dropout_layer       = Dropout( name = "Dropout_Layer", rate = self.dropout )( convolution_layer_3 )
             flatten_layer       = Flatten( name = "Flatten_Layer" )( dropout_layer )
-            dense_layer_1       = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
-            batch_norm_layer_8  = BatchNormalization( name = "Batch_Norm_Layer_8" )( dense_layer_1 )
-            output_layer        = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation' )( batch_norm_layer_8 )
+
+            if use_regularizer:
+                dense_layer_1   = Dense( units = 12 * 3, activation = 'tanh', name = 'Dense_Layer',
+                                         kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( flatten_layer )
+            else:
+                dense_layer_1   = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
+
+            batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_8" )( dense_layer_1 )
 
         # Traditional Model Without Batch Normalization Using Functional API
         else:
-            input_layer         = Input( shape = ( number_of_features, ), name = "Input_Layer" )
-            embedding_layer     = Embedding( number_of_features, number_of_embedding_dimensions, name = 'Embedding_Layer', weights = [embeddings], trainable = self.trainable_weights )( input_layer )
-
-            # Perform Feature Scaling Prior To Generating An Embedding Representation
-            if self.feature_scale_value != 1.0:
-                embedding_layer = Lambda( lambda x: x * self.feature_scale_value )( embedding_layer )
-
             convolution_layer_1 = Conv1D( filters = 24, kernel_size = 2, activation = 'relu', name = "Convolution_Layer_1" )( embedding_layer )
             pooling_layer_1     = MaxPooling1D( pool_size = 2, name = "Pooling_Layer_1" )( convolution_layer_1 )
             convolution_layer_2 = Conv1D( filters = 12, kernel_size = 2, activation = 'relu', name = "Convolution_Layer_2" )( pooling_layer_1 )
@@ -366,10 +395,21 @@ class CNNModel( BaseModel ):
             convolution_layer_3 = Conv1D( filters = 6, kernel_size = 2, activation = 'relu', name = "Convolution_Layer_3" )( pooling_layer_2 )
             dropout_layer       = Dropout( name = "Dropout_Layer", rate = self.dropout )( convolution_layer_3 )
             flatten_layer       = Flatten( name = "Flatten_Layer" )( dropout_layer )
-            dense_layer_1       = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
-            output_layer        = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation' )( dense_layer_1 )
 
-        self.model              = Model( inputs = input_layer, outputs = output_layer, name = self.network_model + "_model" )
+            if use_regularizer:
+                dense_layer_1   = Dense( units = 12 * 3, activation = 'tanh', name = 'Dense_Layer',
+                                         kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( flatten_layer )
+            else:
+                dense_layer_1   = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
+
+        # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
+        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
+                                                        batch_norm_layer = batch_norm_layer, final_dense_layer = dense_layer_1 )
+
+        if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
+            self.model = Model( inputs = [input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
+        else:
+            self.model = Model( inputs = input_layer, outputs = output_layer, name = self.network_model + "_model" )
 
         if self.optimizer == "adam":
             adam_opt = optimizers.Adam( lr = self.learning_rate )
@@ -414,4 +454,9 @@ class CNNModel( BaseModel ):
 # Runs main function when running file directly
 if __name__ == '__main__':
     print( "**** This Script Is Designed To Be Implemented And Executed From A Driver Script ****" )
+    print( "     Example Code Below:\n" )
+    print( "     from NNLBD.Models import CNNModel\n" )
+    print( "     model = CNNModel( network_model = \"cnn\", print_debug_log = True," )
+    print( "                       per_epoch_saving = False, use_csr_format = False )" )
+    print( "     model.Fit( \"data/cui_mini\", epochs = 30, batch_size = 4, verbose = 1 )" )
     exit()
