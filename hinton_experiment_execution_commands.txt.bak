@@ -1,0 +1,66 @@
+Full Output
+===========
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_avg_ro.json > cs1_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_avg_ro.json > cs2_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_avg_ro.json > cs3_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_avg_ro.json > cs4_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_avg_ro.json > cs5_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_concat_ro.json > cs1_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_concat_ro.json > cs2_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_concat_ro.json > cs3_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_concat_ro.json > cs4_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_concat_ro.json > cs5_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_hadamard_ro.json > cs1_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_hadamard_ro.json > cs2_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_hadamard_ro.json > cs3_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_hadamard_ro.json > cs4_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_hadamard_ro.json > cs5_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_avg_fo.json > cs1_hinton_avg_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_avg_fo.json > cs2_hinton_avg_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_avg_fo.json > cs3_hinton_avg_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_avg_fo.json > cs4_hinton_avg_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_avg_fo.json > cs5_hinton_avg_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_concat_fo.json > cs1_hinton_concat_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_concat_fo.json > cs2_hinton_concat_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_concat_fo.json > cs3_hinton_concat_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_concat_fo.json > cs4_hinton_concat_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_concat_fo.json > cs5_hinton_concat_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_hadamard_fo.json > cs1_hinton_hadamard_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_hadamard_fo.json > cs2_hinton_hadamard_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_hadamard_fo.json > cs3_hinton_hadamard_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_hadamard_fo.json > cs4_hinton_hadamard_lr0.0001_sigmoid_fs_fo.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_hadamard_fo.json > cs5_hinton_hadamard_lr0.0001_sigmoid_fs_fo.log &
+
+
+Reduced Output (All running on Pine GPUs 5-7 as of 07/28/2021)
+==============
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_avg_ro.json > cs1_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_avg_ro.json > cs2_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_avg_ro.json > cs3_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_avg_ro.json > cs4_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_avg_ro.json > cs5_hinton_avg_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_concat_ro.json > cs1_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_concat_ro.json > cs2_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_concat_ro.json > cs3_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_concat_ro.json > cs4_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_concat_ro.json > cs5_hinton_concat_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_hadamard_ro.json > cs1_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_hadamard_ro.json > cs2_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_hadamard_ro.json > cs3_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_hadamard_ro.json > cs4_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/no_feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_hadamard_ro.json > cs5_hinton_hadamard_lr0.0001_sigmoid_nfs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_avg_ro.json > cs1_hinton_avg_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_avg_ro.json > cs2_hinton_avg_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_avg_ro.json > cs3_hinton_avg_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_avg_ro.json > cs4_hinton_avg_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_avg_ro.json > cs5_hinton_avg_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_concat_ro.json > cs1_hinton_concat_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_concat_ro.json > cs2_hinton_concat_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_concat_ro.json > cs3_hinton_concat_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_concat_ro.json > cs4_hinton_concat_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_concat_ro.json > cs5_hinton_concat_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs1_hinton_sigmoid_hadamard_ro.json > cs1_hinton_hadamard_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs2_hinton_sigmoid_hadamard_ro.json > cs2_hinton_hadamard_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs3_hinton_sigmoid_hadamard_ro.json > cs3_hinton_hadamard_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs4_hinton_sigmoid_hadamard_ro.json > cs4_hinton_hadamard_lr0.0001_sigmoid_fs_ro.log &
+python LBDDriver.py ../json_files/hinton_experiments/feature_scaling/train_and_eval/embedding_experiments_lr0.0001/crichton_cs5_hinton_sigmoid_hadamard_ro.json > cs5_hinton_hadamard_lr0.0001_sigmoid_fs_ro.log &

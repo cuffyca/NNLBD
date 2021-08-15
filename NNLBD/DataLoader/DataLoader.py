@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/08/2020                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 07/23/2021                                                                   #
 #                                                                                          #
 #    Base Data Loader Classs For The NNLBD Package.                                        #
 #                                                                                          #
@@ -36,8 +36,8 @@ from NNLBD.Misc import Utils
 
 class DataLoader( object ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False,
-                  debug_log_file_handle = None, restrict_outputs = True ):
-        self.version                      = 0.16
+                  debug_log_file_handle = None, restrict_output = True ):
+        self.version                      = 0.17
         self.debug_log                    = print_debug_log                 # Options: True, False
         self.write_log                    = write_log_to_file               # Options: True, False
         self.debug_log_file_handle        = debug_log_file_handle           # Debug Log File Handle
@@ -48,7 +48,7 @@ class DataLoader( object ):
         self.tertiary_id_dictionary       = {}
         self.output_id_dictionary         = {}
         self.skip_out_of_vocabulary_words = skip_out_of_vocabulary_words    # Options: True, False
-        self.restrict_outputs             = restrict_outputs                # Reduces Outputs To Unique Tokens Seen Within The Model Data
+        self.restrict_output              = restrict_output                 # Reduces Outputs To Unique Tokens Seen Within The Model Data
         self.number_of_primary_tokens     = 0
         self.number_of_secondary_tokens   = 0
         self.number_of_tertiary_tokens    = 0
@@ -67,6 +67,7 @@ class DataLoader( object ):
         self.reached_eof                  = False
         self.read_file_handle             = None
         self.generated_embedding_ids      = False
+        self.embedding_type_list          = ["primary", "secondary", "tertiary", "output"]
         self.utils                        = Utils()
 
         # Create Log File Handle
@@ -87,7 +88,7 @@ class DataLoader( object ):
             (Only Checks First 10 Lines In Data File)
     """
     def Check_Data_File_Format( self, file_path = "", data_list = [], is_crichton_format = False, str_delimiter = '\t' ):
-        print( "DataLoader::Check_Data_File_Format() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Check_Data_File_Format() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
     """
@@ -107,7 +108,7 @@ class DataLoader( object ):
     """
     def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, is_crichton_format = False, pad_inputs = True,
                            pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
-        print( "DataLoader::Encode_Model_Data() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Encode_Model_Data() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
     """
@@ -127,7 +128,7 @@ class DataLoader( object ):
     """
     def Encode_Model_Instance( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
                                is_crichton_format = False, pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
-        print( "DataLoader::Encode_Model_Instance() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Encode_Model_Instance() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
 
@@ -286,11 +287,11 @@ class DataLoader( object ):
 
 
     def Load_Token_ID_Key_Data( self, file_path ):
-        print( "DataLoader::Load_Token_ID_Key_Data() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Load_Token_ID_Key_Data() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
     def Save_Token_ID_Key_Data( self, file_path ):
-        print( "DataLoader::Save_Token_ID_Key_Data() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Save_Token_ID_Key_Data() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
     """
@@ -341,11 +342,11 @@ class DataLoader( object ):
                     self.Print_Log( "DataLoader::Generate_Token_IDs() - Adding To Output Dictionary: " + str( token ) + " => " + str( index ) )
                     self.output_id_dictionary[token] = index
 
-            self.Print_Log( "DataLoader::Generate_Token_IDs() - Dictionaries Built" )
+        self.Print_Log( "DataLoader::Generate_Token_IDs() - Dictionaries Built" )
 
-            self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
-            self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
-            self.number_of_output_tokens    = len( self.output_id_dictionary    )
+        self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
+        self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
+        self.number_of_output_tokens    = len( self.output_id_dictionary    )
 
     """
         Load Vectorized Model Inputs/Outputs To File. This Favors CSR_Matrix Files Before Numpy Arrays.
@@ -485,7 +486,7 @@ class DataLoader( object ):
             token_id : Token ID Value (Integer)
     """
     def Get_Token_ID( self, token ):
-        print( "DataLoader::Get_Token_ID() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Get_Token_ID() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
     """
@@ -498,8 +499,46 @@ class DataLoader( object ):
             key          : Token String (String)
     """
     def Get_Token_From_ID( self, index_value ):
-        print( "DataLoader::Get_Token_From_ID() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Get_Token_From_ID() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
+
+    """
+        Inputs:
+            model_type     : Model Type (Open or Closed Discovery)
+            embedding_type : Type Of Embeddings (Primary, Secondary, Tertiary or Output)
+
+        Outputs:
+            embeddings     : List/Matrix Of Embeddings
+    """
+    def Get_Model_Embeddings( self, model_type = "open_discovery", embedding_type = "primary" ):
+        self.Print_Log( "StdDataLoader::Get_Model_Embeddings() - Fetching Embeddings" )
+        self.Print_Log( "StdDataLoader::Get_Model_Embeddings() -     Model Type    : " + str( model_type ) )
+        self.Print_Log( "StdDataLoader::Get_Model_Embeddings() -     Embedding Type: " + str( embedding_type ) )
+
+        if embedding_type is not None and embedding_type not in self.embedding_type_list:
+            self.Print_Log( "StdDataLoader::Get_Model_Embeddings() - Error: Unknown Embedding Type: " + str( embedding_type ), force_print = True )
+            return []
+
+        embeddings = None
+
+        # Get 'Primary', 'Secondary' & 'Tertiary' Embeddings (Full Output)
+        #   Model Type Does Not Matter For These Embeddings, They're Always Using The Full Embedding List/Matrix
+        if embedding_type == "primary" or embedding_type == "secondary" or embedding_type == "tertiary" :
+            embeddings = self.Get_Embeddings( embedding_type = None )
+
+        # Get 'Output' Embeddings (Full Or Reduced Output)
+        if embedding_type == "output":
+            # Use Restricted Embeddings If Specified i.e. 'self.restrict_output == True'.
+            #   Otherwise, Use Full Output For Embeddings.
+            #   (Closed Discovery Substitutes Secondary Embeddings For Output Embeddings As Model Input)
+            if model_type == "open_discovery" and self.Get_Restrict_Output():
+                embeddings = self.Get_Embeddings( embedding_type = "output" )
+            elif model_type == "closed_discovery" and self.Get_Restrict_Output():
+                embeddings = self.Get_Embeddings( embedding_type = "secondary" )
+            else:
+                embeddings = self.Get_Embeddings( embedding_type = None )
+
+        return embeddings
 
     """
         Fetches Next Batch Of Data Instances From File. (Assumes File Is Not Entirely Read Into Memory).
@@ -558,7 +597,7 @@ class DataLoader( object ):
             None
     """
     def Reinitialize_Token_ID_Values( self ):
-        print( "DataLoader::Reinitialize_Token_ID_Values() - Called Parent Function / Not Implemented / Call Child Function" )
+        self.Print_Log( "DataLoader::Reinitialize_Token_ID_Values() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
     """
@@ -688,7 +727,7 @@ class DataLoader( object ):
                         unique_token_str += str( element ) + "\n"
 
         except FileNotFoundError:
-            print( "DataLoader::Generate_Data_Unique_Token_List() - Error: Unable To Open Data File \"" + str( data_file_path ) + "\"" )
+            self.Print_Log( "DataLoader::Generate_Data_Unique_Token_List() - Error: Unable To Open Data File \"" + str( data_file_path ) + "\"", force_print = True )
             return
         finally:
             if file_handle       is not None: file_handle.close()
@@ -850,7 +889,7 @@ class DataLoader( object ):
     ############################################################################################
 
     def Get_Embeddings( self, embedding_type = None ):
-        if embedding_type is not None and embedding_type not in ["primary", "secondary", "tertiary", "output"]:
+        if embedding_type is not None and embedding_type not in self.embedding_type_list:
             self.Print_Log( "DataLoader::Get_Embeddings() - Error: Unknown Embedding Type: " + str( embedding_type ), force_print = True )
             return []
 
@@ -908,7 +947,7 @@ class DataLoader( object ):
 
     def Get_Skip_Out_Of_Vocabulary_Words( self ):   return self.skip_out_of_vocabulary_words
 
-    def Get_Restrict_Outputs( self ):               return self.restrict_outputs
+    def Get_Restrict_Output( self ):                return self.restrict_output
 
     def Get_Data( self ):                           return self.data_list
 
@@ -946,7 +985,7 @@ class DataLoader( object ):
 
     def Set_Token_ID_Dictionary( self, id_dictionary ):     self.token_id_dictionary   = id_dictionary
 
-    def Set_Restrict_Outputs( self, value ):                self.restrict_outputs = value
+    def Set_Restrict_Output( self, value ):                 self.restrict_output = value
 
     def Set_Debug_Log_File_Handle( self, file_handle ):     self.debug_log_file_handle = file_handle
 

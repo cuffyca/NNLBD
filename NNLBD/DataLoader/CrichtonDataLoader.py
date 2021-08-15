@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 07/13/2021                                                                   #
 #                                                                                          #
 #    Crichton Data Loader Class For The NNLBD Package.                                     #
 #                                                                                          #
@@ -35,10 +35,10 @@ from NNLBD.DataLoader import DataLoader
 
 class CrichtonDataLoader( DataLoader ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False,
-                  debug_log_file_handle = None, restrict_outputs = False ):
+                  debug_log_file_handle = None, restrict_output = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, shuffle = shuffle,
                           skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, debug_log_file_handle = debug_log_file_handle,
-                          restrict_outputs = restrict_outputs )
+                          restrict_output = restrict_output )
         self.version = 0.05
 
     """
@@ -658,14 +658,14 @@ class CrichtonDataLoader( DataLoader ):
 
         Inputs:
             data_list                   : List Of Data By Line (List)
-            restrict_outputs            : Restricts Model Outputs To Only Unique Instances Within The Data (Bool)
+            restrict_output             : Restricts Model Outputs To Only Unique Instances Within The Data (Bool)
             skip_association_value      : True - Skip Final Association Value ie. In Crichton Data-set, False - Keep Value (Bool)
             scale_embedding_weight_value: Scales Embedding Weights By Specified Value ie. embedding_weights *= scale_embedding_weight_value (Float)
 
         Outputs:
             None
     """
-    def Generate_Token_IDs( self, data_list = [], restrict_outputs = True, skip_association_value = False, scale_embedding_weight_value = 1.0 ):
+    def Generate_Token_IDs( self, data_list = [], restrict_output = True, skip_association_value = False, scale_embedding_weight_value = 1.0 ):
         # Check(s)
         if self.generated_embedding_ids:
             self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Warning: Already Generated Embedding Token IDs" )
@@ -733,27 +733,36 @@ class CrichtonDataLoader( DataLoader ):
 
             # Build Unique Primary Input ID Dictionary
             if sequence_tokens[0] not in self.primary_id_dictionary:
-                index = len( self.primary_id_dictionary )
-                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Primary Dictionary: " + str( sequence_tokens[0] ) + " => " + str( index ) )
-                self.primary_id_dictionary[sequence_tokens[0]] = index
+                # If We've Generated Our Unique Token List From Embeddings And The Token Does Not Have An Embedding, Skip It
+                if self.generated_embedding_ids == False or \
+                    ( self.generated_embedding_ids == True and sequence_tokens[0] in self.token_id_dictionary ):
+                    index = len( self.primary_id_dictionary )
+                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Primary Dictionary: " + str( sequence_tokens[0] ) + " => " + str( index ) )
+                    self.primary_id_dictionary[sequence_tokens[0]] = index
 
             # Build Unique Secondary Input ID Dictionary
             if sequence_tokens[1] not in self.secondary_id_dictionary:
-                index = len( self.secondary_id_dictionary )
-                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Secondary Dictionary: " + str( sequence_tokens[1] ) + " => " + str( index ) )
-                self.secondary_id_dictionary[sequence_tokens[1]] = index
+                # If We've Generated Our Unique Token List From Embeddings And The Token Does Not Have An Embedding, Skip It
+                if self.generated_embedding_ids == False or \
+                    ( self.generated_embedding_ids == True and sequence_tokens[1] in self.token_id_dictionary ):
+                    index = len( self.secondary_id_dictionary )
+                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Secondary Dictionary: " + str( sequence_tokens[1] ) + " => " + str( index ) )
+                    self.secondary_id_dictionary[sequence_tokens[1]] = index
 
             # Build Unique Tertiary Input ID Dictionary
-            if sequence_tokens[1] not in self.tertiary_id_dictionary:
-                index = len( self.tertiary_id_dictionary )
-                self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Tertiary Dictionary: " + str( sequence_tokens[1] ) + " => " + str( index ) )
-                self.tertiary_id_dictionary[sequence_tokens[1]] = index
+            if sequence_tokens[2] not in self.tertiary_id_dictionary:
+                # If We've Generated Our Unique Token List From Embeddings And The Token Does Not Have An Embedding, Skip It
+                if self.generated_embedding_ids == False or \
+                    ( self.generated_embedding_ids == True and sequence_tokens[2] in self.token_id_dictionary ):
+                    index = len( self.tertiary_id_dictionary )
+                    self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Adding To Tertiary Dictionary: " + str( sequence_tokens[2] ) + " => " + str( index ) )
+                    self.tertiary_id_dictionary[sequence_tokens[2]] = index
 
             self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Dictionaries Built" )
 
-            self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
-            self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
-            self.number_of_tertiary_tokens  = len( self.tertiary_id_dictionary  )
+        self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
+        self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
+        self.number_of_tertiary_tokens  = len( self.tertiary_id_dictionary  )
 
         self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() - Complete" )
 

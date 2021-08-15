@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 07/23/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -276,7 +276,14 @@ class MLPModel( BaseModel ):
 
         with tf.device( self.device_name ):
             if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
-                output_vector = np.zeros( ( primary_input_vector.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                # Give The Network False Output Instance Since They're Not Used For Inference Anyway
+                output_vector = None
+
+                if primary_input_vector.ndim == 2:
+                    output_vector = np.zeros( ( primary_input_vector.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                elif primary_input_vector.ndim == 3:
+                    output_vector = np.zeros( ( primary_input_vector.shape[0], primary_input_vector.shape[1], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+
                 return self.model.predict( [primary_input_vector, secondary_input_vector, output_vector] )
             else:
                 return self.model.predict( [primary_input_vector, secondary_input_vector] )

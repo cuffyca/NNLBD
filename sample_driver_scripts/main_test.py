@@ -34,14 +34,14 @@ from NNLBD import LBD
 def Main():
     # Create Model With Default Settings Except Those Listed Below
     model = LBD( network_model = "hinton", model_type = "open_discovery", bilstm_merge_mode = "concat",
-                 print_debug_log = True, write_log_to_file = True, per_epoch_saving = False,
+                 print_debug_log = True, write_log_to_file = True, per_epoch_saving = False, activation_function = "softplus",
                  use_csr_format = True, use_gpu = True, enable_early_stopping = False, final_layer_type = "dense",
                  early_stopping_metric_monitor = "F1_Score", early_stopping_persistence = 3, dropout = 0.5,
                  use_batch_normalization = False, trainable_weights = True, embedding_path = "../vectors/vectors_random_cui_mini",
-                 restrict_outputs = True )
+                 restrict_output = True )
 
     # Train Model Over Data: "data/cui_mini"
-    model.Fit( "../data/cui_mini", epochs = 40, batch_size = 32, verbose = 1 )
+    model.Fit( "../data/cui_mini", learning_rate = 0.001, epochs = 40, batch_size = 32, verbose = 1 )
     # model.Save_Model( "../test_model" )
     # model.Generate_Model_Metric_Plots()
 

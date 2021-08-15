@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/02/2020                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 08/01/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #    Reduplicates Crichton, et al (2020) - CD-2 Model                                      #
@@ -101,7 +101,7 @@ class CD2Model( BaseModel ):
                           early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization, final_layer_type = final_layer_type,
                           trainable_weights = trainable_weights, embedding_path = embedding_path, embedding_modification = embedding_modification,
                           feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay )
-        self.version       = 0.19
+        self.version       = 0.20
         self.network_model = "cd2"   # Force Setting Model To 'CD2' Model.
 
 
@@ -196,6 +196,9 @@ class CD2Model( BaseModel ):
         if use_csr_format   != True:  self.Set_Use_CSR_Format( use_csr_format )
         if per_epoch_saving != False: self.Set_Per_Epoch_Saving( per_epoch_saving )
 
+        # Add Model Callback Functions
+        super().Fit()
+
         if self.use_csr_format:
             self.trained_instances            = train_input_1.shape[0]
             number_of_train_1_input_instances = train_input_1.shape[0]
@@ -225,11 +228,6 @@ class CD2Model( BaseModel ):
             steps_per_batch = 1
         else:
             steps_per_batch = self.trained_instances // self.batch_size if self.trained_instances % self.batch_size == 0 else self.trained_instances // self.batch_size + 1
-
-        # Setup Saving The Model After Each Epoch
-        if self.per_epoch_saving:
-            self.Print_Log( "                            - Adding Model Saving Callback" )
-            self.callback_list.append( Model_Saving_Callback() )
 
         # Perform Model Training
         self.Print_Log( "CD2Model::Fit() - Executing Model Training", force_print = True )
@@ -436,7 +434,7 @@ class CD2Model( BaseModel ):
         output_layer          = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
                                                                batch_norm_layer = batch_norm_layer, final_dense_layer = final_dense_layer )
 
-        if self.final_layer_type in ["mlp", "arcface", "sphereface"]:
+        if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
             self.model = Model( inputs = [primary_input_layer, secondary_input_layer, tertiary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
         else:
             self.model = Model( inputs = [primary_input_layer, secondary_input_layer, tertiary_input_layer], outputs = output_layer, name = self.network_model + "_model" )

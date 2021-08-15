@@ -4,7 +4,7 @@
             "_comment": "Global Variable Settings",
             "enable_gpu_polling": "False",
             "acceptable_available_memory": 500,
-            "device_name": "/gpu:6",
+            "device_name": "/gpu:0",
             "number_of_iterations": 5
         }
     ],

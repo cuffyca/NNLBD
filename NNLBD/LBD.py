@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 08/03/2021                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -47,7 +47,7 @@ class LBD:
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, checkpoint_directory = "./ckpt_models",
                   trainable_weights = False, embedding_path = "", embedding_modification = "concatenate", final_layer_type = "dense",
-                  feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, restrict_outputs = False ):
+                  feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, restrict_output = False ):
         self.version                       = 0.20
         self.model                         = None                            # Automatically Set After Calling 'LBD::Build_Model()' Function
         self.debug_log                     = print_debug_log                 # Options: True, False
@@ -66,11 +66,11 @@ class LBD:
         # Model Specific DataLoader Parameters/Settings
         if network_model in [ "rumelhart", "hinton", "bilstm", "cnn", "mlp" ]:
             self.data_loader = StdDataLoader( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
-                                              skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, restrict_outputs = restrict_outputs,
+                                              skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, restrict_output = restrict_output,
                                               debug_log_file_handle = self.debug_log_file_handle )
         elif network_model in [ "cd2" ]:
             self.data_loader = CrichtonDataLoader( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
-                                                   skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, restrict_outputs = restrict_outputs,
+                                                   skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, restrict_output = restrict_output,
                                                    debug_log_file_handle = self.debug_log_file_handle )
         else:
             print( "LBD::Init() - Error Model \"" + str( network_model ) + "\"'s DataLoader Not Implemented" )
@@ -276,24 +276,15 @@ class LBD:
         #    Representations, So We Just Set 'simulate_embeddings_loaded' Parameter To 'True' In The DataLoader Class To Avoid Generating Them Again.
         if data_loader.Is_Embeddings_Loaded() and data_loader.Simulate_Embeddings_Loaded_Mode() == False:
             # Use Full Embeddings For All Models As Input
-            primary_embeddings   = data_loader.Get_Embeddings( embedding_type = None )
-            secondary_embeddings = data_loader.Get_Embeddings( embedding_type = None )
-            tertiary_embeddings  = data_loader.Get_Embeddings( embedding_type = None )
+            primary_embeddings   = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "primary"   )
+            secondary_embeddings = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "secondary" )
+            tertiary_embeddings  = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "tertiary"  )
+            output_embeddings    = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "output"    )
 
-            # Use Restricted Embeddings If Specified i.e. 'self.restrict_outputs == True'.
-            #   Otherwise, Use Full Output For Embeddings.
-            #   (Closed Discovery Substitutes Secondary Embeddings For Output Embeddings As Model Input)
-            if self.model.Get_Model_Type() == "open_discovery" and data_loader.Get_Restrict_Outputs():
-                output_embeddings = data_loader.Get_Embeddings( embedding_type = "output" )
-            elif self.model.Get_Model_Type() == "closed_discovery" and data_loader.Get_Restrict_Outputs():
-                output_embeddings = data_loader.Get_Embeddings( embedding_type = "secondary" )
-            else:
-                output_embeddings = data_loader.Get_Embeddings( embedding_type = None )
-
-            if len( primary_embeddings   ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Primary Embeddings Data Length == 0" )
+            if len( primary_embeddings   ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Primary Embeddings Data Length == 0"   )
             if len( secondary_embeddings ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Secondary Embeddings Data Length == 0" )
-            if len( tertiary_embeddings  ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Tertiary Embeddings Data Length == 0" )
-            if len( output_embeddings    ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Output Embeddings Data Length == 0" )
+            if len( tertiary_embeddings  ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Tertiary Embeddings Data Length == 0"  )
+            if len( output_embeddings    ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Output Embeddings Data Length == 0"    )
 
             number_of_hidden_dimensions = data_loader.Get_Embedding_Dimension_Size()
 
@@ -316,7 +307,6 @@ class LBD:
         pad_inputs         = False
         pad_output         = True if self.model.Get_Network_Model() != "cd2"    else False
         stack_inputs       = True if self.model.Get_Network_Model() == "bilstm" else False
-        is_crichton_format = True if self.model.Get_Network_Model() == "cd2"    else False
 
         if self.Is_Embeddings_Loaded():
             self.Print_Log( "LBD::Prepare_Model_Data() - Warning: 'pad_inputs == True' When Embeddings Have Been Loaded Into The DataLoader / Setting 'pad_inputs = False'" )
@@ -434,9 +424,9 @@ class LBD:
         number_of_train_2_inputs = data_loader.Get_Number_Of_Unique_Features()
         number_of_train_3_inputs = data_loader.Get_Number_Of_Unique_Features()
 
-        if self.model.Get_Model_Type() == "open_discovery" and data_loader.Get_Restrict_Outputs():
+        if self.model.Get_Model_Type() == "open_discovery" and data_loader.Get_Restrict_Output():
             number_of_outputs = data_loader.Get_Number_Of_Output_Elements()
-        elif self.model.Get_Model_Type() == "closed_discovery" and data_loader.Get_Restrict_Outputs():
+        elif self.model.Get_Model_Type() == "closed_discovery" and data_loader.Get_Restrict_Output():
             number_of_outputs = data_loader.Get_Number_Of_Secondary_Elements()
         else:
             number_of_outputs = data_loader.Get_Number_Of_Unique_Features()
@@ -726,8 +716,8 @@ class LBD:
             self.Print_Log( "LBD::Predict() - Converting Predicted Indices To Word Tokens" )
             token_type = None
 
-            # Ensure Correct Token ID Dictionary Is Used Depending On 'restrict_outputs' Variable And 'model_type' Settings.
-            if self.Get_Data_Loader().Get_Restrict_Outputs():
+            # Ensure Correct Token ID Dictionary Is Used Depending On 'restrict_output' Variable And 'model_type' Settings.
+            if self.Get_Data_Loader().Get_Restrict_Output():
                 if self.model.Get_Model_Type() == "open_discovery"  : token_type = "output"
                 if self.model.Get_Model_Type() == "closed_discovery": token_type = "secondary"
 
@@ -842,8 +832,8 @@ class LBD:
         if return_vector == False:
             self.Print_Log( "LBD::Predict_Vector() - Converting Predicted Indices To Word Tokens" )
 
-            # Ensure Correct Token ID Dictionary Is Used Depending On 'restrict_outputs' Variable And 'model_type' Settings.
-            if self.Get_Data_Loader().Get_Restrict_Outputs():
+            # Ensure Correct Token ID Dictionary Is Used Depending On 'restrict_output' Variable And 'model_type' Settings.
+            if self.Get_Data_Loader().Get_Restrict_Output():
                 if self.model.Get_Model_Type() == "open_discovery"  : token_type = "output"
                 if self.model.Get_Model_Type() == "closed_discovery": token_type = "secondary"
 
@@ -1432,47 +1422,57 @@ class LBD:
 
         if "loss" in history:
             self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Loss vs Epoch" )
+            figure = plt.figure()
             plt.plot( range( len( self.model.model_history.epoch ) ), history['loss'] )
             plt.title( "Training: Loss vs Epoch" )
             plt.xlabel( "Epoch" )
             plt.ylabel( "Loss" )
             plt.savefig( str( path ) + "training_epoch_vs_loss.png" )
+            plt.close( figure )
             plt.clf()
 
         if "Accuracy" in history or "acc" in history:
             self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Accuracy vs Epoch" )
+            figure = plt.figure()
             plt.plot( range( len( self.model.model_history.epoch ) ), history['accuracy'] if 'accuracy' in history else history['acc'] )
             plt.title( "Training: Accuracy vs Epoch" )
             plt.xlabel( "Epoch" )
             plt.ylabel( "Accuracy" )
             plt.savefig( str( path ) + "training_epoch_vs_accuracy.png" )
+            plt.close( figure )
             plt.clf()
 
         if "Precision" in history:
             self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Precision vs Epoch" )
+            figure = plt.figure()
             plt.plot( range( len( self.model.model_history.epoch ) ), history['Precision'] )
             plt.title( "Training: Precision vs Epoch" )
             plt.xlabel( "Epoch" )
             plt.ylabel( "Precision" )
             plt.savefig( str( path ) + "training_epoch_vs_precision.png" )
+            plt.close( figure )
             plt.clf()
 
         if "Recall" in history:
             self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - Recall vs Epoch" )
+            figure = plt.figure()
             plt.plot( range( len( self.model.model_history.epoch ) ), history['Recall'] )
             plt.title( "Training: Recall vs Epoch" )
             plt.xlabel( "Epoch" )
             plt.ylabel( "Recall" )
             plt.savefig( str( path ) + "training_epoch_vs_recall.png" )
+            plt.close( figure )
             plt.clf()
 
         if "F1_Score" in history:
             self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Plotting Training Set - F1-Score vs Epoch" )
+            figure = plt.figure()
             plt.plot( range( len( self.model.model_history.epoch ) ), history['F1_Score'] )
             plt.title( "Training: F1-Score vs Epoch" )
             plt.xlabel( "Epoch" )
             plt.ylabel( "F1-Score" )
             plt.savefig( str( path ) + "training_epoch_vs_f1.png" )
+            plt.close( figure )
             plt.clf()
 
         self.Print_Log( "LBD::Generate_Model_Metric_Plots() - Complete" )

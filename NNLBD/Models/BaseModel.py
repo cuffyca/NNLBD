@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 07/31/2021                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -51,13 +51,13 @@ from tensorflow import keras
 if re.search( r'2.\d+', tf.__version__ ):
     import tensorflow.keras.backend as K
     from tensorflow.keras import regularizers
-    from tensorflow.keras.layers import Layer
+    from tensorflow.keras.layers import Dense, Layer
     from tensorflow.keras.metrics import categorical_accuracy
 # Tensorflow v1.15.x Support
 else:
     import keras.backend as K
     from keras import regularizers
-    from keras.layers import Layer, Dense
+    from keras.layers import Dense, Layer
     from keras.metrics import categorical_accuracy
 
 # Custom Modules
@@ -294,7 +294,7 @@ class BaseModel( object ):
                     self.device_name = "/cpu:0"
                     return True
 
-                self.Print_Log( "BaseModel::Initialize_GPU() - CUDA Supported GPU Is Available", force_print = True )
+                self.Print_Log( "BaseModel::Initialize_GPU() - CUDA Supported / GPU Is Available", force_print = True )
 
                 ####################################
                 #       GPU Polling (Start)        #

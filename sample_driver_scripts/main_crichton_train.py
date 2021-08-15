@@ -39,7 +39,7 @@ def Main():
 
     # model.Get_Data_Loader().Read_Data( "../data/train_cs1_closed_discovery_without_aggregators_original_test" )
     # model.Get_Data_Loader().Load_Embeddings( "../vectors/test_modified_cs1.reduced_embeddings" )
-    # model.Get_Data_Loader().Generate_Token_IDs( restrict_outputs = False )
+    # model.Get_Data_Loader().Generate_Token_IDs( restrict_output = False )
     # input_1, input_2, input_3, outputs = model.Get_Data_Loader().Vectorize_Model_Inputs( "MESH:C116288", "MESH:D005354", "CHEBI:29108", "0.00036253776435",
     #                                                                         is_crichton_format = True, pad_inputs = False, model_type = model.Get_Model_Type() )
     #

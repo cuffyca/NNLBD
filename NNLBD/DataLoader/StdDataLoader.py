@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 07/09/2021                                                                   #
+#    Revised: 07/13/2021                                                                   #
 #                                                                                          #
 #    Standard Data Loader Classs For The NNLBD Package.                                    #
 #                                                                                          #
@@ -46,10 +46,10 @@ from NNLBD.DataLoader import DataLoader
 
 class StdDataLoader( DataLoader ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False, debug_log_file_handle = None,
-                  restrict_outputs = True ):
+                  restrict_output = True ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, shuffle = shuffle,
                           skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, debug_log_file_handle = debug_log_file_handle,
-                           restrict_outputs = restrict_outputs )
+                           restrict_output = restrict_output )
         self.version = 0.06
 
     """
@@ -435,7 +435,7 @@ class StdDataLoader( DataLoader ):
 
             # Only Reduce Model Outputs To Unique Output Tokens Seen Within The Model Data (For Closed Discovery)
             #   Secondary Inputs Are Substituted With The Outputs For Closed Discovery
-            if model_type == "closed_discovery" and self.restrict_outputs:
+            if model_type == "closed_discovery" and self.restrict_output:
                 primary_input_id   = self.Get_Token_ID( primary_input,   token_type = None )
                 secondary_input_id = self.Get_Token_ID( secondary_input, token_type = "secondary" )
                 tertiary_input_id  = self.Get_Token_ID( tertiary_input,  token_type = None )
@@ -472,11 +472,11 @@ class StdDataLoader( DataLoader ):
                 #####################
                 if outputs != "":
                     # Split Output Tokens Into Multiple Output Instances
-                    output_instance_size = self.Get_Number_Of_Output_Elements() if self.restrict_outputs else self.Get_Number_Of_Unique_Features()
+                    output_instance_size = self.Get_Number_Of_Output_Elements() if self.restrict_output else self.Get_Number_Of_Unique_Features()
 
                     if separate_outputs:
                         for output in outputs.split():
-                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_outputs else self.Get_Token_ID( output )
+                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_output else self.Get_Token_ID( output )
 
                             # Token ID Not Found In Token ID Dictionary
                             if output_id == -1:
@@ -501,7 +501,7 @@ class StdDataLoader( DataLoader ):
                             temp_array = []
 
                         for output in outputs.split():
-                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_outputs else self.Get_Token_ID( output )
+                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_output else self.Get_Token_ID( output )
 
                             # Token ID Not Found In Token ID Dictionary
                             if output_id == -1:
@@ -600,7 +600,7 @@ class StdDataLoader( DataLoader ):
                 # Vectorize Inputs/Output For Closed Discovery
                 #    In Comparison To Open Discovery, The Following Code Swaps The Secondary Input Elements And Output Elements For Closed Discovery
                 primary_instance_size   = self.Get_Number_Of_Unique_Features()
-                secondary_instance_size = self.Get_Number_Of_Secondary_Elements() if self.restrict_outputs else self.Get_Number_Of_Unique_Features()
+                secondary_instance_size = self.Get_Number_Of_Secondary_Elements() if self.restrict_output else self.Get_Number_Of_Unique_Features()
                 tertiary_instance_size  = self.Get_Number_Of_Unique_Features()
                 output_instance_size    = self.Get_Number_Of_Unique_Features()
 
@@ -846,22 +846,22 @@ class StdDataLoader( DataLoader ):
 
         Inputs:
             data_list                   : List Of Data By Line (List)
-            restrict_outputs            : Signals The DataLoader's Encoding Functions To Reduce The Model Output To Output Tokens Only Appearing In The Model Data
+            restrict_output             : Signals The DataLoader's Encoding Functions To Reduce The Model Output To Output Tokens Only Appearing In The Model Data
             scale_embedding_weight_value: Scales Embedding Weights By Specified Value ie. embedding_weights *= scale_embedding_weight_value (Float)
 
         Outputs:
             None
     """
-    def Generate_Token_IDs( self, data_list = [], restrict_outputs = None, scale_embedding_weight_value = 1.0 ):
+    def Generate_Token_IDs( self, data_list = [], restrict_output = None, scale_embedding_weight_value = 1.0 ):
         # Check(s)
         if self.generated_embedding_ids:
             self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Warning: Already Generated Embedding Token IDs" )
             return
 
-        if restrict_outputs is not None: self.restrict_outputs = restrict_outputs
+        if restrict_output is not None: self.restrict_output = restrict_output
 
         self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Parameter Settings:" )
-        self.Print_Log( "StdDataLoader::Generate_Token_IDs()             Only Reduce Outputs : " + str( restrict_outputs ) )
+        self.Print_Log( "StdDataLoader::Generate_Token_IDs()             Only Reduce Outputs : " + str( restrict_output ) )
 
         # Insert Padding At First Index Of The Token ID Dictionaries
         if "<*>padding<*>" not in self.token_id_dictionary    : self.token_id_dictionary["<*>padding<*>"]     = 0
@@ -1040,7 +1040,7 @@ class StdDataLoader( DataLoader ):
     def Get_Token_ID( self, token, token_type = None ):
         self.Print_Log( "StdDataLoader::Get_Token_ID() - Fetching ID For Token: \"" + str( token ) + "\"" )
 
-        if token_type != None and token_type not in ["primary", "secondary", "tertiary", "output"]:
+        if token_type != None and token_type not in self.embedding_type_list:
             self.Print_Log( "StdDataLoader::Get_Token_ID() - Unknown Token Type \"" + str( token_type ) + "\"" )
             return -1
 
@@ -1079,7 +1079,7 @@ class StdDataLoader( DataLoader ):
     def Get_Token_From_ID( self, index_value, token_type = None ):
         self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Searching For ID: " + str( index_value ) )
 
-        if token_type != None and token_type not in ["primary", "secondary", "tertiary", "output"]:
+        if token_type != None and token_type not in self.embedding_type_list:
             self.Print_Log( "StdDataLoader::Get_Token_From_ID() - Unknown Token Type \"" + str( token_type ) + "\"" )
             return -1
 
@@ -1414,7 +1414,7 @@ class StdDataLoader( DataLoader ):
 
             # Number Of Output Rows Are Not Dependent On Padding Inputs
             if pad_output:
-                number_of_output_rows = self.Get_Number_Of_Output_Elements() if self.Get_Restrict_Outputs() else self.Get_Number_Of_Unique_Features()
+                number_of_output_rows = self.Get_Number_Of_Output_Elements() if self.Get_Restrict_Output() else self.Get_Number_Of_Unique_Features()
 
         elif model_type == "closed_discovery":
             if pad_inputs:
@@ -1424,7 +1424,7 @@ class StdDataLoader( DataLoader ):
 
             # Number Of Output Rows Are Not Dependent On Padding Inputs
             if pad_output:
-                number_of_output_rows = self.Get_Number_Of_Secondary_Elements() if self.Get_Restrict_Outputs() else self.Get_Number_Of_Unique_Features()
+                number_of_output_rows = self.Get_Number_Of_Secondary_Elements() if self.Get_Restrict_Output() else self.Get_Number_Of_Unique_Features()
 
         # Convert Inputs To CSR Matrix Format
         if use_csr_format and stack_inputs == False:

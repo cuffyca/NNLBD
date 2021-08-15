@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 07/23/2021                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -129,11 +129,13 @@ class NNLBD_Driver:
     """
     def Generate_Plot( self, data_list = [], title = "Title", x_label = "X_Label",
                        y_label = "Y_Label", file_name = "file_name.png", save_path = "./" ):
+        figure = plt.figure()
         plt.plot( range( len( data_list ) ), data_list )
         plt.title( str( title ) )
         plt.xlabel( str( x_label ) )
         plt.ylabel( str( y_label ) )
         plt.savefig( str( save_path ) + str( file_name ) )
+        plt.close( figure )
         plt.clf()
 
     """
@@ -165,7 +167,7 @@ class NNLBD_Driver:
         early_stopping_metric_monitor, early_stopping_persistence, use_batch_normalization          = "loss", 3, False
         embedding_modification, skip_out_of_vocabulary_words, eval_data_path, checkpoint_directory  = "concatenate", True, "", "ckpt_models"
         model_save_path, model_load_path, set_per_iteration_model_path, learning_rate_decay         = "", "", False, 0.004
-        feature_scale_value, restrict_outputs                                                       = 1.0, False
+        feature_scale_value, restrict_output                                                       = 1.0, False
 
         # Model Variables
         run_eval_number_epoch = 1
@@ -195,7 +197,7 @@ class NNLBD_Driver:
                 if "enable_early_stopping"         in run_dict: enable_early_stopping         = True if run_dict["enable_early_stopping"]        == "True" else False
                 if "use_batch_normalization"       in run_dict: use_batch_normalization       = True if run_dict["use_batch_normalization"]      == "True" else False
                 if "set_per_iteration_model_path"  in run_dict: set_per_iteration_model_path  = True if run_dict["set_per_iteration_model_path"] == "True" else False
-                if "restrict_outputs"              in run_dict: restrict_outputs              = True if run_dict["restrict_outputs"]             == "True" else False
+                if "restrict_output"               in run_dict: restrict_output               = True if run_dict["restrict_output"]             == "True" else False
                 if "network_model"                 in run_dict: network_model                 = run_dict["network_model"]
                 if "model_type"                    in run_dict: model_type                    = run_dict["model_type"]
                 if "activation_function"           in run_dict: activation_function           = run_dict["activation_function"]
@@ -250,7 +252,7 @@ class NNLBD_Driver:
                              margin = margin, scale = scale, enable_early_stopping = enable_early_stopping,  early_stopping_metric_monitor = early_stopping_metric_monitor,
                              use_batch_normalization = use_batch_normalization, embedding_modification = embedding_modification,  enable_tensorboard_logs = enable_tensorboard_logs,
                              early_stopping_persistence = early_stopping_persistence, skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, learning_rate_decay = learning_rate_decay,
-                             feature_scale_value = feature_scale_value, restrict_outputs = restrict_outputs )
+                             feature_scale_value = feature_scale_value, restrict_output = restrict_output )
 
                 ######################################################
                 # Determine What Type Of Experiment Will Be Executed #
@@ -546,10 +548,10 @@ class NNLBD_Driver:
             return
 
         # Vectorize Gold B Term And Entire Evaluation Data-set
-        gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Vectorize_Model_Data( data_list = [gold_b_instance], model_type = "closed_discovery",
-                                                                                        use_csr_format = True, keep_in_memory = False )
-        eval_input_1, eval_input_2, eval_input_3, _       = model.Vectorize_Model_Data( data_list = eval_data, model_type = "closed_discovery",
-                                                                                        use_csr_format = True, keep_in_memory = False )
+        gold_b_input_1, gold_b_input_2, gold_b_input_3, _ = model.Encode_Model_Data( data_list = [gold_b_instance], model_type = "closed_discovery",
+                                                                                     use_csr_format = True, keep_in_memory = False )
+        eval_input_1, eval_input_2, eval_input_3, _       = model.Encode_Model_Data( data_list = eval_data, model_type = "closed_discovery",
+                                                                                     use_csr_format = True, keep_in_memory = False )
 
         # Checks
         if gold_b_input_1 is None or gold_b_input_2 is None or gold_b_input_3 is None:
@@ -716,10 +718,10 @@ class NNLBD_Driver:
 
         # Load Evaluation Data (Use Temporary Data Loader / Outside Of Model's Data Loader)
         if eval_data_path != "":
-            # Set 'restrict_outputs = True'. This Implies The DataLoader Will Only Fetch The Unique B Concepts
+            # Set 'restrict_output = True'. This Implies The DataLoader Will Only Fetch The Unique B Concepts
             #   From The Evaluation Data. This Simulates The Crichton Approach For A Direct Comparison Against Their Results.
             eval_data_loader = StdDataLoader( skip_out_of_vocabulary_words = model.Get_Data_Loader().Get_Skip_Out_Of_Vocabulary_Words(),
-                                              restrict_outputs = True )
+                                              restrict_output = True )
             eval_data_loader.Read_Data( eval_data_path )
             eval_data_loader.Load_Embeddings( embedding_path )
             eval_data_loader.Generate_Token_IDs()
@@ -770,7 +772,7 @@ class NNLBD_Driver:
 
             # Fetch All Unique Terms From DataLoader Dictionary
             #   For Closed Discovery The Secondary ID Dictionary Is Substituted With The Output Dictionary i.e. A & C Used To Predict B
-            if model.Get_Data_Loader().Get_Restrict_Outputs():
+            if model.Get_Data_Loader().Get_Restrict_Output():
                 unique_token_list = list( model.Get_Data_Loader().Get_Secondary_ID_Dictionary().keys() )
             else:
                 unique_token_list = list( model.Get_Data_Loader().Get_Token_ID_Dictionary().keys() )

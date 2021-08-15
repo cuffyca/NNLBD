@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    12/08/2020                                                                   #
-#    Revised: 07/10/2021                                                                   #
+#    Revised: 07/23/2021                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -270,7 +270,14 @@ class CNNModel( BaseModel ):
 
         with tf.device( self.device_name ):
             if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
-                outputs = np.zeros( ( inputs.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                # Give The Network False Output Instance Since They're Not Used For Inference Anyway
+                outputs = None
+
+                if inputs.ndim == 2:
+                    outputs = np.zeros( ( inputs.shape[0], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+                elif inputs.ndim == 3:
+                    outputs = np.zeros( ( inputs.shape[0], inputs.shape[1], self.Get_Number_Of_Outputs() ), dtype = np.int32 )
+
                 return self.model.predict( [inputs, outputs] )
             else:
                 return self.model.predict( [inputs] )

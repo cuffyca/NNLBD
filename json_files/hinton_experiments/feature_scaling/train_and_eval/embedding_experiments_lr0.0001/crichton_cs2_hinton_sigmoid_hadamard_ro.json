@@ -4,7 +4,7 @@
             "_comment": "Global Variable Settings",
             "enable_gpu_polling": "False",
             "acceptable_available_memory": 3000,
-            "device_name": "/gpu:6",
+            "device_name": "/gpu:0",
             "number_of_iterations": 5
         }
     ],
@@ -26,7 +26,7 @@
             "embedding_path": "../vectors/test_modified_cs2.embeddings",
             "train_data_path": "../data/train_cs2_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/test_cs2_closed_discovery_without_aggregators_mod",
-            "model_save_path": "../saved_models/hadamard_fs_fo_lr0.0001/cs2_crichton_hinton_sigmoid_model",
+            "model_save_path": "../saved_models/hadamard_fs_ro_lr0.0001/cs2_crichton_hinton_sigmoid_model",
             "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.0001,
