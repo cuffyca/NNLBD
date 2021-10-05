@@ -8,39 +8,36 @@
             "number_of_iterations": 5
         }
     ],
-    "crichton_closed_discovery_train_and_eval_1": [
+    "closed_discovery_train_and_eval_1": [
         {
-            "_comment": "Crichton: CS1 Reduced",
+            "_comment": "Crichton CS1 Hinton Sigmoid: Closed Discovery",
             "print_debug_log": "False",
             "write_log_to_file": "False",
-            "network_model": "cd2",
+            "network_model": "hinton",
             "model_type": "closed_discovery",
             "per_epoch_saving": "False",
             "use_gpu": "True",
             "skip_out_of_vocabulary_words": "True",
-            "enable_early_stopping": "False",
-            "early_stopping_metric_monitor": "loss",
-            "early_stopping_persistence": 3,
-            "activation_function": "softplus",
+            "activation_function": "sigmoid",
             "loss_function": "binary_crossentropy",
             "use_csr_format": "True",
             "trainable_weights": "False",
+            "use_batch_normalization": "False",
             "embedding_path": "../vectors/test_modified_cs1.embeddings",
-            "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators.tsv",
-            "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators.tsv",
-            "model_save_path": "../cs1_softplus_model_fs",
-            "epochs": 300,
+            "train_data_path": "../data/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/test_cs1_closed_discovery_without_aggregators_mod",
+            "model_save_path": "../saved_models/hadamard_fs_fo_lr0.001/cs1_crichton_hinton_sigmoid_model",
+            "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
-            "batch_size": 1024,
+            "batch_size": 256,
             "dropout": 0.1,
             "run_eval_number_epoch": 1,
             "embedding_modification": "hadamard",
-            "use_batch_normalization": "False",
             "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236\t0.0",
-            "set_per_iteration_model_path": "True",
-            "restrict_output": "True",
-            "feature_scale_value": 10.0
+            "restrict_output": "False",
+            "feature_scale_value": 10.0,
+            "set_per_iteration_model_path": "True"
         }
     ]
 }
