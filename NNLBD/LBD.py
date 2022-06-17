@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 08/03/2021                                                                   #
+#    Revised: 03/31/2022                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -227,7 +227,7 @@ class LBD:
             self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Model Data Has Already Been Prepared" )
             return True
 
-        # CNN Network Model Check (Not Implemented)
+        # CNN Network Model Check (Not Implemented Error)
         if self.model.Get_Network_Model() == "cnn":
             self.Print_Log( "LBD::Prepare_Model_Data() - Network Model Type - CNN" )
             self.Print_Log( "Error: CNN Model Is Not Implemented / Exiting Program", force_print = True )
@@ -558,21 +558,22 @@ class LBD:
         Outputs Model's Prediction Vector Given Inputs
 
         Inputs:
-            primary_input          : Primary Model Input (String)
-            secondary_input        : Secondary Model Input (String)
-            tertiary_input         : Tertiary Model Input (String)
-            primary_input_matrix   : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            secondary_input_matrix : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            tertiary_input_matrix  : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            return_vector          : True = Return Prediction Vector, False = Return Predicted Tokens (Boolean)
-            return_raw_values      : True = Output Raw Prediction Values From Model / False = Output Values After Passing Through Prediction Threshold (Boolean)
-            instance_separator     : String Delimiter Used To Separate Model Data Instances (String)
+            primary_input           : Primary Model Input (String)
+            secondary_input         : Secondary Model Input (String)
+            tertiary_input          : Tertiary Model Input (String)
+            encoded_primary_input   : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_secondary_input : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_tertiary_input  : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_output          : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            return_vector           : True = Return Prediction Vector, False = Return Predicted Tokens (Boolean)
+            return_raw_values       : True = Output Raw Prediction Values From Model / False = Output Values After Passing Through Prediction Threshold (Boolean)
+            instance_separator      : String Delimiter Used To Separate Model Data Instances (String)
 
         Outputs:
-            prediction             : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
+            prediction              : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
     """
     def Predict( self, primary_input = "", secondary_input = "", tertiary_input = "", output = "",
-                 primary_input_matrix = [], secondary_input_matrix = [], tertiary_input_matrix = [], output_matrix = [],
+                 encoded_primary_input = None, encoded_secondary_input = None, encoded_tertiary_input = None, encoded_output = None,
                  return_vector = False, return_raw_values = False, instance_separator = '<:>' ):
         # Start Elapsed Time Timer
         start_time          = time.time()
@@ -582,7 +583,8 @@ class LBD:
         vectorize_data      = True
 
         # Check For Vectorized Input Matrices Have Been Passed As Parameters
-        if primary_input_matrix != [] or secondary_input_matrix != [] or tertiary_input_matrix != [] or output_matrix != []:
+        if encoded_primary_input is not None or encoded_secondary_input is not None \
+           or encoded_tertiary_input is not None or encoded_output is not None:
             self.Print_Log( "LBD::Predict() - Vectorized Input Matrices Passed / Skipping Plain Text Vectorization" )
             vectorize_data = False
 
@@ -601,14 +603,23 @@ class LBD:
             return []
 
         # Check
-        if return_raw_values and return_vector == False:
+        if return_raw_values and not return_vector:
             self.Print_Log( "LBD::Predict() - Warning: Unable To Return Raw Values With 'return_vector = False' / Setting 'return_vector = True'" )
             return_vector = True
 
-        # Check If We're Performing Closed Discovery. If So Swap Secondary Input To Output.
-        if self.Get_Network_Model() not in ["mlp", "cd2"] and self.Get_Model_Type() == "closed_discovery" and output == "":
-            output = secondary_input
+        # Check If We're Performing Closed Discovery. If So Swap Secondary Input To Output For Prediction.
+        if encoded_primary_input is None and encoded_secondary_input is None and self.Get_Network_Model() not in ["mlp", "cd2"] \
+           and self.Get_Model_Type() == "closed_discovery" and output == "":
+            self.Print_Log( "LBD::Predict() - Closed Discovery Prediction - Swapping Primary And Output Concepts" )
+            self.Print_Log( "               - Secondary Input: " + str( secondary_input ) )
+            self.Print_Log( "               - Output         : " + str( output          ) )
+
+            output          = secondary_input
             secondary_input = "<*>padding<*>"
+
+            self.Print_Log( "LBD::Predict() - New Secondary input And Output Concepts" )
+            self.Print_Log( "               - Secondary Input: " + str( secondary_input ) )
+            self.Print_Log( "               - Output         : " + str( output          ) )
 
         #######################################################################
         #                                                                     #
@@ -626,51 +637,51 @@ class LBD:
         if self.Is_Embeddings_Loaded(): pad_inputs = False
 
         if vectorize_data:
-            primary_input_matrix, secondary_input_matrix, tertiary_input_matrix, output_matrix = self.Encode_Model_Instance( primary_input, secondary_input, tertiary_input, output,
-                                                                                                                             model_type = self.Get_Model_Type(),
-                                                                                                                             pad_inputs = pad_inputs, pad_output = pad_output,
-                                                                                                                             instance_separator = instance_separator )
+            encoded_primary_input, encoded_secondary_input, encoded_tertiary_input, encoded_output = self.Encode_Model_Instance( primary_input, secondary_input, tertiary_input, output,
+                                                                                                                                 model_type = self.Get_Model_Type(),
+                                                                                                                                 pad_inputs = pad_inputs, pad_output = pad_output,
+                                                                                                                                 instance_separator = instance_separator )
 
         # Check(s)
-        if ( isinstance( primary_input_matrix, np.ndarray ) and len( primary_input_matrix ) == 0 ) or ( isinstance( primary_input_matrix, csr_matrix ) and primary_input_matrix.shape[0] == 0 ):
-            self.Print_Log( "LBD::Predict() - Error: Primary Input Matrix Is Empty",   force_print = True )
+        if ( isinstance( encoded_primary_input, np.ndarray ) and len( encoded_primary_input ) == 0 ) or ( isinstance( encoded_primary_input, csr_matrix ) and encoded_primary_input.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Encoded Primary Input Is Empty",   force_print = True )
             return []
-        if ( isinstance( secondary_input_matrix, np.ndarray ) and len( secondary_input_matrix ) == 0 ) or ( isinstance( secondary_input_matrix, csr_matrix ) and secondary_input_matrix.shape[0] == 0 ):
-            self.Print_Log( "LBD::Predict() - Error: Secondary Input Matrix Is Empty", force_print = True )
+        if ( isinstance( encoded_secondary_input, np.ndarray ) and len( encoded_secondary_input ) == 0 ) or ( isinstance( encoded_secondary_input, csr_matrix ) and encoded_secondary_input.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Encoded Secondary Input Is Empty", force_print = True )
             return []
-        if tertiary_input != "" and ( isinstance( tertiary_input_matrix, np.ndarray ) and len( tertiary_input_matrix ) == 0 ) or ( isinstance( tertiary_input_matrix, csr_matrix ) and tertiary_input_matrix.shape[0] == 0 ):
-            self.Print_Log( "LBD::Predict() - Error: Tertiary Input Matrix Is Empty",  force_print = True )
+        if tertiary_input != "" and ( isinstance( encoded_tertiary_input, np.ndarray ) and len( encoded_tertiary_input ) == 0 ) or ( isinstance( encoded_tertiary_input, csr_matrix ) and encoded_tertiary_input.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Encoded Tertiary Input Is Empty",  force_print = True )
             return []
-        if output != "" and ( isinstance( output_matrix, np.ndarray ) and len( output_matrix ) == 0 ) or ( isinstance( output_matrix, csr_matrix ) and output_matrix.shape[0] == 0 ):
-            self.Print_Log( "LBD::Predict() - Error: Output Matrix Is Empty", force_print = True )
+        if output != "" and ( isinstance( encoded_output, np.ndarray ) and len( encoded_output ) == 0 ) or ( isinstance( encoded_output, csr_matrix ) and encoded_output.shape[0] == 0 ):
+            self.Print_Log( "LBD::Predict() - Error: Encoded Output Is Empty", force_print = True )
             return []
 
         # Perform Model Predictions
-        if primary_input_matrix == [] or secondary_input_matrix == []:
-            self.Print_Log( "LBD::Predict() - Error: Primary Or Secondary Input Matrix Is Empty", force_print = True )
+        if encoded_primary_input == [] or encoded_secondary_input == []:
+            self.Print_Log( "LBD::Predict() - Error: Encoded Primary Or Secondary Input(s) Are Empty", force_print = True )
             return []
 
         self.Print_Log( "LBD::Predict() - Predicting Outputs" )
 
         # Ensure Vectorized Model Inputs Are Numpy Arrays Prior To Sending To The Model For Prediction
-        if isinstance( primary_input_matrix,   list ): primary_input_matrix   = np.asarray( primary_input_matrix   )
-        if isinstance( secondary_input_matrix, list ): secondary_input_matrix = np.asarray( secondary_input_matrix )
-        if isinstance( tertiary_input_matrix,  list ): tertiary_input_matrix  = np.asarray( tertiary_input_matrix  )
-        if isinstance( output_matrix,          list ): output_matrix          = np.asarray( output_matrix          )
+        if isinstance( encoded_primary_input,   list ): encoded_primary_input   = np.asarray( encoded_primary_input   )
+        if isinstance( encoded_secondary_input, list ): encoded_secondary_input = np.asarray( encoded_secondary_input )
+        if isinstance( encoded_tertiary_input,  list ): encoded_tertiary_input  = np.asarray( encoded_tertiary_input  )
+        if isinstance( encoded_output,          list ): encoded_output          = np.asarray( encoded_output          )
 
         if self.model.Get_Network_Model() == "hinton" or self.model.Get_Network_Model() == "rumelhart":
-            prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix )
+            prediction = self.model.Predict( encoded_primary_input, encoded_secondary_input )
         elif self.model.Get_Network_Model() == "bilstm":
             # Concatenate Inputs Across Columns
-            train_inputs = np.hstack( ( primary_input_matrix, secondary_input_matrix ) )
+            train_inputs = np.hstack( ( encoded_primary_input, encoded_secondary_input ) )
             prediction = self.model.Predict( train_inputs )
         elif self.model.Get_Network_Model() == "cd2":
-            if isinstance( primary_input_matrix,   csr_matrix ): primary_input_matrix   = primary_input_matrix.todense()
-            if isinstance( secondary_input_matrix, csr_matrix ): secondary_input_matrix = secondary_input_matrix.todense()
-            if isinstance( tertiary_input_matrix,  csr_matrix ): tertiary_input_matrix  = tertiary_input_matrix.todense()
-            prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix, tertiary_input_matrix )
+            if isinstance( encoded_primary_input,   csr_matrix ): encoded_primary_input   = encoded_primary_input.todense()
+            if isinstance( encoded_secondary_input, csr_matrix ): encoded_secondary_input = encoded_secondary_input.todense()
+            if isinstance( encoded_tertiary_input,  csr_matrix ): encoded_tertiary_input  = encoded_tertiary_input.todense()
+            prediction = self.model.Predict( encoded_primary_input, encoded_secondary_input, encoded_tertiary_input )
         elif self.model.Get_Network_Model() == "mlp":
-            prediction = self.model.Predict( primary_input_matrix, secondary_input_matrix, output_matrix )
+            prediction = self.model.Predict( encoded_primary_input, encoded_secondary_input, encoded_output )
         else:
             self.Print_Log( "LBD::Predict() - Error: Unknown Network Type / Functionality Not Implemented", force_print = True )
             return []
@@ -758,9 +769,9 @@ class LBD:
     """
     def Predict_Vector( self, primary_input_vector, secondary_input_vector, tertiary_input_vector = [], return_vector = True, return_raw_values = False ):
         # Check(s)
-        self.Print_Log( "LBD::Predict_Vector() - Error: Primary Input Vector Is Empty", force_print = True   ) if len( primary_input_vector   ) == 0 else None
-        self.Print_Log( "LBD::Predict_Vector() - Error: Secondary Input Vector Is Empty", force_print = True ) if len( secondary_input_vector ) == 0 else None
-        self.Print_Log( "LBD::Predict_Vector() - Warning: Tertiary Input Vector Is Empty", force_print = True  ) if len( tertiary_input_vector  ) == 0 else None
+        self.Print_Log( "LBD::Predict_Vector() - Error: Primary Input Vector Is Empty",    force_print = True ) if len( primary_input_vector   ) == 0 else None
+        self.Print_Log( "LBD::Predict_Vector() - Error: Secondary Input Vector Is Empty",  force_print = True ) if len( secondary_input_vector ) == 0 else None
+        self.Print_Log( "LBD::Predict_Vector() - Warning: Tertiary Input Vector Is Empty", force_print = True ) if len( tertiary_input_vector  ) == 0 else None
 
         if len( primary_input_vector ) == 0 or len( secondary_input_vector ) == 0:
             return []
@@ -912,6 +923,61 @@ class LBD:
         self.Print_Log( "LBD::Predict_Ranking() - Complete" )
 
         return ranked_output_dictionary
+
+    """
+        Outputs Model's Prediction Vector Given Inputs
+
+        Inputs:
+            encoded_primary_input   : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_secondary_input : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_tertiary_input  : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_output          : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            return_vector           : True = Return Prediction Vector, False = Return Predicted Tokens (Boolean)
+            return_raw_values       : True = Output Raw Prediction Values From Model / False = Output Values After Passing Through Prediction Threshold (Boolean)
+
+        Outputs:
+            prediction              : Vectorized Model Prediction or String Of Predicted Tokens Obtained From Prediction Vector (Numpy Array or String)
+    """
+    def Predict_In_Batches( self, encoded_primary_input = None, encoded_secondary_input = None, encoded_tertiary_input = None, encoded_output = None,
+                            batch_size = 128, return_vector = False, return_raw_values = False ):
+        self.Print_Log( "LBD::Predict_In_Batches() - Predicting In Batches Of " + str( batch_size ) )
+
+        is_csr_matrices = False
+
+        # Assumes Number Of Dimensions For Encoded Inputs (Primary & Secondary) == 2
+        if isinstance( encoded_primary_input, np.ndarray ):
+            number_of_batches = int( encoded_primary_input.shape[0] / batch_size ) + 1
+        if isinstance( encoded_primary_input, csr_matrix ):
+            number_of_batches = int( encoded_primary_input.shape[0] / batch_size ) + 1
+            is_csr_matrices   = True
+
+        predictions = []
+
+        for i in range( number_of_batches ):
+            start_index, end_index = i * batch_size, ( i + 1 ) * batch_size
+
+            # CSR_Matrices
+            if is_csr_matrices:
+                temp_encoded_primary_inputs   = encoded_primary_input[start_index:end_index,].todense()
+                temp_encoded_secondary_inputs = encoded_secondary_input[start_index:end_index,].todense()
+                temp_encoded_tertiary_inputs  = encoded_tertiary_input[start_index:end_index,].todense() if encoded_tertiary_input else None
+                temp_encoded_outputs          = encoded_output[start_index:end_index,].todense()         if encoded_output         else None
+            # Numpy Arrays
+            else:
+                temp_encoded_primary_inputs   = encoded_primary_input[start_index:end_index]
+                temp_encoded_secondary_inputs = encoded_secondary_input[start_index:end_index]
+                temp_encoded_tertiary_inputs  = encoded_tertiary_input[start_index:end_index] if encoded_tertiary_input else None
+                temp_encoded_outputs          = encoded_output[start_index:end_index]         if encoded_output         else None
+
+            if temp_encoded_primary_inputs.shape[0] == 0: continue
+
+            model_predictions = self.Predict( encoded_primary_input = temp_encoded_primary_inputs, encoded_secondary_input = temp_encoded_secondary_inputs,
+                                              encoded_tertiary_input = temp_encoded_tertiary_inputs, encoded_output = temp_encoded_outputs,
+                                              return_raw_values = return_raw_values, return_vector = return_vector )
+
+            predictions.extend( model_predictions )
+
+        self.Print_Log( "LBD::Predict_In_Batches() - Complete" )
 
     """
         Evaluates Model's Ability To Predict Evaluation Data
@@ -1220,8 +1286,10 @@ class LBD:
     """
         Vectorized/Binarized Model Data - Used For Training/Evaluation Data
     """
-    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
+    def Encode_Model_Data( self, data_list = [], model_type = None, use_csr_format = None, pad_inputs = True,
                            pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+        if model_type     == None: model_type     = self.Get_Model_Type()
+        if use_csr_format == None: use_csr_format = self.Get_Model().Get_Use_CSR_Format()
         return self.Get_Data_Loader().Encode_Model_Data( data_list, model_type = model_type, use_csr_format = use_csr_format, pad_inputs = pad_inputs,
                                                          pad_output = pad_output, stack_inputs = stack_inputs, number_of_threads = number_of_threads, keep_in_memory = keep_in_memory, str_delimiter = str_delimiter )
 
@@ -1238,8 +1306,9 @@ class LBD:
             secondary_input_vector = Numpy Binary Vector
             output_vector          = Numpy Binary Vector
     """
-    def Encode_Model_Instance( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
+    def Encode_Model_Instance( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = None,
                                pad_inputs = True, pad_output = True, instance_separator = "<:>" ):
+        if model_type == None: model_type = self.Get_Model_Type()
         return self.Get_Data_Loader().Encode_Model_Instance( primary_input = primary_input, secondary_input = secondary_input, tertiary_input = tertiary_input, outputs = outputs,
                                                              model_type = model_type, pad_inputs = pad_inputs, pad_output = pad_output, instance_separator = instance_separator )
 
@@ -1503,7 +1572,11 @@ class LBD:
         model_settings_list = self.utils.Read_Data( file_path )
 
         for model_setting in model_settings_list:
-            if re.match( r'^#', model_setting ) or model_setting == "": continue
+            # Check For Formatting Error i.e. 'setting_name<:>value'
+            if "<:>" not in model_setting: continue
+
+            # Check For Setting Name And Value In Model Settings
+            if re.match( r'^#', model_setting ) or model_setting == "" or model_setting == "\n": continue
             key, value = model_setting.split( "<:>" )
             if key == setting_name:
                 return str( value )

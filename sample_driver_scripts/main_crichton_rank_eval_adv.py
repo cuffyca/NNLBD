@@ -58,8 +58,8 @@ def Main():
         print( "Error Occurred During Data Vectorization (Evaluation Data)" )
         exit()
 
-    gold_b_prediction_score = model.Predict( primary_input_matrix = gold_b_input_1, secondary_input_matrix = gold_b_input_2,
-                                             tertiary_input_matrix = gold_b_input_3, return_vector = True, return_raw_values = True )
+    gold_b_prediction_score = model.Predict( encoded_primary_input = gold_b_input_1, encoded_secondary_input = gold_b_input_2,
+                                             encoded_tertiary_input = gold_b_input_3, return_vector = True, return_raw_values = True )
 
     # Test Predictions: First One Is Supposed To Predict '0' And The Second Is Supposed To Predict '1'. (Pulled From Training Data.)
     print( "MESH:C026759 PR:Q84TG3 PR:Q9ZPE4 - Prediction: " + str( model.Predict( "MESH:C026759", "PR:Q84TG3", "PR:Q9ZPE4", return_vector = True, return_raw_values = True ) ) )
@@ -68,8 +68,8 @@ def Main():
     print( "Performing Inference For Testing Instance Predictions" )
 
     # Perform Prediction Over The Entire Evaluation Data-set (Model Inference)
-    predictions = model.Predict( primary_input_matrix = eval_input_1, secondary_input_matrix = eval_input_2,
-                                 tertiary_input_matrix = eval_input_3, return_vector = True, return_raw_values = True )
+    predictions = model.Predict( encoded_primary_input = eval_input_1, encoded_secondary_input = eval_input_2,
+                                 encoded_tertiary_input = eval_input_3, return_vector = True, return_raw_values = True )
 
     if isinstance( predictions, list ) and len( predictions ) == 0:
         print( "Error Occurred During Model Inference" )

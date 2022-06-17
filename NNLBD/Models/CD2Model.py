@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/02/2020                                                                   #
-#    Revised: 08/01/2021                                                                   #
+#    Revised: 04/01/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #    Reduplicates Crichton, et al (2020) - CD-2 Model                                      #
@@ -145,7 +145,7 @@ class CD2Model( BaseModel ):
             end_index   = batch_size * ( counter + 1 )
 
             # Check - Fixes Batch_Generator Training Errors With The Number Of Instances % Batch Sizes != 0
-            end_index   = number_of_instances if end_index > number_of_instances else end_index
+            if end_index > number_of_instances: end_index = number_of_instances
 
             batch_index = sample_index[start_index:end_index]
             X_1_batch   = X_1[batch_index,:].todense()
@@ -388,7 +388,7 @@ class CD2Model( BaseModel ):
 
         # Perform Feature Scaling Prior To Generating An Embedding Representation
         if self.feature_scale_value != 1.0:
-            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error - (Model Tries To Save All Variables Within 'self' When Used With Lambda Function)
             primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer   )
             secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
             tertiary_flatten_layer  = Lambda( lambda x: x * feature_scale_value )( tertiary_flatten_layer  )
@@ -400,13 +400,8 @@ class CD2Model( BaseModel ):
         else:
             embedding_input_layer = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_flatten_layer, secondary_flatten_layer, tertiary_flatten_layer] )
 
-        dense_layer       = None
-        batch_norm_layer  = None
-        final_dense_layer = None
-        dropout_layer     = None
-        output_layer      = None
-
-        input_dimension   = number_of_hidden_dimensions if self.embedding_modification == "average" or self.embedding_modification == "hadamard" else number_of_hidden_dimensions * 3
+        dense_layer     = None
+        input_dimension = number_of_hidden_dimensions if self.embedding_modification == "average" or self.embedding_modification == "hadamard" else number_of_hidden_dimensions * 3
 
         if self.use_batch_normalization:
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
@@ -414,25 +409,24 @@ class CD2Model( BaseModel ):
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
 
             if use_regularizer:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
                                            kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
             else:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
 
-            batch_norm_layer  = BatchNormalization( name = "Batch_Norm_Layer_2" )( final_dense_layer )
+            dense_layer       = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
         else:
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
 
             if use_regularizer:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
-                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                       kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
             else:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
 
         # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
-        output_layer          = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
-                                                               batch_norm_layer = batch_norm_layer, final_dense_layer = final_dense_layer )
+        output_layer          = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, dense_input_layer = dense_layer )
 
         if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
             self.model = Model( inputs = [primary_input_layer, secondary_input_layer, tertiary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )

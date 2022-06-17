@@ -119,12 +119,12 @@ def Main():
         number_of_ties          = 0
 
         # Get Prediction For Gold B Term
-        gold_b_prediction_score = model.Predict( primary_input_matrix = gold_b_input_1, secondary_input_matrix = gold_b_input_2,
-                                                 tertiary_input_matrix = gold_b_input_3, return_vector = True, return_raw_values = True )
+        gold_b_prediction_score = model.Predict( encoded_primary_input = gold_b_input_1, encoded_secondary_input = gold_b_input_2,
+                                                 encoded_tertiary_input = gold_b_input_3, return_vector = True, return_raw_values = True )
 
         # Perform Prediction Over The Entire Evaluation Data-set (Model Inference)
-        predictions = model.Predict( primary_input_matrix = eval_input_1, secondary_input_matrix = eval_input_2,
-                                     tertiary_input_matrix = eval_input_3, return_vector = True, return_raw_values = True )
+        predictions = model.Predict( encoded_primary_input = eval_input_1, encoded_secondary_input = eval_input_2,
+                                     encoded_tertiary_input = eval_input_3, return_vector = True, return_raw_values = True )
 
         print( "Performing Inference For Testing Instance Predictions" )
 

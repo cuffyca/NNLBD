@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 07/31/2021                                                                   #
+#    Revised: 04/01/2022                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -629,7 +629,7 @@ class BaseModel( object ):
         fh.write( "LossFunction<:>"                + str( self.loss_function                  ) + "\n" )
         fh.write( "LearningRate<:>"                + str( self.learning_rate                  ) + "\n" )
         fh.write( "LearningRateDecay<:>"           + str( self.learning_rate_decay            ) + "\n" )
-        fh.write( "WeightDecay>:>"                 + str( self.weight_decay                   ) + "\n" )
+        fh.write( "WeightDecay<:>"                 + str( self.weight_decay                   ) + "\n" )
         fh.write( "PredictionThreshold<:>"         + str( self.prediction_threshold           ) + "\n" )
         fh.write( "TrainableWeights<:>"            + str( self.trainable_weights              ) + "\n" )
         fh.write( "EmbeddingPath<:>"               + str( self.embedding_path                 ) + "\n" )
@@ -812,27 +812,17 @@ class BaseModel( object ):
 
         Note: Requires Previous Dense Layer To Have An Included Regularizer For Weight Regularization
     """
-    def Multi_Option_Final_Layer( self, number_of_outputs = None, cosface_input_layer = None, batch_norm_layer = None, final_dense_layer = None ):
+    def Multi_Option_Final_Layer( self, number_of_outputs = None, cosface_input_layer = None, dense_input_layer = None ):
         output_layer = None
 
-        if self.use_batch_normalization:
-            if self.final_layer_type == "arcface":
-                output_layer = ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
-            elif self.final_layer_type == "sphereface":
-                output_layer = SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
-            elif self.final_layer_type == "cosface":
-                output_layer = CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [batch_norm_layer, cosface_input_layer] )
-            else:
-                output_layer = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( batch_norm_layer )
+        if self.final_layer_type == "arcface":
+            output_layer = ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [dense_input_layer, cosface_input_layer] )
+        elif self.final_layer_type == "sphereface":
+            output_layer = SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [dense_input_layer, cosface_input_layer] )
+        elif self.final_layer_type == "cosface":
+            output_layer = CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [dense_input_layer, cosface_input_layer] )
         else:
-            if self.final_layer_type == "arcface":
-                output_layer = ArcFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            elif self.final_layer_type == "sphereface":
-                output_layer = SphereFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            elif self.final_layer_type == "cosface":
-                output_layer = CosFace( number_of_outputs, margin = self.margin, scale = self.scale, activation = "multi_label", regularizer = regularizers.l2( self.weight_decay ) )( [final_dense_layer, cosface_input_layer] )
-            else:
-                output_layer = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( final_dense_layer )
+            output_layer = Dense( units = number_of_outputs, activation = self.activation_function, name = 'Localist_Output_Representation', use_bias = True )( dense_input_layer )
 
         return output_layer
 

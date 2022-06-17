@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/08/2020                                                                   #
-#    Revised: 07/23/2021                                                                   #
+#    Revised: 06/03/2022                                                                   #
 #                                                                                          #
 #    Base Data Loader Classs For The NNLBD Package.                                        #
 #                                                                                          #
@@ -42,6 +42,7 @@ class DataLoader( object ):
         self.write_log                    = write_log_to_file               # Options: True, False
         self.debug_log_file_handle        = debug_log_file_handle           # Debug Log File Handle
         self.debug_log_file_name          = "DataLoader_Log.txt"            # File Name (String)
+        self.file_data_header_type        = "general_data"                  # "general_data", "open_discovery" or "closed_discovery"
         self.token_id_dictionary          = {}                              # Token ID Dictionary: Used For Converting Tokens To Token IDs (One-Hot Encodings)
         self.primary_id_dictionary        = {}
         self.secondary_id_dictionary      = {}
@@ -68,6 +69,7 @@ class DataLoader( object ):
         self.read_file_handle             = None
         self.generated_embedding_ids      = False
         self.embedding_type_list          = ["primary", "secondary", "tertiary", "output"]
+        self.padding_token                = "<*>padding<*>"
         self.utils                        = Utils()
 
         # Create Log File Handle
@@ -194,6 +196,21 @@ class DataLoader( object ):
                 return []
             finally:
                 in_file.close()
+
+            # Check For File Data Type Header
+            if data_list[0] == "a_concept\tc_concept\tb_concepts\n":
+                self.Print_Log( "DataLoader::Read_Data() - Detected 'Open Discovery' Data Format" )
+                self.file_data_header_type = "closed_discovery"
+                data_list = data_list[1:]
+            elif data_list[0] == "a_concept\tb_concept\tc_concepts\n":
+                self.Print_Log( "DataLoader::Read_Data() - Detected 'Closed Discovery' Data Format" )
+                self.file_data_header_type = "open_discovery"
+                data_list = data_list[1:]
+            elif data_list[0] == "a_concept\tb_concept\tc_concept\n":
+                self.Print_Log( "DataLoader::Read_Data() - Detected 'General' Data Format" )
+                self.file_data_header_type = "general_data"
+                data_list = data_list[1:]
+
         # Read Data In Segments Of 'number_of_lines_to_read' Chunks
         else:
             # Open File If Not In Memory
@@ -208,6 +225,17 @@ class DataLoader( object ):
                 for i in range( number_of_lines_to_read ):
                     # Read Line From File
                     line = self.read_file_handle.readline()
+
+                    # Check For File Data Type Header
+                    if data_list[0] == "a_concept\tc_concept\tb_concepts\n":
+                        self.file_data_header_type = "closed_discovery"
+                        continue
+                    elif data_list[0] == "a_concept\tb_concept\tc_concepts\n":
+                        self.file_data_header_type = "open_discovery"
+                        continue
+                    elif data_list[0] == "a_concept\tb_concept\tc_concept\n":
+                        self.file_data_header_type = "general_data"
+                        continue
 
                     # Line Contains Data
                     if line:
@@ -889,6 +917,7 @@ class DataLoader( object ):
     ############################################################################################
 
     def Get_Embeddings( self, embedding_type = None ):
+        # Check(s)
         if embedding_type is not None and embedding_type not in self.embedding_type_list:
             self.Print_Log( "DataLoader::Get_Embeddings() - Error: Unknown Embedding Type: " + str( embedding_type ), force_print = True )
             return []
@@ -975,6 +1004,8 @@ class DataLoader( object ):
     def Reached_End_Of_File( self ):                return True if self.reached_eof else False
 
     def Get_Is_CUI_Data( self ):                    return self.is_cui_data
+
+    def Get_Padding_Token( self ):                  return self.padding_token
 
 
     ############################################################################################

@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 01/13/2021                                                                   #
+#    Revised: 03/29/2022                                                                   #
 #                                                                                          #
 #    Utilities Class For The NNLBD Package.                                                #
 #                                                                                          #
@@ -92,6 +92,23 @@ class Utils:
         file_path = re.sub( r'\\+', "/", file_path )
         folders   = file_path.split( "/" )
         return True if len( folders ) > 1 else False
+
+    """
+        Copies File From Source To Destination Path
+    """
+    def Copy_File( self, source_path, destination_path ):
+        if not self.Check_If_File_Exists( source_path ):
+            print( "Utils::Copy_File() - Error: Source File Does Not Exist" )
+            return False
+
+        if not self.Check_If_Path_Exists( path = destination_path ):
+            print( "Utils::Copy_File() - Warning: Source Path Does Not Exist / Creating Path" )
+            self.Create_Path( file_path = destination_path )
+
+        # Copy File To Destination
+        shutil.copy2( source_path, destination_path )
+
+        return True
 
     """
         Checks If The Specified Path Exists and Deletes If True

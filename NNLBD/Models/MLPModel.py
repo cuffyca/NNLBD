@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 07/23/2021                                                                   #
+#    Revised: 04/01/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -145,7 +145,7 @@ class MLPModel( BaseModel ):
             end_index   = batch_size * ( counter + 1 )
 
             # Check - Fixes Batch_Generator Training Errors With The Number Of Instances % Batch Sizes != 0
-            end_index   = number_of_instances if end_index > number_of_instances else end_index
+            if end_index > number_of_instances: end_index = number_of_instances
 
             batch_index = sample_index[start_index:end_index]
             X_1_batch   = X_1[batch_index,:].todense()
@@ -398,19 +398,19 @@ class MLPModel( BaseModel ):
 
         # Add Embeddings Or Embeddings Initialized As Random Weights
         if len( primary_embeddings ) > 0 and len( secondary_embeddings > 0 ):
-            primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', weights = [primary_embeddings], trainable = self.trainable_weights )( primary_input_layer     )
+            primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', weights = [primary_embeddings], trainable = self.trainable_weights )( primary_input_layer )
             secondary_embedding_layer = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', weights = [secondary_embeddings], trainable = self.trainable_weights )( secondary_input_layer )
         else:
-            primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', trainable = self.trainable_weights )( primary_input_layer     )
+            primary_embedding_layer   = Embedding( number_of_primary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Primary_Concept_Embedding_Layer', trainable = self.trainable_weights )( primary_input_layer )
             secondary_embedding_layer = Embedding( number_of_secondary_embeddings, number_of_hidden_dimensions, input_length = 1, name = 'Secondary_Concept_Embedding_Layer', trainable = self.trainable_weights )( secondary_input_layer )
 
-        primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction"   )( primary_embedding_layer )
+        primary_flatten_layer   = Flatten( name = "Primary_Embedding_Dimensionality_Reduction" )( primary_embedding_layer )
         secondary_flatten_layer = Flatten( name = "Secondary_Embedding_Dimensionality_Reduction" )( secondary_embedding_layer )
 
         # Perform Feature Scaling Prior To Generating An Embedding Representation
         if self.feature_scale_value != 1.0:
-            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
-            primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer   )
+            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error - (Model Tries To Save All Variables Within 'self' When Used With Lambda Function)
+            primary_flatten_layer   = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer )
             secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
 
         if self.embedding_modification == "average":
@@ -420,13 +420,8 @@ class MLPModel( BaseModel ):
         else:
             embedding_input_layer = Concatenate( name = "Internal_Distributed_Embedding_Representation_Input", axis = 1 )( [primary_flatten_layer, secondary_flatten_layer] )
 
-        dense_layer       = None
-        batch_norm_layer  = None
-        final_dense_layer = None
-        dropout_layer     = None
-        output_layer      = None
-
-        input_dimension   = number_of_hidden_dimensions if self.embedding_modification == "average" or self.embedding_modification == "hadamard" else number_of_hidden_dimensions * 2
+        dense_layer     = None
+        input_dimension = number_of_hidden_dimensions if self.embedding_modification == "average" or self.embedding_modification == "hadamard" else number_of_hidden_dimensions * 2
 
         if self.use_batch_normalization:
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
@@ -434,25 +429,24 @@ class MLPModel( BaseModel ):
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
 
             if use_regularizer:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
-                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                       kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
             else:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
 
-            batch_norm_layer  = BatchNormalization( name = "Batch_Norm_Layer_2" )( final_dense_layer )
+            dense_layer       = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
         else:
             dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = input_dimension, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation' )( embedding_input_layer )
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
 
             if use_regularizer:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
-                                           kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                       kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
             else:
-                final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
 
         # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
-        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
-                                                        batch_norm_layer = batch_norm_layer, final_dense_layer = final_dense_layer )
+        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, dense_input_layer = dense_layer )
 
         if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
             self.model = Model( inputs = [primary_input_layer, secondary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )

@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 07/23/2021                                                                   #
+#    Revised: 04/01/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -143,7 +143,7 @@ class BiLSTMModel( BaseModel ):
             end_index   = batch_size * ( counter + 1 )
 
             # Check - Fixes Batch_Generator Training Errors With The Number Of Instances % Batch Sizes != 0
-            end_index   = number_of_instances if end_index > number_of_instances else end_index
+            if end_index > number_of_instances: end_index = number_of_instances
 
             batch_index = sample_index[start_index:end_index]
             X_batch     = X[batch_index,:]
@@ -395,11 +395,10 @@ class BiLSTMModel( BaseModel ):
             dense_layer         = Dense( units = 256, activation = 'relu', name = 'Internal_Proposition_Representation' )( bilstm_layer )
 
         if self.use_batch_normalization:
-            batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
+            dense_layer         = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
 
         # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
-        output_layer            = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
-                                                                 batch_norm_layer = batch_norm_layer, final_dense_layer = dense_layer )
+        output_layer            = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, dense_input_layer = dense_layer )
 
         if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
             self.model = Model( inputs = [input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )

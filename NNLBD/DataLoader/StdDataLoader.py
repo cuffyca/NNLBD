@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 07/13/2021                                                                   #
+#    Revised: 06/03/2022                                                                   #
 #                                                                                          #
 #    Standard Data Loader Classs For The NNLBD Package.                                    #
 #                                                                                          #
@@ -720,7 +720,7 @@ class StdDataLoader( DataLoader ):
 
         # Read Primary Key Data
         if "<*>primary id dictionary<*>" in token_id_data:
-            primary_index = token_id_data.index( "<*>primary id dictionary<*>" )
+            primary_index = token_id_data.index( "<*>primary id dictionary<*>" ) + 1
 
             for i, line in enumerate( token_id_data[primary_index:], primary_index ):
                 key, value = line.split( "<:>" )
@@ -731,7 +731,7 @@ class StdDataLoader( DataLoader ):
 
         # Read Secondary Key Data
         if "<*>secondary id dictionary<*>" in token_id_data:
-            secondary_index = token_id_data.index( "<*>secondary id dictionary<*>" )
+            secondary_index = token_id_data.index( "<*>secondary id dictionary<*>" ) + 1
 
             for i, line in enumerate( token_id_data[secondary_index:], secondary_index ):
                 key, value = line.split( "<:>" )
@@ -742,7 +742,7 @@ class StdDataLoader( DataLoader ):
 
         # Read Tertiary Key Data
         if "<*>tertiary id dictionary<*>" in token_id_data:
-            tertiary_index = token_id_data.index( "<*>secondary id dictionary<*>" )
+            tertiary_index = token_id_data.index( "<*>tertiary id dictionary<*>" ) + 1
 
             for i, line in enumerate( token_id_data[tertiary_index:], tertiary_index ):
                 key, value = line.split( "<:>" )
@@ -752,8 +752,8 @@ class StdDataLoader( DataLoader ):
                 if "<*>end tertiary" in token_id_data[i+1]: break
 
         # Read Output Key Data
-        if "<*>tertiary id dictionary<*>" in token_id_data:
-            tertiary_index = token_id_data.index( "<*>tertiary id dictionary<*>" )
+        if "<*>output id dictionary<*>" in token_id_data:
+            tertiary_index = token_id_data.index( "<*>output id dictionary<*>" ) + 1
 
             for i, line in enumerate( token_id_data[tertiary_index:], tertiary_index ):
                 key, value = line.split( "<:>" )
@@ -764,7 +764,7 @@ class StdDataLoader( DataLoader ):
 
         # Read Token ID Key Data
         if "<*>token id dictionary<*>" in token_id_data:
-            token_index = token_id_data.index( "<*>token id dictionary<*>" )
+            token_index = token_id_data.index( "<*>token id dictionary<*>" ) + 1
 
             for i, line in enumerate( token_id_data[token_index:], token_index ):
                 key, value = line.split( "<:>" )
@@ -820,7 +820,7 @@ class StdDataLoader( DataLoader ):
         fh.write( "<*>END OUTPUT ID DICTIONARY<*>\n\n" )
 
         # Write Complete Token ID Dictionary
-        fh.write( "<*>TOKEN ID DICTIONARY<*>" )
+        fh.write( "<*>TOKEN ID DICTIONARY<*>\n" )
 
         for key in self.token_id_dictionary:
             fh.write( str( key ) + "<:>" + str( self.token_id_dictionary[key] ) + "\n" )
@@ -864,11 +864,13 @@ class StdDataLoader( DataLoader ):
         self.Print_Log( "StdDataLoader::Generate_Token_IDs()             Only Reduce Outputs : " + str( restrict_output ) )
 
         # Insert Padding At First Index Of The Token ID Dictionaries
-        if "<*>padding<*>" not in self.token_id_dictionary    : self.token_id_dictionary["<*>padding<*>"]     = 0
-        if "<*>padding<*>" not in self.primary_id_dictionary  : self.primary_id_dictionary["<*>padding<*>"]   = 0
-        if "<*>padding<*>" not in self.secondary_id_dictionary: self.secondary_id_dictionary["<*>padding<*>"] = 0
-        if "<*>padding<*>" not in self.tertiary_id_dictionary : self.tertiary_id_dictionary["<*>padding<*>"]  = 0
-        if "<*>padding<*>" not in self.output_id_dictionary   : self.output_id_dictionary["<*>padding<*>"]    = 0
+        padding_token = self.Get_Padding_Token()
+
+        if padding_token not in self.token_id_dictionary    : self.token_id_dictionary[padding_token]     = 0
+        if padding_token not in self.primary_id_dictionary  : self.primary_id_dictionary[padding_token]   = 0
+        if padding_token not in self.secondary_id_dictionary: self.secondary_id_dictionary[padding_token] = 0
+        if padding_token not in self.tertiary_id_dictionary : self.tertiary_id_dictionary[padding_token]  = 0
+        if padding_token not in self.output_id_dictionary   : self.output_id_dictionary[padding_token]    = 0
 
         # Generate Embeddings Based On Embeddings (Assumes Word2vec Format)
         if len( self.embeddings ) > 0 and self.generated_embedding_ids == False:
@@ -894,7 +896,7 @@ class StdDataLoader( DataLoader ):
 
             self.generated_embedding_ids = True
 
-        # Build Unique Per Input/Output Token ID Dictionaries
+        # Build Unique Per Input/Output Token ID Dictionaries - Primary, Secondary & Output
         super().Generate_Token_IDs( data_list )
 
         self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Complete" )
@@ -1156,7 +1158,8 @@ class StdDataLoader( DataLoader ):
         # Using Embeddings
         if self.Is_Embeddings_Loaded() or self.Simulate_Embeddings_Loaded_Mode():
             # Inputs Are Separated By Unique Concepts/Terms (Reduced Output)
-            if self.separated_by_input_type:
+            if len( self.primary_id_dictionary ) > 0 and len( self.secondary_id_dictionary ) > 0 \
+               and len( self.output_id_dictionary) > 0:
                 self.number_of_primary_tokens   = len( self.primary_id_dictionary   )
                 self.number_of_secondary_tokens = len( self.secondary_id_dictionary )
                 self.number_of_tertiary_tokens  = len( self.tertiary_id_dictionary  )

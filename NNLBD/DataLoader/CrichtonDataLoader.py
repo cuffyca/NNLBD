@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 07/13/2021                                                                   #
+#    Revised: 06/03/2022                                                                   #
 #                                                                                          #
 #    Crichton Data Loader Class For The NNLBD Package.                                     #
 #                                                                                          #
@@ -401,10 +401,10 @@ class CrichtonDataLoader( DataLoader ):
     def Encode_Model_Instance( self, primary_input, secondary_input, tertiary_input = "", outputs = "", model_type = "open_discovery",
                                pad_inputs = False, pad_output = False, separate_outputs = False, instance_separator = '<:>' ):
         # Convert Inputs/Outputs To Lowercase
-        primary_input    = primary_input.lower()
-        secondary_input  = secondary_input.lower()
-        tertiary_input   = tertiary_input.lower()
-        outputs          = outputs.lower()
+        primary_input   = primary_input.lower()
+        secondary_input = secondary_input.lower()
+        tertiary_input  = tertiary_input.lower()
+        outputs         = outputs.lower()
 
         # Split Elements Using String Delimiter
         primary_input_instances   = primary_input.split( instance_separator )
@@ -675,11 +675,13 @@ class CrichtonDataLoader( DataLoader ):
         self.Print_Log( "CrichtonDataLoader::Generate_Token_IDs() -           Skip Association Value : " + str( skip_association_value ) )
 
         # Insert Padding At First Index Of The Token ID Dictionaries
-        if "<*>padding<*>" not in self.token_id_dictionary    : self.token_id_dictionary["<*>padding<*>"]     = 0
-        if "<*>padding<*>" not in self.primary_id_dictionary  : self.primary_id_dictionary["<*>padding<*>"]   = 0
-        if "<*>padding<*>" not in self.secondary_id_dictionary: self.secondary_id_dictionary["<*>padding<*>"] = 0
-        if "<*>padding<*>" not in self.tertiary_id_dictionary : self.tertiary_id_dictionary["<*>padding<*>"]  = 0
-        if "<*>padding<*>" not in self.output_id_dictionary   : self.output_id_dictionary["<*>padding<*>"]    = 0
+        padding_token = self.Get_Padding_Token()
+
+        if padding_token not in self.token_id_dictionary    : self.token_id_dictionary[padding_token]     = 0
+        if padding_token not in self.primary_id_dictionary  : self.primary_id_dictionary[padding_token]   = 0
+        if padding_token not in self.secondary_id_dictionary: self.secondary_id_dictionary[padding_token] = 0
+        if padding_token not in self.tertiary_id_dictionary : self.tertiary_id_dictionary[padding_token]  = 0
+        if padding_token not in self.output_id_dictionary   : self.output_id_dictionary[padding_token]    = 0
 
         # Generate Embeddings Based On Embeddings (Assumes Word2vec Format)
         if len( self.embeddings ) > 0 and self.generated_embedding_ids == False:
@@ -1088,16 +1090,16 @@ class CrichtonDataLoader( DataLoader ):
             tertiary_row_index  = 0
             output_row_index    = 0
 
-            primary_input_row,    secondary_input_row,    tertiary_input_row,    output_row  = [], [], [], []
-            primary_input_col,    secondary_input_col,    tertiary_input_col,    output_col  = [], [], [], []
-            primary_input_data,   secondary_input_data,   tertiary_input_data,   output_data = [], [], [], []
+            primary_input_row,  secondary_input_row,  tertiary_input_row,  output_row  = [], [], [], []
+            primary_input_col,  secondary_input_col,  tertiary_input_col,  output_col  = [], [], [], []
+            primary_input_data, secondary_input_data, tertiary_input_data, output_data = [], [], [], []
 
             if stack_inputs == False:
                 secondary_inputs = csr_matrix( secondary_inputs )
                 tertiary_inputs  = csr_matrix( tertiary_inputs  )
                 outputs          = csr_matrix( outputs          )
 
-        # Data Format: CUI PREDICATE CUI CUI CUI ... CUI
+        # Data Format: node_a\node_b\tnode_c\tjaccard_similarity
         for line in data_list:
             self.Print_Log( "CrichtonDataLoader::Worker_Thread_Function() - Thread ID: " + str( thread_id ) + " -> Data Line: " + str( line.strip() ) )
 
@@ -1120,7 +1122,7 @@ class CrichtonDataLoader( DataLoader ):
                                                                                                                          pad_output = temp_pad_output, separate_outputs = separate_outputs )
 
             # Check(s)
-            if self.skip_out_of_vocabulary_words == False and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
+            if not self.skip_out_of_vocabulary_words and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
                 self.Print_Log( "CrichtonDataLoader::Worker_Thread_Function() - Error Vectorizing Input/Output Data", force_print = True )
                 self.Print_Log( "                                     - Line: \"" + str( line ) + "\"", force_print = True )
                 dest_array[thread_id] = None

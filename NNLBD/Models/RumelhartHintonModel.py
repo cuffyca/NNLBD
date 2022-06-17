@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    08/05/2020                                                                   #
-#    Revised: 07/23/2021                                                                   #
+#    Revised: 04/02/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -72,6 +72,12 @@ else:
     # from keras.callbacks import ModelCheckpoint
     from keras.models import Model
     from keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
+
+# Sets Random Seed For Ranking Reproducibility
+# np.random.seed( 0 )
+# tf.random.set_seed( 0 )
+# tf.compat.v1.set_random_seed( 0 )
+
 
 # Custom Modules
 from NNLBD.Models import BaseModel
@@ -149,7 +155,7 @@ class RumelhartHintonModel( BaseModel ):
             end_index   = batch_size * ( counter + 1 )
 
             # Check - Fixes Batch_Generator Training Errors With The Number Of Instances % Batch Sizes != 0
-            end_index   = number_of_instances if end_index > number_of_instances else end_index
+            if end_index > number_of_instances: end_index = number_of_instances
 
             batch_index = sample_index[start_index:end_index]
             X_1_batch   = X_1[batch_index,:].todense()
@@ -409,7 +415,7 @@ class RumelhartHintonModel( BaseModel ):
 
         # Perform Feature Scaling On Embedding Representation (Selected Primary Embedding)
         if self.feature_scale_value != 1.0:
-            feature_scale_value   = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            feature_scale_value   = self.feature_scale_value  # Fixes Python Recursion Limit Error - (Model Tries To Save All Variables Within 'self' When Used With Lambda Function)
             primary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( primary_flatten_layer )
 
         primary_concept_layer   = Dense( units = number_of_hidden_dimensions, activation = 'relu', input_dim = number_of_hidden_dimensions, name = 'Internal_Distributed_Concept_Representation' )( primary_flatten_layer )
@@ -424,7 +430,7 @@ class RumelhartHintonModel( BaseModel ):
 
         # Perform Feature Scaling On Embedding Representation (Selected Secondary Embedding)
         if self.feature_scale_value != 1.0:
-            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            feature_scale_value     = self.feature_scale_value  # Fixes Python Recursion Limit Error - (Model Tries To Save All Variables Within 'self' When Used With Lambda Function)
             secondary_flatten_layer = Lambda( lambda x: x * feature_scale_value )( secondary_flatten_layer )
 
         # Perform Embedding Modification Based On User-Specified Setting 'self.embedding_modification'
@@ -445,53 +451,55 @@ class RumelhartHintonModel( BaseModel ):
             else:
                 distributed_concept_layer = Concatenate( name = "Internal_Distributed_Proposition_Representation_Input", axis = 1 )( [primary_concept_layer, secondary_flatten_layer] )
 
+        layer_number_of_dimensions    = 200 if number_of_hidden_dimensions < 200 else number_of_hidden_dimensions
         distributed_concept_layer_dim = number_of_hidden_dimensions * 2 if self.embedding_modification == "concatenate" else number_of_hidden_dimensions
 
-        dense_layer       = None
-        batch_norm_layer  = None
-        final_dense_layer = None
-        dropout_layer     = Dropout( name = "Dropout_Layer_1", rate = self.dropout )( distributed_concept_layer )
-        output_layer      = None
+        dense_layer   = None
+        dropout_layer = Dropout( name = "Dropout_Layer_1", rate = self.dropout )( distributed_concept_layer )
+
+        if number_of_hidden_dimensions < 200:
+            self.Print_Log( "RumelhartHintonModel::Build_Model() - Warning: 'number_of_dimensions < 200' / Setting 'number_of_dimensions = 200'" )
+            number_of_hidden_dimensions = 200
 
         if self.use_batch_normalization:
             if self.network_model == "hinton":
-                dense_layer         = Dense( units = number_of_hidden_dimensions, input_dim = distributed_concept_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
+                dense_layer         = Dense( units = layer_number_of_dimensions, input_dim = distributed_concept_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
                 batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_1" )( dense_layer )
                 dropout_layer       = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
 
                 if use_regularizer:
-                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
                                                kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
                 else:
-                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
 
-                batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_2" )( final_dense_layer )
+                dense_layer         = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
             elif self.network_model == "rumelhart":
                 if use_regularizer:
-                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Relation_Representation',
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'tanh', name = 'Internal_Distributed_Relation_Representation',
                                              kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
                 else:
-                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation' )( dropout_layer )
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation' )( dropout_layer )
         else:
             if self.network_model == "hinton":
-                dense_layer       = Dense( units = number_of_hidden_dimensions, input_dim = distributed_concept_layer_dim, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
-                dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
+                dense_layer         = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'relu', name = 'Internal_Distributed_Proposition_Representation', use_bias = False )( dropout_layer )
 
                 if use_regularizer:
-                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
-                                               kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                                             kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dense_layer )
                 else:
-                    final_dense_layer = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation_1' )( dense_layer )
+                    # dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation_2' )( dense_layer )
 
             elif self.network_model == "rumelhart":
                 if use_regularizer:
-                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Relation_Representation',
-                                             kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'tanh', name = 'Internal_Distributed_Relation_Representation',
+                                             kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dense_layer )
                 else:
-                    dense_layer     = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation' )( dropout_layer )
+                    dense_layer     = Dense( units = layer_number_of_dimensions, input_dim = layer_number_of_dimensions, activation = 'relu', name = 'Internal_Distributed_Relation_Representation' )( dense_layer )
 
         # Final Model Output Used For Prediction
-        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, batch_norm_layer = batch_norm_layer, final_dense_layer = dense_layer )
+        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, dense_input_layer = dense_layer )
 
         if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
             self.model = Model( inputs = [primary_input_layer, secondary_input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )

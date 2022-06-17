@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    12/08/2020                                                                   #
-#    Revised: 07/23/2021                                                                   #
+#    Revised: 04/01/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -141,7 +141,7 @@ class CNNModel( BaseModel ):
             end_index   = batch_size * ( counter + 1 )
 
             # Check - Fixes Batch_Generator Training Errors With The Number Of Instances % Batch Sizes != 0
-            end_index   = number_of_instances if end_index > number_of_instances else end_index
+            if end_index > number_of_instances: end_index = number_of_instances
 
             batch_index = sample_index[start_index:end_index]
             X_batch     = X[batch_index,:]
@@ -369,7 +369,7 @@ class CNNModel( BaseModel ):
 
         # Perform Feature Scaling Prior To Generating An Embedding Representation
         if self.feature_scale_value != 1.0:
-            feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error (Model Tries To Save All 'self' Variable When Used With Lambda Function)
+            feature_scale_value = self.feature_scale_value  # Fixes Python Recursion Limit Error - (Model Tries To Save All Variables Within 'self' When Used With Lambda Function)
             embedding_layer = Lambda( lambda x: x * feature_scale_value )( embedding_layer )
 
         # Batch Normalization Model
@@ -386,12 +386,12 @@ class CNNModel( BaseModel ):
             flatten_layer       = Flatten( name = "Flatten_Layer" )( dropout_layer )
 
             if use_regularizer:
-                dense_layer_1   = Dense( units = 12 * 3, activation = 'tanh', name = 'Dense_Layer',
+                dense_layer     = Dense( units = 12 * 3, activation = 'tanh', name = 'Dense_Layer',
                                          kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( flatten_layer )
             else:
-                dense_layer_1   = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
+                dense_layer     = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
 
-            batch_norm_layer    = BatchNormalization( name = "Batch_Norm_Layer_8" )( dense_layer_1 )
+            dense_layer         = BatchNormalization( name = "Batch_Norm_Layer_8" )( dense_layer )
 
         # Traditional Model Without Batch Normalization Using Functional API
         else:
@@ -404,14 +404,13 @@ class CNNModel( BaseModel ):
             flatten_layer       = Flatten( name = "Flatten_Layer" )( dropout_layer )
 
             if use_regularizer:
-                dense_layer_1   = Dense( units = 12 * 3, activation = 'tanh', name = 'Dense_Layer',
+                dense_layer     = Dense( units = 12 * 3, activation = 'tanh', name = 'Dense_Layer',
                                          kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( flatten_layer )
             else:
-                dense_layer_1   = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
+                dense_layer     = Dense( units = 12 * 3, activation = 'relu', name = 'Dense_Layer' )( flatten_layer )
 
         # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
-        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer,
-                                                        batch_norm_layer = batch_norm_layer, final_dense_layer = dense_layer_1 )
+        output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, dense_input_layer = dense_layer )
 
         if self.final_layer_type in ["cosface", "arcface", "sphereface"]:
             self.model = Model( inputs = [input_layer, cosface_input_layer], outputs = output_layer, name = self.network_model + "_model" )
