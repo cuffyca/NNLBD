@@ -7,6 +7,23 @@ To execute an experiment, we use JSON-formatted configuration files as an argume
 python LBDDriver.py config.json
 ```
 
+We provide the basic structure of the configuration file below:
+
+```json
+{
+    "global_settings": [
+        {
+            "_comment": "Global Variable Settings",
+        }
+    ],
+    "train_1": [
+        {
+            "_comment": "<Comment About Task>",
+        }
+    ]
+}
+```
+
 The configuration file contains pertinent details including global settings, the type of experiment you wish to run, the model architecture you wish to test, LBD discovery type (i.e. open vs closed), and various hyperparameters. First, we list all global settings. Next, we provide a list of the experiment tasks the system can perform for each model. Finally, we list all model settings below along with their data types, default values, and provide a brief description of each setting.
 
 
@@ -105,8 +122,6 @@ Here's a complete example of a configuration file.
     "global_settings": [
         {
             "_comment": "Global Variable Settings",
-            "enable_gpu_polling": "False",
-            "acceptable_available_memory": 3000,
             "device_name": "/gpu:0",
             "number_of_iterations": 5
         }

@@ -39,11 +39,8 @@ Terms within each line are separated by whitespace or tab characters as shown be
 
 ```
 entity_a entity_b entity_c
-
 entity_a entity_b entity_c
-
 ...
-
 entity_a entity_b entity_c
 ```
 

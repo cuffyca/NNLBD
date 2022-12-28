@@ -37,29 +37,21 @@ Terms within each line are separated by whitespace or tab characters. Depending 
 
 - Closed Discovery
 
-    <code>
-    entity_a entity_c entity_b<sub>1</sub> entity_b<sub>2</sub> ... entity_b<sub>n</sub>
+    <pre><code>entity_a entity_c entity_b<sub>1</sub> entity_b<sub>2</sub> ... entity_b<sub>n</sub>
 
     entity_a entity_c entity_b<sub>1</sub> entity_b<sub>2</sub> ... entity_b<sub>n</sub>
-
     ...
-
-    entity_a entity_c entity_b<sub>1</sub> entity_b<sub>2</sub> ... entity_b<sub>n</sub>
-
-    </code>
+    entity_a entity_c entity_b<sub>1</sub> entity_b<sub>2</sub> ... entity_b<sub>n</sub></code></pre>
 
 - Open Discovery
 
-    <code>
-    entity_a entity_b entity_c<sub>1</sub> entity_c<sub>2</sub> ... entity_c<sub>n</sub>
+    <pre><code>entity_a entity_b entity_c<sub>1</sub> entity_c<sub>2</sub> ... entity_c<sub>n</sub>
 
     entity_a entity_b entity_c<sub>1</sub> entity_c<sub>2</sub> ... entity_c<sub>n</sub>
 
     ...
 
-    entity_a entity_b entity_c<sub>1</sub> entity_c<sub>2</sub> ... entity_c<sub>n</sub>
-
-    </code>
+    entity_a entity_b entity_c<sub>1</sub> entity_c<sub>2</sub> ... entity_c<sub>n</sub></code></pre>
 
 
 # Pre-processing
