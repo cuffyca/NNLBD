@@ -52,7 +52,7 @@ We provide details for our models included within the system. Each model section
 
 The following figure shows the architecture of our base mulit-label deep learning multi-perceptron model. We train the model to identify implicit relations for closed discovery. Given explicit *A-B-C* relationship term triplets, we input *A* and *C* term embeddings into the model and train the model to predict all associated *B* terms.
 
-![alt text](./base_ml_models/model.jpg)
+![alt text](./base_ml_model/model.jpg)
 
 We provide further details of this model [here](./base_ml_models/README.md).
 
