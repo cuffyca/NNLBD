@@ -234,7 +234,7 @@ We provide these details [here](./getting_started.md#reduplicating-our-published
 
 # What models are supported when using the `closed_discovery_train_and_eval_x` or `closed_discovery_refine_and_eval_x` tasks? <a name="supported_closed_discovery_train_refine_eval_tasks_models"></a>
 
-We have only tested the `hinton` and `rumelhart` models. All other remain untested. Thus, we cannot guarantee an accurate mesure of performance when using other models.
+We have only tested the `hinton` and `rumelhart` models. All other remain untested. Thus, we cannot guarantee an accurate measure of performance when using other models.
 
 
 # Why does the CD-2 model have it's own task specification? <a name="cd2_model_task_specification"></a>
