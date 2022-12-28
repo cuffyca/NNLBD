@@ -66,7 +66,7 @@ The following figure shows the neural architecture as propsed by Crichton, et al
 We provide further details of this model [here](./cd2_redup_model/README.md).
 
 
-# Model Output
+# Model Output <a name="model_output"></a>
 
 Each model produces various forms of output (e.g. standard console output or output files) depending on the task the user specifies. However, during model runtime, training metrics are reported to the user via standard console output. If the user specifies the model to perform evalution, evaluation metrics will also be included. Lastly, we recommend saving all models by providing a `model_save_path`. Depending on the experimental task, all reported model metrics will be saved to plain text files (e.g. `model_metrics.txt`) and plotted as PNG images. We recommend consulting the model details for more information regarding expected model output.
 
@@ -76,7 +76,7 @@ Each model produces various forms of output (e.g. standard console output or out
 We provide answers to frequently asked questions [here](./faq.md).
 
 
-# Reduplicating Our Published Work
+# Reduplicating Our Published Work <a name="reduplicating_published_work"></a>
 
 In this section, we provide guide to reproduce our published works. We list each published manuscript by title and provide a further details.
 

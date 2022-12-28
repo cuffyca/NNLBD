@@ -23,7 +23,7 @@ Requirements
 
 **Windows Users: Their package was exclusively developed for Linux operating systems. It can be run under windows using a Linux bash simulated environment. We recommend [git-for-windows](https://gitforwindows.org/) through CMD or using [CMDER](https://github.com/cmderdev/cmder). Setting up a Linux VM is recommended. We've tested their package using [Linux Mint](https://linuxmint.com/) without issue. However, after you've generated your datasets and embeddings, you can remove the VM and all requirements associated with their package.**
 
-***WARNING: The 'NN for LBD' package does not perform standard text pre-processing techniques when generating the training datasets, evaluation datasets, and word embeddings. Our case study modifies this package to lowercase all text prior to generating these datasets and embeddings. This forces the generation of unique concept relationship triplets and embeddings. In its original state, their package potentially generates multiple variations of various concepts within relationship triplets and their embeddings (i.e. this depends on text-casing within the data used to generate these datasets and embeddings, and the data is cased).***
+***WARNING: The 'NN for LBD' package does not normalize text (i.e. lowercase) when generating the training datasets, evaluation datasets, and word embeddings. Our case study modifies this package to lowercase all text prior to generating these datasets and embeddings. This forces the generation of unique concept relationship triplets and embeddings. In its original state, their package potentially generates multiple variations of various concepts within relationship triplets and their embeddings (i.e. this depends on text-casing within the data used to generate these datasets and embeddings, and the data is cased).***
 
 The HOC datasets requires some *a-priori* processing before running through the NNLBD system. As described [here](https://lbd.lionproject.net/downloads), each dataset contains three files:
 
@@ -59,7 +59,7 @@ We're only intersted in the file: `edges.csv`. So the remaining files can be del
  - "year:int"
  - "metric_jaccard:float[]"
 
-With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script `create_edges_with_scores_file.pl` to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
+With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script [create_edges_with_scores_file.pl](./../miscellaneous_scripts/create_edges_with_scores_file.pl) to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
 
 To do this manually, just remove all other columns outside of what we've listed above. This must also be done for each HOC dataset and will result in the following directory structure.
 
@@ -217,7 +217,7 @@ Model Training
 During training, the model will report training and evaluation metrics after every training epoch. This can be changed via the setting: `run_eval_number_epoch`. Example output for one model run is shown below:
 
 
-```json
+```
 Building LBD Experiment Run ID: crichton_closed_discovery_train_and_eval_1
 
 BaseModel::Initialize_GPU() - CUDA Supported / GPU Is Available

@@ -5,26 +5,74 @@ We answer some frequently asked questions about running our system here. Hopeful
 
 
 ## Table of Contents
-1. [How do I run experiments using NNLBD?](#how_to_run_experiments)
-2. [How can I save a model?](#how_to_load_model)
-3. [How can I load a model?](#how_to_save_model)
-4. [How can I refine an existing model?](#how_to_refine_model)
-5. [What exactly does the model save?](#what_does_the_model_save)
-6. [What's the basic structure of a configuration file?](#configuration_file_structure)
-7. [Can you run multiple experiments in a single configuration file?](#multiple_experiment_configuration_file)
-8. [How can I reproduce your previous work?](#how_to_reproduce_previous_work)
-9. [What models are supported when using the 'closed_discovery_train_and_eval_x' or 'closed_discovery_refine_and_eval_x' tasks?](#supported_closed_discovery_train_refine_eval_tasks_models)
-10. [Why does the CD-2 model have it's own task specification?](#cd2_model_task_specification)
-11. [What's needed to generate the HOC datasets and embeddings with a Windows OS?](#a_priori_preprocessing_on_windows)
-12. [How can I run multiple iterations of the same experiment?](#how_to_run_multiple_experiment_iterations)
-13. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
-14. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
-15. [Do you plan to add more models to the system?](#add_more_models)
-16. [What models do you plan to add next?](#what_models_are_you_adding_next)
-17. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
+1. [How can I run your system on a GPU?](#how_to_run_on_gpu)
+2. [How do I run experiments using NNLBD?](#how_to_run_experiments)
+3. [How can I change the GPU the system uses to run experiments?](#how_to_change_desired_gpu)
+4. [How can I save a model?](#how_to_load_model)
+5. [How can I load a model?](#how_to_save_model)
+6. [How can I refine an existing model?](#how_to_refine_model)
+7. [What exactly does the model save?](#what_does_the_model_save)
+8. [What's the basic structure of a configuration file?](#configuration_file_structure)
+9. [Can you run multiple experiments in a single configuration file?](#multiple_experiment_configuration_file)
+10. [How can I reproduce your previous work?](#how_to_reproduce_previous_work)
+11. [What models are supported when using the 'closed_discovery_train_and_eval_x' or 'closed_discovery_refine_and_eval_x' tasks?](#supported_closed_discovery_train_refine_eval_tasks_models)
+12. [Why does the CD-2 model have it's own task specification?](#cd2_model_task_specification)
+13. [What's needed to generate the HOC datasets and embeddings with a Windows OS?](#a_priori_preprocessing_on_windows)
+14. [How can I run multiple iterations of the same experiment?](#how_to_run_multiple_experiment_iterations)
+15. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
+16. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
+17. [Do you plan to add more models to the system?](#add_more_models)
+18. [What models do you plan to add next?](#what_models_are_you_adding_next)
+19. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
+
+
+# How can I run your system on a GPU? <a name="how_to_run_on_gpu"></a>
+
+Our system depends on `Tensorflow`, which in-turn depends on `CUDA`. So this question gets a little tricky and can be tedious. First, you must determine if you already have `CUDA` installed on your system. You can use the following command below:
+
+```
+nvcc --version
+```
+
+You should see output similar to this.
+
+```
+nvcc --version
+nvcc: NVIDIA (R) Cuda compiler driver
+Copyright (c) 2005-2021 NVIDIA Corporation
+Built on Sun_Feb_14_22:08:44_Pacific_Standard_Time_2021
+Cuda compilation tools, release 11.2, V11.2.152            <- CUDA version is listed here
+Build cuda_11.2.r11.2/compiler.29618528_0                  <-                ... and here
+```
+
+In this instance, we're running `CUDA 11.2`. Now comes the tricky part. If you do not have CUDA already installed, then you will need to determine which version is compatible with your installed version of Python 3 [here for Linux](https://www.tensorflow.org/install/source#gpu) or [here for Windows](https://www.tensorflow.org/install/source_windows#gpu).
+
+- If you chose to use `Python 3.6.x`, then you can install `CUDA 10.0 + Tensorflow 1.15.x`, or `CUDA 11.2 + Tensorflow 2.4.0`.
+- If you chose to use `Python 3.10.x`, then you should install `CUDA 11.2` and `Tensorflow 2.9.0`.
+- etc.
+
+Just take note that specific versions of `Python` and `Tensorflow` pairs have specific `CUDA` version requirements, and vice versa. Examine the provided compatiblity links carefully and determine which versions work best for you based on our listed requirements for the system.
+
+- If you have CUDA already installed, then install the version of Python and Tensorflow your CUDA version is listed to be compatible with.
+- If you do not have CUDA installed, then you can choose the versions that are within our tested Tensorflow (1.15.x-2.9.0) and Python (3.6.x-3.10.2) requirements. CUDA installation instructions are provided [here for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) and [here for Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/)... Good luck.
+
+After the suffering has ended and CUDA is installed, verify it's installation using the `nvcc --version` command to double-check. Assuming you've received output similar to what we've shown above, you can now use our system with a GPU. Our system will scan for GPUs by default and select the first one if CUDA is available. No further configuration is necessary. However, if you wish to use a specific GPU, then include the `global_setting` in your configuration file: `"device_name": "/gpu:x",` and change the `x` to your desired GPU ID value (i.e. integer value).
+
+*NOTE: Alternative versions of Python and Tensorflow, other than what we've provided, may work with without issue. However, we make no guarantees as these remain untested.*
 
 
 # How do I run experiments using NNLBD? <a name="how_to_run_experiments"></a>
+
+After downloading the archived repository, extract it to any directory of your choosing. We'll refer to this as `./<root_dir>`. After creating your virtual environment and installing the Python required package, activate your virtual environment and navigate the the directory: `./<root_dir>/NNLBD`. This directory should follow structure as shown below:
+
+```
+./<root_dir>/NNLBD/DataLoader/*
+               .../Misc/*
+               .../Models/*
+               .../__init__.py
+               .../LBD.py
+               .../LBDDriver.py
+```
 
 To run experiments using NNLBD, you must provide a configuration file, and run via the command below:
 
@@ -35,6 +83,11 @@ python LBDDriver.py <name_of_configuration_file>.json
 We provide further configuration file details [here](#whats-the-basic-structure-of-a-configuration-file) and [here](./configuration_file.md).
 
 *NOTE: This assumes you've installed the necessary requirements to use the system.*
+
+
+# How can I change the GPU the system uses to run experiments? <a name="how_to_change_desired_gpu"></a>
+
+By default, our system runs all processes on `/gpu:0` if not specified otherwise. To change this to a desired GPU device, add the following setting to `global_settings` within your configuration file: `"device_name": "/gpu:x",` and change the value of `x` to your desired device ID (i.e. any integer value > 0). We provide an example of this change within a configuration file [here](#how-can-i-refine-an-existing-model).
 
 
 # How can I save a model? <a name="how_to_save_model"></a>
@@ -301,7 +354,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
     - "year:int"
     - "metric_jaccard:float[]"
 
-    With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script `create_edges_with_scores_file.pl` to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
+    With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script [create_edges_with_scores_file.pl](./../miscellaneous_scripts/create_edges_with_scores_file.pl) to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
 
     To do this manually, just remove all other columns outside of what we've listed above. This must also be done for each HOC dataset and will result in the following directory structure.
 
@@ -384,7 +437,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
     ./test_modified_cs5.embeddings
     ```
 
-8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_models/README.md), we need to perform one more modification of these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our `convert_crichton_data_to_nnlbd_format_v2.py` script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_models/README.md), we need to perform one more modification of these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_crichton_data_to_nnlbd_format_v2.py](./../miscellaneous_scripts/convert_crichton_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
 
     Let's say these newly converted files follow the directory structure below:
 
@@ -481,10 +534,10 @@ Also, tell the system how much `acceptable_available_memory` is desired to run y
 
 We did this for many reasons.
 
-1. The authors developed their package using Python 2.7 and we already developed our system using Python 3.6 (and above). Having to maintain two virtual environments and run experiments back and forth between the two system was tedious a best. We found it easier to reduplicate the model and make it backwards compatible with their data.
-2. Their instructions were not sufficient to deploy their system. Usage instructions were sparse and a lot of time was spent trying to figure out how the system works.
-3. We noticed the authors did not follow standard pre-processing practices when utilizing static embeddings. This led us to question the study and other potential noted issues.
-4. We wanted to use their model as a baseline to test against future work. This is much easier as their model is integrated into the our system.
+1. The authors developed their package using Python 2.7 and we already developed our system using Python 3.6 (and above). Having to maintain two virtual environments and run experiments back and forth between the two system was tedious at best. We found it easier to reduplicate the model and make it backwards compatible with their data.
+<!--2. Their instructions were not sufficient to deploy their system. Usage instructions were sparse and a lot of time was spent trying to figure out how the system works.
+3. We noticed the authors did not normalize text when generating static embeddings. This led us to question the study and other potential noted issues.-->
+2. We wanted to use their model as a baseline to test against future work. This is much easier as their model is integrated into the our system.
 
 
 # Do you plan to add more models to the system? <a name="add_more_models"></a>
