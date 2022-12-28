@@ -59,7 +59,7 @@ We're only intersted in the file: `edges.csv`. So the remaining files can be del
  - "year:int"
  - "metric_jaccard:float[]"
 
-With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script [create_edges_with_scores_file.pl](./../miscellaneous_scripts/create_edges_with_scores_file.pl) to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
+With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script [create_edges_with_scores_file.pl](/miscellaneous_scripts/create_edges_with_scores_file.pl) to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
 
 To do this manually, just remove all other columns outside of what we've listed above. This must also be done for each HOC dataset and will result in the following directory structure.
 

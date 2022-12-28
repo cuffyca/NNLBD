@@ -354,7 +354,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
     - "year:int"
     - "metric_jaccard:float[]"
 
-    With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script [create_edges_with_scores_file.pl](./../miscellaneous_scripts/create_edges_with_scores_file.pl) to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
+    With this column data, we can compose the new file: `edges_with_scores.csv`, for each dataset. We have provided the Perl script [create_edges_with_scores_file.pl](/miscellaneous_scripts/create_edges_with_scores_file.pl) to simply this step. Set the `$edges_csv_file_path` and `$edges_with_scores_path` variables accordingly and execute the file. The script will create the `edges_with_score.csv` file using the specified `$edges_with_scores_path` variable path.
 
     To do this manually, just remove all other columns outside of what we've listed above. This must also be done for each HOC dataset and will result in the following directory structure.
 
@@ -437,7 +437,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
     ./test_modified_cs5.embeddings
     ```
 
-8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_models/README.md), we need to perform one more modification of these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_crichton_data_to_nnlbd_format_v2.py](./../miscellaneous_scripts/convert_crichton_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_models/README.md), we need to perform one more modification of these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_crichton_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_crichton_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
 
     Let's say these newly converted files follow the directory structure below:
 
