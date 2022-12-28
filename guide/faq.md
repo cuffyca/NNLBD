@@ -297,7 +297,7 @@ This model's output differs from all others (i.e. it's output space is single-cl
 
 # What's needed to generate the HOC datasets and embeddings with a Windows OS? <a name="a_priori_preprocessing_on_windows"></a>
 
-When reduplicating our previous works for our [Base Multi-Label Models](./base_ml_models/README.md) over the [Cancer landmark discovery datasets](https://lbd.lionproject.net/downloads), you will need to use the [NN for LBD](https://github.com/cambridgeltl/nn_for_LBD) system to generate the training datasets, evaluation datasets, and word embeddings. (See [here](./reduplicating_work/dla_for_closed_lbd.md) for further details). To get around using a Linux operating system to use the `NN for LBD` package, you will need to take a couple of extra steps.
+When reduplicating our previous works for our [Base Multi-Label Models](./base_ml_model/README.md) over the [Cancer landmark discovery datasets](https://lbd.lionproject.net/downloads), you will need to use the [NN for LBD](https://github.com/cambridgeltl/nn_for_LBD) system to generate the training datasets, evaluation datasets, and word embeddings. (See [here](./reduplicating_work/dla_for_closed_lbd.md) for further details). To get around using a Linux operating system to use the `NN for LBD` package, you will need to take a couple of extra steps.
 
 ## Requirements
 
@@ -437,7 +437,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
     ./test_modified_cs5.embeddings
     ```
 
-8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_models/README.md), we need to perform one more modification of these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_crichton_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_crichton_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_model/README.md), we need to perform one more modification of these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_crichton_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_crichton_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
 
     Let's say these newly converted files follow the directory structure below:
 

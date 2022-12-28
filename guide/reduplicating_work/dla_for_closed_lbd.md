@@ -1,7 +1,7 @@
 Exploring a Neural Network Architecture for Closed Literature-based Discovery
 =============================================================================
 
-In this study, we use our [Base Multi-Label Models](./../base_ml_models/README.md) to train and evaluate on the [cancer landmark discovery](https://lbd.lionproject.net/downloads), or Hallmarks of Cancer (HOC), datasets. These datasets are used to identify five recent literature-based discoveries which include identifying hallmarks of cancer through implicit *A-B-C* relationship triplets prior to their known year of discovery. They support both open and closed discovery. Our study evaluates our model's performance for closed discovery.
+In this study, we use our [Base Multi-Label Models](./../base_ml_model/README.md) to train and evaluate on the [cancer landmark discovery](https://lbd.lionproject.net/downloads), or Hallmarks of Cancer (HOC), datasets. These datasets are used to identify five recent literature-based discoveries which include identifying hallmarks of cancer through implicit *A-B-C* relationship triplets prior to their known year of discovery. They support both open and closed discovery. Our study evaluates our model's performance for closed discovery.
 
 
 Requirements

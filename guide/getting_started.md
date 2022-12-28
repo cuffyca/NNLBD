@@ -54,7 +54,7 @@ The following figure shows the architecture of our base mulit-label deep learnin
 
 ![alt text](./base_ml_model/model.jpg)
 
-We provide further details of this model [here](./base_ml_models/README.md).
+We provide further details of this model [here](./base_ml_model/README.md).
 
 
 ## CD-2 Reduplication model <a name="cd2_redup_model"></a>
@@ -83,6 +83,6 @@ In this section, we provide guide to reproduce our published works. We list each
 
 ## Exploring a Neural Network Architecture for Closed Literature-based Discovery <a name="exploring_ann_for_closed_lbd"></a>
 
-- This study focuses on deploying our [Base Multi-Label Models](./base_ml_models/README.md) to identify Hallmarks of Cancer over recent LBD discoveries as described [here](https://lbd.lionproject.net/downloads). Details to reduplicate our study can be found [here](./reduplicating_work/dla_for_closed_lbd.md). <!--A link to our manuscript is also located [here]().-->
+- This study focuses on deploying our [Base Multi-Label Models](./base_ml_model/README.md) to identify Hallmarks of Cancer over recent LBD discoveries as described [here](https://lbd.lionproject.net/downloads). Details to reduplicate our study can be found [here](./reduplicating_work/dla_for_closed_lbd.md). <!--A link to our manuscript is also located [here]().-->
 
 - **NOTE: This manuscript is currently under review.**
