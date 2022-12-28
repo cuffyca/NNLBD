@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 03/29/2022                                                                   #
+#    Revised: 12/23/2022                                                                   #
 #                                                                                          #
 #    Utilities Class For The NNLBD Package.                                                #
 #                                                                                          #
@@ -43,6 +43,9 @@ class Utils:
         Creates Path Along With All Folders/Directories Within The Specified Path
     """
     def Create_Path( self, file_path ):
+        if not file_path or file_path == "":
+            return
+
         file_path = re.sub( r'\\+', "/", file_path )
         folders = file_path.split( "/" )
 
@@ -132,29 +135,27 @@ class Utils:
         Reads Data From File And Stores Each Line In A List
 
         Inputs:
-            file_path : file path (String)
+            file_path : File Path (String)
+            lowercase : Lowercases All Text (Bool)
 
         Outputs:
             data_list : File Data By Line As Each List Element (List)
     """
-    def Read_Data( self, file_path ):
-        data_list = None
+    def Read_Data( self, file_path, lowercase = False ):
+        data_list = []
 
         # Load Training File
         if self.Check_If_File_Exists( file_path ) == False:
-            return []
+            return data_list
 
         # Read File Data
         try:
             with open( file_path, "r" ) as in_file:
                 data_list = in_file.readlines()
+                data_list = [ line.strip() for line in data_list ]                  # Removes Trailing Space Characters From CUI Data Strings
+                if lowercase: data_list = [ line.lower() for line in data_list ]    # Lowercase All Text
         except FileNotFoundError:
             print( "Error: Unable To Open Data File \"" + str( file_path ) + "\"", 1 )
-            return []
-        finally:
-            in_file.close()
-
-        data_list = [ line.strip() for line in data_list ]    # Removes Trailing Space Characters From CUI Data Strings
 
         return data_list
 

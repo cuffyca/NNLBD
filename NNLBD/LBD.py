@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 03/31/2022                                                                   #
+#    Revised: 09/21/2022                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -25,9 +25,9 @@ import matplotlib.pyplot as plt
 from scipy.sparse import csr_matrix
 
 # Custom Modules
-from NNLBD.DataLoader import CrichtonDataLoader, StdDataLoader
-from NNLBD.Models     import *
-from NNLBD.Misc       import Utils
+from NNLBD.DataLoader           import CrichtonDataLoader, StdDataLoader
+from NNLBD.Models.Architectures import *
+from NNLBD.Misc                 import Utils
 
 
 ############################################################################################
@@ -47,8 +47,9 @@ class LBD:
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, checkpoint_directory = "./ckpt_models",
                   trainable_weights = False, embedding_path = "", embedding_modification = "concatenate", final_layer_type = "dense",
-                  feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, restrict_output = False ):
-        self.version                       = 0.20
+                  feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, restrict_output = False,
+                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4 ):
+        self.version                       = 0.21
         self.model                         = None                            # Automatically Set After Calling 'LBD::Build_Model()' Function
         self.debug_log                     = print_debug_log                 # Options: True, False
         self.write_log                     = write_log_to_file               # Options: True, False
@@ -116,7 +117,8 @@ class LBD:
                                                early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                                                use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                                                final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
-                                               embedding_modification = embedding_modification, weight_decay = weight_decay )
+                                               embedding_modification = embedding_modification, weight_decay = weight_decay, use_cosine_annealing = use_cosine_annealing,
+                                               cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
         elif network_model == "bilstm":
             self.model = BiLSTMModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, verbose = verbose,
                                       model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
@@ -127,7 +129,8 @@ class LBD:
                                       enable_early_stopping = enable_early_stopping, early_stopping_metric_monitor = early_stopping_metric_monitor,
                                       early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization,
                                       trainable_weights = trainable_weights, embedding_path = embedding_path, final_layer_type = final_layer_type,
-                                      feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay )
+                                      feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay,
+                                      use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
         elif network_model == "cnn":
             self.model = CNNModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model,
                                    model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
@@ -138,7 +141,8 @@ class LBD:
                                    early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                                    use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                                    final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
-                                   weight_decay = weight_decay )
+                                   weight_decay = weight_decay, use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min,
+                                   cosine_annealing_max = cosine_annealing_max )
         elif network_model == "cd2":
             self.model = CD2Model( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model,
                                    model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
@@ -149,7 +153,8 @@ class LBD:
                                    early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                                    use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                                    embedding_modification = embedding_modification, final_layer_type = final_layer_type, feature_scale_value = feature_scale_value,
-                                   learning_rate_decay = learning_rate_decay, weight_decay = weight_decay )
+                                   learning_rate_decay = learning_rate_decay, weight_decay = weight_decay, use_cosine_annealing = use_cosine_annealing,
+                                   cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
         elif network_model == "mlp":
             self.model = MLPModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, margin = margin,
                                    model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
@@ -160,7 +165,8 @@ class LBD:
                                    early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                                    use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                                    embedding_modification = embedding_modification, verbose = verbose, final_layer_type = final_layer_type,
-                                   feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay )
+                                   feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay,
+                                   use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
     """
        Remove Variables From Memory
@@ -180,7 +186,8 @@ class LBD:
                                  batch_size = None, prediction_threshold = None, shuffle = None, embedding_path = None, use_csr_format = None,
                                  per_epoch_saving = None, margin = None, scale = None, verbose = None, trainable_weights = None, enable_tensorboard_logs = None,
                                  enable_early_stopping = None, early_stopping_metric_monitor = None, early_stopping_persistence = None, use_batch_normalization = None,
-                                 embedding_modification = None, learning_rate_decay = None, feature_scale_value = None ):
+                                 embedding_modification = None, learning_rate_decay = None, feature_scale_value = None, use_cosine_annealing = None,
+                                 cosine_annealing_min = None, cosine_annealing_max = None ):
         if self.model is not None:
             if self.model.Is_Model_Loaded():
                 self.Print_Log( "Update_Model_Parameters() - Warning: Model Has Already Been Built / Unable To Update Some Model Parameters", force_print = True )
@@ -208,6 +215,9 @@ class LBD:
             if enable_early_stopping         is not None and self.model.Get_Enable_Early_Stopping()          != enable_early_stopping           : self.model.Set_Enable_Early_Stopping( enable_early_stopping )
             if early_stopping_metric_monitor is not None and self.model.Get_Early_Stopping_Metric_Monitor()  != early_stopping_metric_monitor   : self.model.Set_Early_Stopping_Metric_Monitor( early_stopping_metric_monitor )
             if early_stopping_persistence    is not None and self.model.Get_Early_Stopping_Persistence()     != early_stopping_persistence      : self.model.Set_Early_Stopping_Persistence( early_stopping_persistence )
+            if use_cosine_annealing          is not None and self.model.Get_Use_Cosine_Annealing()           != use_cosine_annealing            : self.model.Set_Use_Cosine_Annealing( use_cosine_annealing )
+            if cosine_annealing_min          is not None and self.model.Get_Cosine_Annealing_Min()           != cosine_annealing_min            : self.model.Set_Cosine_Annealing_Min( cosine_annealing_min )
+            if cosine_annealing_max          is not None and self.model.Get_Cosine_Annealing_Max()           != cosine_annealing_max            : self.model.Set_Cosine_Annealing_Max( cosine_annealing_max )
             if use_batch_normalization       is not None and self.model.Get_Use_Batch_Normalization()        != use_batch_normalization         : self.model.Set_Use_Batch_Normalization( use_batch_normalization )
             if embedding_path                is not None and self.model.Get_Embedding_Path()                 != embedding_path                  : self.model.Set_Embedding_Path( embedding_path )
             if margin                        is not None and self.model.Get_Margin()                         != margin                          : self.model.Set_Margin( margin )
@@ -239,10 +249,18 @@ class LBD:
         # Prepare Embeddings & Data-set
         data_loader = self.Get_Data_Loader()
 
+        # Load Embeddings
         if self.model.Get_Embedding_Path() != "" and data_loader.Is_Embeddings_Loaded() == False and force_run == False:
             self.Print_Log( "LBD::Prepare_Model_Data() - Loading Embeddings: " + str( self.model.Get_Embedding_Path() ), force_print = True )
-            data_loader.Load_Embeddings( self.model.Get_Embedding_Path() )
-            self.model.Set_Embeddings_Loaded( data_loader.Is_Embeddings_Loaded() )
+            embeddings = data_loader.Load_Embeddings( self.model.Get_Embedding_Path() )
+
+            # Check
+            if isinstance( embeddings, list ) and len( embeddings ) == 0 or isinstance( embeddings, np.ndarray ) and embeddings.shape[0] == 0:
+                self.Print_Log( "LBD::Prepare_Model_Data() - Error Loading Embeddings", force_print = True )
+                self.Print_Log( "LBD::Prepare_Model_Data() -       Embedding Path: " + str( self.model.Get_Embedding_Path() ), force_print = True )
+                return False
+            else:
+                self.model.Set_Embeddings_Loaded( data_loader.Is_Embeddings_Loaded() )
 
         # Read Training Data
         if len( data_instances ) == 0:
@@ -475,7 +493,7 @@ class LBD:
     def Fit( self, training_file_path = "", data_instances = [], learning_rate = None, epochs = None, batch_size = None,
              momentum = None, dropout = None, verbose = None, shuffle = None, per_epoch_saving = None, use_csr_format = None,
              embedding_path = None, trainable_weights = None, margin = None, scale = None, learning_rate_decay = None,
-             feature_scale_value = None ):
+             feature_scale_value = None, use_cosine_annealing = None, cosine_annealing_min = None, cosine_annealing_max = None ):
         # Check(s)
         if training_file_path == "" and len( data_instances ) == 0:
             self.Print_Log( "LBD::Fit() - Error: No Training File Path Specified Or Training Instance List Given", force_print = True )
@@ -492,7 +510,8 @@ class LBD:
                                       dropout = dropout, verbose = verbose, shuffle = shuffle, use_csr_format = use_csr_format,
                                       per_epoch_saving = per_epoch_saving, trainable_weights = trainable_weights, margin = margin,
                                       embedding_path = embedding_path, scale = scale, learning_rate_decay = learning_rate_decay,
-                                      feature_scale_value = feature_scale_value )
+                                      feature_scale_value = feature_scale_value, use_cosine_annealing = use_cosine_annealing,
+                                      cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
         # Start Elapsed Time Timer
         start_time = time.time()
@@ -535,7 +554,9 @@ class LBD:
         self.model.Fit( train_input_1, train_input_2, train_input_3, train_outputs, epochs = self.model.Get_Epochs(),
                         batch_size = self.model.Get_Batch_Size(), momentum = self.model.Get_Momentum(),
                         dropout = self.model.Get_Dropout(), verbose = self.model.Get_Verbose(), shuffle = self.model.Get_Shuffle(),
-                        use_csr_format = self.model.Get_Use_CSR_Format(), per_epoch_saving = self.model.Get_Per_Epoch_Saving() )
+                        use_csr_format = self.model.Get_Use_CSR_Format(), per_epoch_saving = self.model.Get_Per_Epoch_Saving(),
+                        use_cosine_annealing = self.model.Get_Use_Cosine_Annealing(), cosine_annealing_min = self.model.Get_Cosine_Annealing_Min(),
+                        cosine_annealing_max = self.model.Get_Cosine_Annealing_Max() )
 
         #######################################################################
         #                                                                     #
@@ -1055,7 +1076,7 @@ class LBD:
             return -1, -1, -1, -1, -1
 
         self.Print_Log( "LBD::Evaluate() - Executing Model Evaluation", force_print = True )
-        loss, accuracy, precision, recall, f1_score = self.model.Evaluate( eval_primary_input, eval_secondary_input, eval_tertiary_input, eval_outputs, verbose = self.model.Get_Verbose() )
+        loss, accuracy, precision, recall, f1_score = self.model.Evaluate( eval_primary_input, eval_secondary_input, eval_tertiary_input, eval_outputs )
 
         self.Print_Log( "LBD::Evaluate() - Loss     :", loss      )
         self.Print_Log( "LBD::Evaluate() - Accuracy :", accuracy  )

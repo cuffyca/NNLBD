@@ -10,7 +10,7 @@
     ],
     "crichton_closed_discovery_train_and_eval_1": [
         {
-            "_comment": "Crichton: CS4",
+            "_comment": "CD2 Model - CS4",
             "print_debug_log": "False",
             "write_log_to_file": "False",
             "network_model": "cd2",

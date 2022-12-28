@@ -10,7 +10,7 @@
     ],
     "train_1": [
         {
-            "_comment": "(GPU Hold Model) - Crichton CS1 Hinton Sigmoid: Closed Discovery",
+            "_comment": "(GPU Hold Model) - CS1 Hinton Sigmoid: Closed Discovery",
             "print_debug_log": "False",
             "write_log_to_file": "False",
             "network_model": "hinton",

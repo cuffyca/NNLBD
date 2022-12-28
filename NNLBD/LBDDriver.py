@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 06/04/2022                                                                   #
+#    Revised: 12/23/2022                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -158,13 +158,14 @@ class NNLBD_Driver:
         # LBD Experiment Variables
         print_debug_log, write_log_to_file, optimizer, activation_function, loss_function           = False, False, "adam", "sigmoid", "binary_crossentropy"
         network_model, model_type, use_gpu, device_name, trainable_weights, final_layer_type        = "rumelhart", "open_discovery", True, self.global_device_name, False, "dense"
-        bilstm_merge_mode, bilstm_dimension_size, learning_rate, epochs, momentum, dropout          = "concat", 64, 0.005, 30, 0.05, 0.5
+        bilstm_merge_mode, bilstm_dimension_size, learning_rate, epochs, momentum, dropout          = "concat", 64, 0.005, 30, 0.05, 0.1
         batch_size, prediction_threshold, shuffle, embedding_path, use_csr_format, per_epoch_saving = 32, 0.5, True, "", True, False
-        margin, scale, verbose, train_data_path, enable_tensorboard_logs, enable_early_stopping     = 30.0, 0.35, "", False, False, False
+        margin, scale, verbose, train_data_path, enable_tensorboard_logs, enable_early_stopping     = 30.0, 0.35, 2, False, False, False
         early_stopping_metric_monitor, early_stopping_persistence, use_batch_normalization          = "loss", 3, False
         embedding_modification, skip_out_of_vocabulary_words, eval_data_path, checkpoint_directory  = "concatenate", True, "", "ckpt_models"
         model_save_path, model_load_path, set_per_iteration_model_path, learning_rate_decay         = "", "", False, 0.004
-        feature_scale_value, restrict_output, save_best_model                                       = 1.0, False, False
+        feature_scale_value, restrict_output, save_best_model, use_cosine_annealing                 = 1.0, False, False, False
+        cosine_annealing_min, cosine_annealing_max                                                  = 1e-6, 2e-4
 
         # Model Variables
         run_eval_number_epoch = 1
@@ -196,6 +197,7 @@ class NNLBD_Driver:
                 if "set_per_iteration_model_path"  in run_dict: set_per_iteration_model_path  = True if run_dict["set_per_iteration_model_path"] == "True" else False
                 if "restrict_output"               in run_dict: restrict_output               = True if run_dict["restrict_output"]              == "True" else False
                 if "save_best_model"               in run_dict: save_best_model               = True if run_dict["save_best_model"]              == "True" else False
+                if "use_cosine_annealing"          in run_dict: use_cosine_annealing          = True if run_dict["use_cosine_annealing"]         == "True" else False
                 if "network_model"                 in run_dict: network_model                 = run_dict["network_model"]
                 if "model_type"                    in run_dict: model_type                    = run_dict["model_type"]
                 if "activation_function"           in run_dict: activation_function           = run_dict["activation_function"]
@@ -221,6 +223,8 @@ class NNLBD_Driver:
                 if "momentum"                      in run_dict: momentum                      = float( run_dict["momentum"] )
                 if "early_stopping_metric_monitor" in run_dict: early_stopping_metric_monitor = run_dict["early_stopping_metric_monitor"]
                 if "early_stopping_persistence"    in run_dict: early_stopping_persistence    = int( run_dict["early_stopping_persistence"] )
+                if "cosine_annealing_min"          in run_dict: cosine_annealing_min          = float( run_dict["cosine_annealing_min"] )
+                if "cosine_annealing_max"          in run_dict: cosine_annealing_max          = float( run_dict["cosine_annealing_max"] )
                 if "prediction_threshold"          in run_dict: prediction_threshold          = float( run_dict["prediction_threshold"] )
                 if "margin"                        in run_dict: margin                        = float( run_dict["margin"] )
                 if "scale"                         in run_dict: scale                         = float( run_dict["scale"] )
@@ -251,7 +255,8 @@ class NNLBD_Driver:
                              margin = margin, scale = scale, enable_early_stopping = enable_early_stopping,  early_stopping_metric_monitor = early_stopping_metric_monitor,
                              use_batch_normalization = use_batch_normalization, embedding_modification = embedding_modification,  enable_tensorboard_logs = enable_tensorboard_logs,
                              early_stopping_persistence = early_stopping_persistence, skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, learning_rate_decay = learning_rate_decay,
-                             feature_scale_value = feature_scale_value, restrict_output = restrict_output )
+                             feature_scale_value = feature_scale_value, restrict_output = restrict_output, use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min,
+                             cosine_annealing_max = cosine_annealing_max )
 
                 ######################################################
                 # Determine What Type Of Experiment Will Be Executed #
@@ -280,7 +285,8 @@ class NNLBD_Driver:
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
-                                                       embedding_path = embedding_path, verbose = verbose )
+                                                       embedding_path = embedding_path, verbose = verbose, use_cosine_annealing = use_cosine_annealing,
+                                                       cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
                         model.Evaluate( training_file_path = train_data_path )
 
@@ -292,7 +298,8 @@ class NNLBD_Driver:
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
-                                                       embedding_path = embedding_path, verbose = verbose )
+                                                       embedding_path = embedding_path, verbose = verbose, use_cosine_annealing = use_cosine_annealing,
+                                                       cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
                         model.Evaluate_Prediction( training_file_path = train_data_path )
 
@@ -304,9 +311,10 @@ class NNLBD_Driver:
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
-                                                       embedding_path = embedding_path, verbose = verbose )
+                                                       embedding_path = embedding_path, verbose = verbose, use_cosine_annealing = use_cosine_annealing,
+                                                       cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
-                        model.Evaluate_Prediction( training_file_path = train_data_path )
+                        model.Evaluate_Ranking( training_file_path = train_data_path )
 
                 # Train Model And Evaluate
                 elif re.match( r"^[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
@@ -315,7 +323,8 @@ class NNLBD_Driver:
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
                         model.Generate_Model_Metric_Plots( model_save_path )
-                        model.Evaluate( test_file_path = eval_data_path )
+
+                    model.Evaluate( test_file_path = eval_data_path )
 
                 # Train Model And Evaluate Prediction
                 elif re.match( r"^[Tt]rain_[Aa]nd_[Ee]val_[Pp]rediction_\d+", run_id ):
@@ -324,7 +333,8 @@ class NNLBD_Driver:
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
                         model.Generate_Model_Metric_Plots( model_save_path )
-                        model.Evaluate_Prediction( test_file_path = eval_data_path )
+
+                    model.Evaluate_Prediction( test_file_path = eval_data_path )
 
                 # Train Model And Evaluate Ranking
                 elif re.match( r"^[Tt]rain_[Aa]nd_[Ee]val_[Rr]anking_\d+", run_id ):
@@ -333,7 +343,8 @@ class NNLBD_Driver:
                     if model_save_path != "":
                         model.Save_Model( model_save_path )
                         model.Generate_Model_Metric_Plots( model_save_path )
-                        model.Evaluate_Ranking( test_file_path = eval_data_path )
+
+                    model.Evaluate_Ranking( test_file_path = eval_data_path )
 
                 # Refine Existing Model
                 elif re.match( r"^[Rr]efine_\d+", run_id ):
@@ -343,7 +354,8 @@ class NNLBD_Driver:
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
-                                                       embedding_path = embedding_path, verbose = verbose )
+                                                       embedding_path = embedding_path, verbose = verbose, use_cosine_annealing = use_cosine_annealing,
+                                                       cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
                         model.Fit( training_file_path = train_data_path )
 
@@ -381,7 +393,8 @@ class NNLBD_Driver:
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
-                                                       embedding_path = embedding_path, verbose = verbose )
+                                                       embedding_path = embedding_path, verbose = verbose, use_cosine_annealing = use_cosine_annealing,
+                                                       cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
                         self.Crichton_Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size, learning_rate = learning_rate,
                                                                        verbose = verbose, run_eval_number_epoch = run_eval_number_epoch, save_best_model = save_best_model,
@@ -426,7 +439,8 @@ class NNLBD_Driver:
                         # Update Model Parameters
                         model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
                                                        batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
-                                                       embedding_path = embedding_path, verbose = verbose )
+                                                       embedding_path = embedding_path, verbose = verbose, use_cosine_annealing = use_cosine_annealing,
+                                                       cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
 
                         self.Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
                                                               learning_rate = learning_rate, verbose = verbose,
@@ -580,7 +594,7 @@ class NNLBD_Driver:
 
         for iteration in range( epochs ):
             # Train Model Over Data: "../data/train_cs1_closed_discovery_without_aggregators"
-            model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose )
+            model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate )
 
             # Check
             if model.Get_Model() == None or model.Get_Model().model_history == None:
@@ -675,35 +689,36 @@ class NNLBD_Driver:
                    " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
 
         print( "\nGenerating Model Metric Charts" )
-        if not re.search( r"\/$", model_save_path ): model_save_path += "/"
+        if model_save_path != "" and not re.search( r"\/$", model_save_path ):
+            model_save_path += "/"
 
-        self.Generate_Plot( data_list = ranking_per_epoch, title = "Evaluation: Rank vs Epoch", x_label = "Epoch",
-                            y_label = "Rank", file_name = "evaluation_rank_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = ranking_per_epoch, title = "Evaluation: Rank vs Epoch", x_label = "Epoch",
+                                y_label = "Rank", file_name = "evaluation_rank_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = number_of_ties_per_epoch, title = "Evaluation: Ties vs Epoch", x_label = "Epoch",
-                            y_label = "Ties", file_name = "evaluation_ties_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = number_of_ties_per_epoch, title = "Evaluation: Ties vs Epoch", x_label = "Epoch",
+                                y_label = "Ties", file_name = "evaluation_ties_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = loss_per_epoch, title = "Training: Loss vs Epoch", x_label = "Epoch",
-                            y_label = "Loss", file_name = "training_loss_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = loss_per_epoch, title = "Training: Loss vs Epoch", x_label = "Epoch",
+                                y_label = "Loss", file_name = "training_loss_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = accuracy_per_epoch, title = "Training: Accuracy vs Epoch", x_label = "Epoch",
-                            y_label = "Accuracy", file_name = "training_accuracy_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = accuracy_per_epoch, title = "Training: Accuracy vs Epoch", x_label = "Epoch",
+                                y_label = "Accuracy", file_name = "training_accuracy_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = precision_per_epoch, title = "Training: Precision vs Epoch", x_label = "Epoch",
-                            y_label = "Precision", file_name = "training_precision_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = precision_per_epoch, title = "Training: Precision vs Epoch", x_label = "Epoch",
+                                y_label = "Precision", file_name = "training_precision_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = recall_per_epoch, title = "Training: Recall vs Epoch", x_label = "Epoch",
-                            y_label = "Recall", file_name = "training_recall_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = recall_per_epoch, title = "Training: Recall vs Epoch", x_label = "Epoch",
+                                y_label = "Recall", file_name = "training_recall_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = f1_score_per_epoch, title = "Training: F1-Score vs Epoch", x_label = "Epoch",
-                            y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = f1_score_per_epoch, title = "Training: F1-Score vs Epoch", x_label = "Epoch",
+                                y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
+
+            # Save Model Metrics To File
+            self.Generate_Model_Metric_File( file_path = model_save_path, metric_list = model_metrics )
 
         print( "\nBest Rank: " + str( best_ranking ) )
         print( "Best Ranking Epoch: " + str( best_ranking_epoch ) )
         print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
-
-        # Save Model Metrics To File
-        self.Generate_Model_Metric_File( file_path = model_save_path, metric_list = model_metrics )
 
 
     ''' Performs Closed Discovery For Our Proposed Models: Hinton, Rumelhart, Bi-LSTM '''
@@ -778,7 +793,7 @@ class NNLBD_Driver:
 
         for iteration in range( epochs ):
             # Train Model Over Data: "../data/train_cs1_closed_discovery_without_aggregators"
-            model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose )
+            model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate )
 
             # Check
             if model.Get_Model() == None or model.Get_Model().model_history == None:
@@ -916,28 +931,32 @@ class NNLBD_Driver:
                        " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
 
         print( "\nGenerating Model Metric Charts" )
-        if not re.search( r"\/$", model_save_path ): model_save_path += "/"
+        if model_save_path != "" and not re.search( r"\/$", model_save_path ):
+            model_save_path += "/"
 
-        self.Generate_Plot( data_list = ranking_per_epoch, title = "Evaluation: Rank vs Epoch", x_label = "Epoch",
-                            y_label = "Rank", file_name = "evaluation_rank_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = ranking_per_epoch, title = "Evaluation: Rank vs Epoch", x_label = "Epoch",
+                                y_label = "Rank", file_name = "evaluation_rank_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = number_of_ties_per_epoch, title = "Evaluation: Ties vs Epoch", x_label = "Epoch",
-                            y_label = "Ties", file_name = "evaluation_ties_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = number_of_ties_per_epoch, title = "Evaluation: Ties vs Epoch", x_label = "Epoch",
+                                y_label = "Ties", file_name = "evaluation_ties_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = loss_per_epoch, title = "Training: Loss vs Epoch", x_label = "Epoch",
-                            y_label = "Loss", file_name = "training_loss_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = loss_per_epoch, title = "Training: Loss vs Epoch", x_label = "Epoch",
+                                y_label = "Loss", file_name = "training_loss_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = accuracy_per_epoch, title = "Training: Accuracy vs Epoch", x_label = "Epoch",
-                            y_label = "Accuracy", file_name = "training_accuracy_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = accuracy_per_epoch, title = "Training: Accuracy vs Epoch", x_label = "Epoch",
+                                y_label = "Accuracy", file_name = "training_accuracy_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = precision_per_epoch, title = "Training: Precision vs Epoch", x_label = "Epoch",
-                            y_label = "Precision", file_name = "training_precision_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = precision_per_epoch, title = "Training: Precision vs Epoch", x_label = "Epoch",
+                                y_label = "Precision", file_name = "training_precision_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = recall_per_epoch, title = "Training: Recall vs Epoch", x_label = "Epoch",
-                            y_label = "Recall", file_name = "training_recall_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = recall_per_epoch, title = "Training: Recall vs Epoch", x_label = "Epoch",
+                                y_label = "Recall", file_name = "training_recall_vs_epoch.png", save_path = model_save_path )
 
-        self.Generate_Plot( data_list = f1_score_per_epoch, title = "Training: F1-Score vs Epoch", x_label = "Epoch",
-                            y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
+            self.Generate_Plot( data_list = f1_score_per_epoch, title = "Training: F1-Score vs Epoch", x_label = "Epoch",
+                                y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
+
+            # Save Model Metrics To File
+            self.Generate_Model_Metric_File( file_path = model_save_path, metric_list = model_metrics )
 
         print( "\nBest Rank: " + str( best_ranking ) )
         print( "Best Ranking Epoch: " + str( best_ranking_epoch ) )
@@ -948,9 +967,6 @@ class NNLBD_Driver:
             print( "Eval Best Ranking Epoch: " + str( eval_best_ranking_epoch ) )
             print( "Eval Number Of Ties With Best Rank: " + str( eval_best_number_of_ties ) )
 
-        # Save Model Metrics To File
-        self.Generate_Model_Metric_File( file_path = model_save_path, metric_list = model_metrics )
-
 
 ############################################################################################
 #                                                                                          #
@@ -960,13 +976,12 @@ class NNLBD_Driver:
 
 def Main():
     # Check(s)
-    is_file_criteria_met = all([ os.path.exists( sys.argv[1] ), os.path.isdir( sys.argv[1] ) == False ])
-
     if len( sys.argv ) < 2:
         print( "Error: No JSON File Specified" )
         print( "    Example: 'python LBDDriver.py paramter_file.json'" )
         exit()
-    elif not is_file_criteria_met:
+
+    if not all([ os.path.exists( sys.argv[1] ), os.path.isdir( sys.argv[1] ) == False ]):
         print( "Error: Specified File Does Not Exist" )
         print( "    File:", sys.argv[1] )
         exit()

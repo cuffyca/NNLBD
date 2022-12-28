@@ -13,7 +13,7 @@
 #        Implicit Relations.                                                               #
 #                                                                                          #
 #    How To Run:                                                                           #
-#                    "python load_model_evak_test.py"                                      #
+#                    "python load_model_eval_test.py"                                      #
 #                                                                                          #
 #    Authors:                                                                              #
 #    --------                                                                              #

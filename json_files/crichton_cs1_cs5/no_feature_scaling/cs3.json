@@ -10,7 +10,7 @@
     ],
     "crichton_closed_discovery_train_and_eval_1": [
         {
-            "_comment": "Crichton: CS3",
+            "_comment": "CD2 Model - CS3",
             "print_debug_log": "False",
             "write_log_to_file": "False",
             "network_model": "cd2",
