@@ -84,7 +84,9 @@ To manually install the required packages, execute the following commands:
 Getting Started, System Description and Model Details
 =====================================================
 
-To run one of our models, we provide details for getting started [here](./guide/getting_started.md). This also includes a description of our system, integrated models and a guide to replicate previous works. We also provide an FAQ [here](./guide/faq.md).
+To run one of our models, we provide details for getting started [here](./guide/getting_started.md). This also includes a description of our system, integrated models and a guide to replicate previous works.
+
+We also provide an FAQ [here](./guide/faq.md).
 
 
 <!--
