@@ -33,7 +33,7 @@ from NNLBD import LBD
 def Main():
     print( "~Begin" )
     file_path           = "../data/train_cs1_closed_discovery_without_aggregators.tsv"
-    embedding_path      = "../vectors/HOC/test_modified_cs1.embeddings"
+    embedding_path      = "../vectors/HOC/test_modified_cs1.embeddings.bin"
     actual_epochs       = 150
     instances_per_batch = 150
 

@@ -29,7 +29,7 @@ First, we recommend preparing your virtual environment and installing the packag
 
 To execute an experiment, we use JSON-formatted configuration files as an argument while executing the `LBDDriver.py` script. An example is shown below:
 
-```
+```cmd
 python LBDDriver.py config.json
 ```
 

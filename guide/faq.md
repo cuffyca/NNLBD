@@ -20,18 +20,20 @@ We answer some frequently asked questions about running our system here. Hopeful
 13. [Why does the CD-2 model have it's own task specification?](#cd2_model_task_specification)
 14. [What's needed to generate the HOC datasets and embeddings with a Windows OS?](#a_priori_preprocessing_on_windows)
 15. [How can I run multiple iterations of the same experiment?](#how_to_run_multiple_experiment_iterations)
-16. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
-17. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
-18. [Do you plan to add more models to the system?](#add_more_models)
-19. [What models do you plan to add next?](#what_models_are_you_adding_next)
-20. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
+16. [What embedding formats are supported?](#supported_embedding_formats)
+17. [Can I convert between Word2vec binary and plain text embeddings](#convert_between_w2v_binary_and_plain_text)
+18. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
+19. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
+20. [Do you plan to add more models to the system?](#add_more_models)
+21. [What models do you plan to add next?](#what_models_are_you_adding_next)
+22. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
 
 
 # How can I test my NNLBD system environment? <a name="#how_to_test_nnlbd_system"></a>
 
 After performing the installation steps on the main page, you can test your environment by running the following command:
 
-```
+```cmd
 python LBDDriver.py ../json_files/tests/cui_mini_multi_task_test.json
 ```
 
@@ -47,13 +49,13 @@ This configuration file contains the following tasks:
 
 Our system depends on `TensorFlow`, which in-turn depends on `CUDA`. So this question gets a little tricky and can be tedious. First, you must determine if you already have `CUDA` installed on your system. You can use the following command below:
 
-```
+```cmd
 nvcc --version
 ```
 
 You should see output similar to this.
 
-```
+```cmd
 nvcc --version
 nvcc: NVIDIA (R) Cuda compiler driver
 Copyright (c) 2005-2021 NVIDIA Corporation
@@ -82,7 +84,7 @@ After the suffering has ended and CUDA is installed, verify it's installation us
 
 After downloading the archived repository, extract it to any directory of your choosing. We'll refer to this as `./<root_dir>`. After creating your virtual environment and installing the Python required package, activate your virtual environment and navigate the the directory: `./<root_dir>/NNLBD`. This directory should follow structure as shown below:
 
-```
+```cmd
 ./<root_dir>/NNLBD/DataLoader/*
                .../Misc/*
                .../Models/*
@@ -93,7 +95,7 @@ After downloading the archived repository, extract it to any directory of your c
 
 To run experiments using NNLBD, you must provide a configuration file, and run via the command below:
 
-```
+```cmd
 python LBDDriver.py <name_of_configuration_file>.json
 ```
 
@@ -111,7 +113,7 @@ By default, our system runs all processes on `/gpu:0` if not specified otherwise
 
 In your configuration file, add the setting `"model_save_path"` and provide a save directory. See the example below:
 
-```
+```json
 "model_save_path": <model_save_path>,
 ```
 
@@ -120,7 +122,7 @@ In your configuration file, add the setting `"model_save_path"` and provide a sa
 
 In your configuration file, add the setting `"model_load_path"` and provide a directory. See the example below:
 
-```
+```json
 "model_load_path": <model_load_path>,
 ```
 
@@ -165,7 +167,7 @@ An example configuration file is shown below:
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings.bin",
             "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
             "model_load_path": "../saved_models/cs1_hinton_model",
@@ -245,7 +247,7 @@ You sure can! The system is setup such that you can chain as many tasks as you l
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings.bin",
             "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
             "model_save_path": "../saved_models/cs1_hinton_model",
@@ -259,7 +261,7 @@ You sure can! The system is setup such that you can chain as many tasks as you l
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings.bin",
             "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
             "model_load_path": "../saved_models/cs1_hinton_model",
@@ -274,7 +276,7 @@ You sure can! The system is setup such that you can chain as many tasks as you l
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "rumelhart",
             "model_type": "closed_discovery",
-            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings.bin",
             "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
             "model_save_path": "../saved_models/cs1_rumelhart_model",
@@ -333,7 +335,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
 
 3. Create a Python 2.7 virtual environment, preferably within the `nn_for_LBD` directory, and activate it. Update the following module: `pip`, `setuptools`, and `wheel`. Then install the `NN for LBD` package requirements.
 
-    ```
+    ```cmd
     pip install -U pip setuptools wheel
     pip install -r requirements.txt
     ```
@@ -346,7 +348,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
 
 5. Download the five `Cancer landmark discovery datasets` from [here](https://lbd.lionproject.net/downloads). Then extract the files within each archive to the `./nn_for_LBD/data/` directory. It will resemble the directory structure below:
 
-    ```
+    ```cmd
     ./nn_for_LBD/data/PR000001138_PR000006736/edges.csv
                   .../PR000001138_PR000006736/nodes.csv
                   .../PR000001138_PR000006736/meta.csv
@@ -375,7 +377,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
 
     To do this manually, just remove all other columns outside of what we've listed above. This must also be done for each HOC dataset and will result in the following directory structure.
 
-    ```
+    ```cmd
     ./nn_for_LBD/data/PR000001138_PR000006736/edges_with_scores.csv
                   .../PR000001754_MESHD000236/edges_with_scores.csv
                   .../PR000006066_MESHD013964/edges_with_scores.csv
@@ -387,7 +389,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
 
     At the beginning of the file, the following variables must be changed to generate our training and evaluation sets, and our word embeddings.
 
-    ```
+    ```bash
     setup_experiment=False
     create_representations=False
     do_lbd=True
@@ -395,7 +397,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
 
     to
 
-    ```
+    ```bash
     setup_experiment=True
     create_representations=True
     do_lbd=False
@@ -404,26 +406,26 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
     Next, we need to change the following lines:
 
     <pre><code>LINE/<mark>linux</mark>/line -train "test_adj_mat_${embeddingsshortname}.line" \
-            -output "test_${embeddingsshortname}-order1.embeddings" -size 50 -order 1 \
+            -output "test_${embeddingsshortname}-order1.embeddings.bin" -size 50 -order 1 \
             -samples 1000 -threads 10 #Halve so the combined vector can have the desired dimension</code>
     <code>
     LINE/<mark>linux</mark>/line -train "test_adj_mat_${embeddingsshortname}.line" \
-            -output "test_${embeddingsshortname}-order2.embeddings" -size 50 -order 2 \
+            -output "test_${embeddingsshortname}-order2.embeddings.bin" -size 50 -order 2 \
             -samples 1000 -threads 10 #Halve so the combined vector can have the desired dimension</code></pre>
 
     to
 
     <pre><code>LINE/<mark>windows</mark>/line -train "test_adj_mat_${embeddingsshortname}.line" \
-              -output "test_${embeddingsshortname}-order1.embeddings" -size 50 -order 1 \
+              -output "test_${embeddingsshortname}-order1.embeddings.bin" -size 50 -order 1 \
               -samples 1000 -threads 10 #Halve so the combined vector can have the desired dimension</code>
     <code>
     LINE/<mark>windows</mark>/line -train "test_adj_mat_${embeddingsshortname}.line" \
-              -output "test_${embeddingsshortname}-order2.embeddings" -size 50 -order 2 \
+              -output "test_${embeddingsshortname}-order2.embeddings.bin" -size 50 -order 2 \
               -samples 1000 -threads 10 #Halve so the combined vector can have the desired dimension</code></pre>
 
 7. Let's go back to our CMD session at the `./nn_for_LBD/` directory. Activate your virtual environment and run the `experiment_batch_cases.sh` file via the command below.
 
-    ```
+    ```bash
     bash experiment_batch_cases.sh
     ```
 
@@ -447,14 +449,14 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
 
     Word Embedding Files:
     =====================
-    ./test_modified_cs1.embeddings
-    ./test_modified_cs2.embeddings
-    ./test_modified_cs3.embeddings
-    ./test_modified_cs4.embeddings
-    ./test_modified_cs5.embeddings
+    ./test_modified_cs1.embeddings.bin
+    ./test_modified_cs2.embeddings.bin
+    ./test_modified_cs3.embeddings.bin
+    ./test_modified_cs4.embeddings.bin
+    ./test_modified_cs5.embeddings.bin
     ```
 
-    *NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. We're only interested in the `plain text` variants.*
+    *NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. You can use either variant. The system will automatically determine which has been selected and load them accordingly.*
 
 8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_model/README.md), we need to perform two more modifications on these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_hoc_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_hoc_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
 
@@ -478,11 +480,11 @@ Lastly, these files are in `open discovery format` (i.e. `a_concept b_concept c_
 
     Word Embedding Files:
     =====================
-    ./test_modified_cs1.embeddings
-    ./test_modified_cs2.embeddings
-    ./test_modified_cs3.embeddings
-    ./test_modified_cs4.embeddings
-    ./test_modified_cs5.embeddings
+    ./test_modified_cs1.embeddings.bin
+    ./test_modified_cs2.embeddings.bin
+    ./test_modified_cs3.embeddings.bin
+    ./test_modified_cs4.embeddings.bin
+    ./test_modified_cs5.embeddings.bin
     ```
 
     Now we are ready to begin LBD experimentation using the Multi-Label Models. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
@@ -508,7 +510,7 @@ When the system reads the configuration file, it looks for a setting named: `num
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings.bin",
             "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
             "model_save_path": "../saved_models/cs1_hinton_model",
@@ -523,7 +525,7 @@ When the system reads the configuration file, it looks for a setting named: `num
 
 This will save all 5 models to the following directories:
 
-```
+```cmd
 ../saved_models/cs1_hinton_model_1
 ../saved_models/cs1_hinton_model_2
 ../saved_models/cs1_hinton_model_3
@@ -532,6 +534,38 @@ This will save all 5 models to the following directories:
 ```
 
 Each will contain their respective saved files.
+
+# What embedding formats are supported? <a name="supported_embedding_formats"></a>
+
+Our system supports Word2vec-style plain text and binary embeddings. The system will automatically determine which embeddings you've specified when loading your experiments.
+
+# Can I convert between Word2vec binary and plain text embeddings? <a name="convert_between_w2v_binary_and_plain_text"></a>
+
+Yes, you can do this with the `DataLoader` class. See the example code below.
+
+Binary-to-Plain Text Embeddings
+```python
+from NNLBD.DataLoader import DataLoader
+
+binary_embedding_path = "./word2vec_binary_embeddings.bin"
+dataloader            = DataLoader()
+plain_text_embeddings = dataloader.Load_Embeddings( file_path = binary_embedding_path )
+
+# Do With Them As You Wish
+...
+```
+
+Plain Text-to-Binary Embeddings
+```python
+from NNLBD.DataLoader import DataLoader
+
+embedding_path        = "./word2vec_text_embeddings.bin"    # Existing File
+binary_embedding_path = "./word2vec_binary_embeddings.bin"  # New Converted File
+dataloader            = DataLoader()
+plain_text_embeddings = dataloader.Load_Embeddings( file_path = embedding_path )
+if not dataloader.Save_Binary_Embeddings( embeddings = embeddings, save_file_path = binary_embedding_path ):
+    print( "Error Converting Embeddings To Binary Format" )
+```
 
 
 # I see the global setting `enable_gpu_polling`. What does this do? <a name="what_is_gpu_polling"></a>

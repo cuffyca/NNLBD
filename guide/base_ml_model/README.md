@@ -70,7 +70,6 @@ We train our neural network architecture to identify implicit relations between 
 For example, we have the following explicit *A-B-C* relationship:
 
 `NF-B (PR:000001754)` $\xrightarrow{co-occurs\ with}$ `Bcl-2 (PR:000002307)` $\xrightarrow{co-occurs\ with}$ `Adenoma (MESH:D000236)`
-</code>
 
 Our closed discovery model uses the *A* and *C* terms as input into the model and predicts our *B* term. The one-hot encoded representations of the input terms would be represented as follows:
 
@@ -136,7 +135,7 @@ For each term representation, we use word embeddings to map term text to real-va
 
 To execute an experiment, we use JSON-formatted configuration files as an argument while executing the `LBDDriver.py` script. An example is shown below:
 
-```
+```cmd
 python LBDDriver.py config.json
 ```
 

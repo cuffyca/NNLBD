@@ -15,7 +15,7 @@
             "model_type": "closed_discovery",
             "activation_function": "tanh",
             "loss_function": "cosine_similarity",
-            "embedding_path": "../vectors/HOC/test_modified_cs5.embeddings",
+            "embedding_path": "../vectors/HOC/test_modified_cs5.embeddings.bin",
             "train_data_path": "../data/HOC/train_cs5_closed_discovery_without_aggregators_mod",
             "eval_data_path": "../data/HOC/test_cs5_closed_discovery_without_aggregators_mod",
             "model_save_path": "../saved_models/concat_fs_ro_lr0.0001/cs5_mlp_sim_model",

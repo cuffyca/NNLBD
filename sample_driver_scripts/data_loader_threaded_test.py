@@ -41,7 +41,7 @@ def Main():
     start_time     = time.time()
 
     file_path      = "../data/train_cs1_closed_discovery_without_aggregators_mod"
-    embedding_path = "../vectors/HOC/test_modified_cs1.embeddings"
+    embedding_path = "../vectors/HOC/test_modified_cs1.embeddings.bin"
 
     file_path      = "../data/cui_mini_closed_discovery"
     embedding_path = "../vectors/test/vectors_random_cui_mini"

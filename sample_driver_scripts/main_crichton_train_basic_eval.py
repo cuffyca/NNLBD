@@ -35,7 +35,7 @@ def Main():
                  print_debug_log = False, write_log_to_file = False, per_epoch_saving = False,
                  use_csr_format = True, use_gpu = True, enable_early_stopping = False,
                  early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, dropout = 0.0,
-                 use_batch_normalization = False, trainable_weights = False, embedding_path = "../vectors/HOC/test_modified_cs1.embeddings" )
+                 use_batch_normalization = False, trainable_weights = False, embedding_path = "../vectors/HOC/test_modified_cs1.embeddings.bin" )
 
     # Training/Evaluation Variables
     model_iterations        = 800

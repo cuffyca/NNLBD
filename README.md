@@ -25,7 +25,7 @@ Prior to instaling NNLBD, we recommend creating virtual environment.
 
 - Depending on how Python is installed in your system, one of the following commands will be appropriate:
 
-    ```
+    ```cmd
     Linux:
             python -m venv <name_of_virtualenv>
             python3 -m venv <name_of_virtualenv>
@@ -34,14 +34,14 @@ Prior to instaling NNLBD, we recommend creating virtual environment.
     ```
 - To verify which version of Python is installed, you can check via:
 
-    ```
+    ```cmd
     python --version
     python3 --version
     ```
 
 Next, we activate your virtual environment and update your `pip`, `setuptools`, and `wheel` packages.
 
-```
+```cmd
 Linux:
        source <name_of_virtualenv>/bin/activate
        pip install -U pip setuptools wheel
@@ -60,32 +60,32 @@ Python Requirements
 After the setup of your virtual environment is complete, install the necessary NNLBD package requirements.
 
 - Python 3.10.x and TensorFlow 2.9.0 - *(Recommended)*
-    ```
+    ```cmd
     pip install -r requirements_mini_py3.10_tf2.9.0.txt
     ```
 - Python 3.6.x and TensorFlow 2.4.0
-    ```
+    ```cmd
     pip install -r requirements_mini_py3.6_tf2.4.0.txt
     ```
 - Python 3.6.x and TensorFlow 1.15.2
-    ```
+    ```cmd
     pip install -r requirements_mini_py3.6_tf1.15.2.txt
     ```
 
 To manually install the required packages, execute the following commands:
 
 - Python v3.10.2 and TensorFlow v2.9.0 - *(Recommended)*
-    ```
+    ```cmd
     pip install -U h5py==3.7.0 Keras==2.9.0 matplotlib==3.5.2 numpy==1.22.4 scipy==1.9.0 sparse==0.13.0 tensorflow==2.9.0
     ```
 
 - Python v3.6 and TensorFlow v2.4.0
-    ```
+    ```cmd
     pip install -U h5py==2.10.0 Keras==2.4.3 matplotlib==3.3.4 numpy==1.19.5 scipy==1.5.4 tensorflow==2.4.0
     ```
 
 - Python v3.6 and TensorFlow v1.15.2
-    ```
+    ```cmd
     pip install -U h5py==2.10.0 Keras==2.3.1 matplotlib==3.3.3 numpy==1.19.5 scipy==1.5.4 tensorflow==1.15.2 tensorflow-gpu==1.15.2
     ```
 

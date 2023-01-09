@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/08/2020                                                                   #
-#    Revised: 01/01/2022                                                                   #
+#    Revised: 01/08/2022                                                                   #
 #                                                                                          #
 #    Base Data Loader Classs For The NNLBD Package.                                        #
 #                                                                                          #
@@ -270,9 +270,10 @@ class DataLoader( object ):
 
         return data_list
 
-    def Load_Embeddings( self, file_path, store_embeddings = True ):
-        embedding_data = []
-
+    """
+        Checks Embedding File Format And Decides Which Embedding Load Function To Call: Text Or Binary Embedding Loader
+    """
+    def Load_Embeddings( self, file_path, encoding_format = "utf-8", store_embeddings = True ):
         # Check(s)
         if file_path == "":
             self.Print_Log( "DataLoader::Load_Embeddings() - Warning: No File Path Specified", force_print = True )
@@ -282,46 +283,185 @@ class DataLoader( object ):
 
         if self.utils.Check_If_File_Exists( file_path ):
             self.Print_Log( "DataLoader::Load_Embeddings() - Loading Embeddings" )
-            embedding_data = self.Read_Data( file_path, keep_in_memory = False )
-        else:
-            self.Print_Log( "DataLoader::Load_Embeddings() - Error: Embedding File Not Found In Path \"" + str( file_path ) + "\"", force_print = True )
+
+            # Check If File Is Binary-Formatted (Assume Not Until Proven Otherwise)
+            is_binary_format, read_chunk_size = False, 512
+            number_of_chunks_to_read          = 5
+
+            with open( file_path, 'rb' ) as read_file_handle:
+
+                for _ in range( number_of_chunks_to_read ):
+                    file_data = read_file_handle.read( read_chunk_size )
+
+                    # Check If Null Character Is In Read File Chunk
+                    if b'\0' in file_data:
+                        is_binary_format = True
+                        break
+                    # We've Reached The End Of The File
+                    elif len( file_data ) < read_chunk_size: break
+
+                read_file_handle.close()
+
+            # Determined File Is Binary-Encoded Embeddings
+            if is_binary_format:
+                return self.Load_Binary_Embeddings( file_path = file_path, store_embeddings = store_embeddings, encoding_format = encoding_format )
+
+            # Determine File Is Plain Text Embeddings
+            return self.Load_Text_Embeddings( file_path = file_path, store_embeddings = store_embeddings )
+
+        self.Print_Log( "DataLoader::Load_Embeddings() - Error: Embedding File Not Found In Path \"" + str( file_path ) + "\"", force_print = True )
+        return []
+
+    """
+        Reads Word2vec Formatted Binary Formatted Embeddings
+    """
+    def Load_Binary_Embeddings( self, file_path, encoding_format = "utf-8", store_embeddings = True ):
+        if not file_path or file_path == "":
+            self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( file_path ) )
             return []
+
+        self.Print_Log( "DataLoader::Load_Binary_Embeddings() - File: " + str( file_path ) )
+
+        if self.utils.Check_If_File_Exists( file_path ):
+            self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Loading Embeddings" )
+            text_word_embeddings = []
+
+            with open( file_path, 'rb' ) as read_file_handle:
+                # Read Heading Information: Number Of Vectors and Vector Length
+                number_of_embeddings, embedding_length = map( int, read_file_handle.readline().split() )
+
+                # Store Header Information
+                # text_word_embeddings.append( str( number_of_embeddings ) + " " + str( embedding_length ) )
+
+                for _ in range( int( number_of_embeddings ) ):
+                    # Read Word
+                    word = ""
+
+                    while True:
+                        character = read_file_handle.read( 1 ).decode( encoding_format )
+                        word += character
+                        if character == ' ': break
+
+                    # Remove Newline From Beginning of Word
+                    word = word.lstrip()
+
+                    # Read Word Embedding
+                    word_embedding = str( np.fromfile( read_file_handle, np.float32, embedding_length ) )
+
+                    # Clean Word Embedding
+                    word_embedding = re.sub( "\[|\]|\n",  "", word_embedding )
+                    word_embedding = re.sub( "\s+",      " ", word_embedding )
+                    word_embedding = re.sub( "^\s+|\s+$", "", word_embedding )
+
+                    # Store Word And Word Embedding
+                    text_word_embeddings.append( word + word_embedding )
+
+            # Store Embeddings
+            if store_embeddings:
+                self.embeddings        = text_word_embeddings
+                self.embeddings_loaded = True
+
+            self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Complete" )
+            return text_word_embeddings
+
+        self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Error: Embedding File Not Found In Path \"" + str( file_path ) + "\"", force_print = True )
+        return []
+
+    """
+        Saves Word2vec Formatted Embeddings In W2V Binary Format
+    """
+    def Save_Binary_Embeddings( self, embeddings = [], save_file_path = "", encoding_format = "utf-8" ):
+        if len( embeddings ) == 0:
+            self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ) )
+            return False
+        if not save_file_path or save_file_path == "":
+            self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ) )
+            return False
+
+        self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Saving Binary Embeddings To File: " + str( save_file_path ) )
+
+        with open( save_file_path, 'wb' ) as write_file_handle:
+            # Determine Header Information
+            number_of_embeddings = len( embeddings )
+            vector_length        = len( embeddings[1].split() ) - 1     # Assumes Second Word Is Not Multi-Word Term With Whitespaces
+
+            header_info = bytes( str( number_of_embeddings ) + " " + str( vector_length ) + "\n", encoding = encoding_format )
+
+            # Write Header Information
+            write_file_handle.write( header_info )
+
+            for i in range( number_of_embeddings ):
+                word, word_embedding = embeddings[i].split( " ", maxsplit = 1 )
+                word                 = bytes( str( word ) + " ", encoding = encoding_format )
+
+                # Write Word In Binary Format
+                write_file_handle.write( word )
+
+                # Pack Embedding
+                word_embedding = np.asarray( word_embedding.split(), dtype = np.float32 )
+                word_embedding = word_embedding.tobytes()
+                write_file_handle.write( word_embedding )
+
+            write_file_handle.close()
+
+            self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Complete" )
+            return True
+
+    """
+        Load Word2vec Formatted Text Embeddings
+            Format Example: word float_1 float_2 float_3 ... float_n
+    """
+    def Load_Text_Embeddings( self, file_path, store_embeddings = True ):
+        embedding_data = []
 
         # Check(s)
-        if len( embedding_data ) == 0:
-            self.Print_Log( "DataLoader::Load_Embeddings() - Error: Embedding File Contains No Data / Length == 0" )
+        if file_path == "":
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Warning: No File Path Specified", force_print = True )
             return []
 
-        # Detect Number Of Embeddings And Embedding Dimensions (Word2vec Format/Header)
-        number_of_embeddings = 0
-        embedding_dimensions = 0
-        possible_header_info = embedding_data[0]
+        self.Print_Log( "DataLoader::Load_Text_Embeddings() - File: \"" + str( file_path ) + "\"" )
 
-        # Set Embedding Variables And Remove Word2vec Header From Data
-        if re.match( r'^\d+\s+\d+', possible_header_info ):
-            self.Print_Log( "DataLoader::Load_Embeddings() - Detected Word2vec Embedding Header" )
-            header_elements      = possible_header_info.split()
-            number_of_embeddings = header_elements[0]
-            embedding_dimensions = header_elements[1]
-            embedding_data       = embedding_data[1:]
-            self.Print_Log( "                              - Number Of Reported Embeddings: " + str( number_of_embeddings ) )
-            self.Print_Log( "                              - Number Of Reported Embedding Dimensions: " + str( embedding_dimensions ) )
-        else:
-            self.Print_Log( "DataLoader::LoadEmbeddings() - No Word2vec Embedding Header Detected / Computing Header Info" )
-            number_of_embeddings = len( embedding_data )
-            embedding_dimensions = len( embedding_data[1].split() ) - 1
+        if self.utils.Check_If_File_Exists( file_path ):
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Loading Embeddings" )
+            embedding_data = self.Read_Data( file_path, keep_in_memory = False )
 
-        self.Print_Log( "DataLoader::Load_Embeddings() - Number Of Actual Embeddings: " + str( len( embedding_data ) ) )
-        self.Print_Log( "DataLoader::Load_Embeddings() - Number Of Actual Embedding Dimensions: " + str( len( embedding_data[1].split() ) - 1 ) )
+            # Check(s)
+            if len( embedding_data ) == 0:
+                self.Print_Log( "DataLoader::Load_Text_Embeddings() - Error: Embedding File Contains No Data / Length == 0" )
+                return []
 
-        # Store Embeddings
-        if store_embeddings:
-            self.embeddings        = embedding_data
-            self.embeddings_loaded = True
+            # Detect Number Of Embeddings And Embedding Dimensions (Word2vec Format/Header)
+            number_of_embeddings = 0
+            embedding_length     = 0
+            possible_header_info = embedding_data[0]
 
-        self.Print_Log( "DataLoader::Load_Embeddings() - Complete" )
-        return embedding_data
+            # Set Embedding Variables And Remove Word2vec Header From Data
+            if re.match( r'^\d+\s+\d+', possible_header_info ):
+                self.Print_Log( "DataLoader::Load_Text_Embeddings() - Detected Word2vec Embedding Header" )
+                header_elements      = possible_header_info.split()
+                number_of_embeddings = header_elements[0]
+                embedding_length     = header_elements[1]
+                embedding_data       = embedding_data[1:]
+                self.Print_Log( "                              - Number Of Reported Embeddings: " + str( number_of_embeddings ) )
+                self.Print_Log( "                              - Number Of Reported Embedding Dimensions: " + str( embedding_length ) )
+            else:
+                self.Print_Log( "DataLoader::Load_Text_Embeddings() - No Word2vec Embedding Header Detected / Computing Header Info" )
+                number_of_embeddings = len( embedding_data )
+                embedding_length     = len( embedding_data[1].split() ) - 1
 
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Number Of Actual Embeddings: " + str( len( embedding_data ) ) )
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Number Of Actual Embedding Dimensions: " + str( len( embedding_data[1].split() ) - 1 ) )
+
+            # Store Embeddings
+            if store_embeddings:
+                self.embeddings        = embedding_data
+                self.embeddings_loaded = True
+
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Complete" )
+            return embedding_data
+
+        self.Print_Log( "DataLoader::Load_Text_Embeddings() - Error: Embedding File Not Found In Path \"" + str( file_path ) + "\"", force_print = True )
+        return []
 
     def Load_Token_ID_Key_Data( self, file_path ):
         self.Print_Log( "DataLoader::Load_Token_ID_Key_Data() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )

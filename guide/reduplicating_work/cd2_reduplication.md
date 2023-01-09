@@ -130,7 +130,7 @@ Now, activate your Python 2.7 virtual environment for the `nn_for_LBD` package a
 
 At the beginning of the file, the following variables must be changed to generate our training and evaluation sets, and our word embeddings.
 
-```
+```bash
 setup_experiment=False
 create_representations=False
 do_lbd=True
@@ -138,7 +138,7 @@ do_lbd=True
 
 to
 
-```
+```bash
 setup_experiment=True
 create_representations=True
 do_lbd=False
@@ -146,7 +146,7 @@ do_lbd=False
 
 Execute the script via one of the following commands below:
 
-```
+```bash
 ./experiment_batch_cases.sh
 sh experiment_batch_cases.sh
 bash experiment_batch_cases.sh
@@ -172,14 +172,14 @@ Training/Evaluation Dataset Files:
 
 Word Embedding Files:
 =====================
-./test_modified_cs1.embeddings
-./test_modified_cs2.embeddings
-./test_modified_cs3.embeddings
-./test_modified_cs4.embeddings
-./test_modified_cs5.embeddings
+./test_modified_cs1.embeddings.bin
+./test_modified_cs2.embeddings.bin
+./test_modified_cs3.embeddings.bin
+./test_modified_cs4.embeddings.bin
+./test_modified_cs5.embeddings.bin
 ```
 
-*NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. We're only interested in the `plain text` variants.*
+*NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. You can use either variant. The system will automatically determine which has been selected and load them accordingly.*
 
 Now we are ready to begin LBD experimentation using the CD-2 model. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
 
@@ -227,7 +227,7 @@ An example of a complete JSON configuration file is shown below:
             "model_type": "closed_discovery",
             "activation_function": "softplus",
             "loss_function": "binary_crossentropy",
-            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings.bin",
             "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators.tsv",
             "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators.tsv",
             "model_save_path": "../saved_models/cd2_cs1_model",
@@ -257,7 +257,7 @@ Running Our Model
 
 To begin model training and evaluation, we execute the model using the configuration file as shown below:
 
-```
+```cmd
 python LBDDriver.py <name_of_configuration_file>.json
 ```
 
@@ -274,14 +274,14 @@ Model Training
 During training, the model will report training and evaluation metrics after every training epoch. This can be changed via the setting: `run_eval_number_epoch`. Example output for one model run is shown below:
 
 
-```
+```bash
 Building LBD Experiment Run ID: crichton_closed_discovery_train_and_eval_1
 
 BaseModel::Initialize_GPU() - CUDA Supported / GPU Is Available
 BaseModel::Initialize_GPU() - GPU/CUDA Supported And Enabled
 Preparing Evaluation Data
 Beginning Model Data Preparation/Model Training
-LBD::Prepare_Model_Data() - Loading Embeddings: ../vectors/HOC/test_modified_cs1.embeddings
+LBD::Prepare_Model_Data() - Loading Embeddings: ../vectors/HOC/test_modified_cs1.embeddings.bin
 LBD::Prepare_Model_Data() - Reading Training Data: ../data/HOC/train_cs1_closed_discovery_without_aggregators.tsv
 LBD::Prepare_Model_Data() - Generating Token IDs From Training Data
 LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data
@@ -331,7 +331,7 @@ LBD::Save_Model() - Saving Model To Path: ./saved_models/cd2_cs1_model_1
 
 If you do not wish to see this output or wish to continue using the same terminal/bash session, we recommend using `nohup` or redirecting the terminal std output to a file via the `redirection operator` command below:
 
-```
+```cmd
 python LBDDriver.py <name_of_configuration_file>.json > model_output.log
 ```
 

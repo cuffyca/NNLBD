@@ -3,7 +3,7 @@ Configuration File Details
 
 To execute an experiment, we use JSON-formatted configuration files as an argument while executing the `LBDDriver.py` script. An example is shown below:
 
-```
+```cmd
 python LBDDriver.py config.json
 ```
 
@@ -189,7 +189,7 @@ In this example, the system is instructed to perform training and evaluation of 
 
 The result of this is produces the following saved model directories:
 
-```
+```cmd
 ../saved_models/hinton_1
 ../saved_models/hinton_2
 ../saved_models/hinton_3
