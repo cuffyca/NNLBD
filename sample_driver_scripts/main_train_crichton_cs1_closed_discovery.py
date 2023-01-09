@@ -35,9 +35,9 @@ def Main():
                  print_debug_log = False, write_log_to_file = False, per_epoch_saving = False, activation_function = 'sigmoid',
                  use_csr_format = True, use_gpu = True, enable_early_stopping = False, early_stopping_metric_monitor = "F1_Score",
                  early_stopping_persistence = 3, dropout = 0.5, use_batch_normalization = False, trainable_weights = False,
-                 embedding_path = "../vectors/test_modified_cs1.embeddings" )
+                 embedding_path = "../vectors/HOC/test_modified_cs1.embeddings" )
 
-    # Train Model Over Data: "data/cui_mini"
+    # Train Model Over Data: "data/test/cui_mini"
     model.Fit( "../data/train_cs1_closed_discovery_without_aggregators_mod", epochs = 500,
                batch_size = 128, learning_rate = 0.001, verbose = 1 )
     model.Save_Model( "../hinton_crichton_model" )

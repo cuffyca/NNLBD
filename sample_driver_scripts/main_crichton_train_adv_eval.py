@@ -34,7 +34,7 @@ def Main():
     # User Settings
     training_data_file_path   = "../data/train_cs1_closed_discovery_without_aggregators"
     evaluation_data_file_path = "../data/test_cs1_closed_discovery_without_aggregators"
-    embedding_path            = "../vectors/test_modified_cs1.embeddings"
+    embedding_path            = "../vectors/HOC/test_modified_cs1.embeddings"
     # embedding_path            = "../data/test_modified_cs5.embeddings"
     model_save_path           = "../cs1_softplus_model"
 

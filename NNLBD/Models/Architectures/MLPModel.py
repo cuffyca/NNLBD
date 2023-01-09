@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 12/23/2022                                                                   #
+#    Revised: 01/03/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -40,8 +40,8 @@ warnings.filterwarnings( 'ignore' )
 # Standard Modules
 import os, re
 
-# Suppress Tensorflow Warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checking Error/Warning Messages
+# Suppress TensorFlow Warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes TensorFlow GPU CUDA Checking Error/Warning Messages
 ''' TF_CPP_MIN_LOG_LEVEL
 0 = all messages are logged (default behavior)
 1 = INFO messages are not printed
@@ -50,13 +50,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checki
 '''
 
 import tensorflow as tf
-#tf.logging.set_verbosity( tf.logging.ERROR )                       # Tensorflow v2.x
-tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
+#tf.logging.set_verbosity( tf.logging.ERROR )                       # TensorFlow v2.x
+tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow v1.x
 
 import numpy as np
 from tensorflow import keras
 
-# Tensorflow v2.x Support
+# TensorFlow v2.x Support
 if re.search( r'2.\d+', tf.__version__ ):
     import tensorflow.keras.backend as K
     from tensorflow.keras import optimizers
@@ -64,7 +64,7 @@ if re.search( r'2.\d+', tf.__version__ ):
     # from keras.callbacks import ModelCheckpoint
     from tensorflow.keras.models import Model
     from tensorflow.keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
-# Tensorflow v1.15.x Support
+# TensorFlow v1.15.x Support
 else:
     import keras.backend as K
     from keras import optimizers
@@ -91,7 +91,7 @@ class MLPModel( BaseModel ):
                   verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False, embedding_path = "", embedding_modification = "concatenate",
                   final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, use_cosine_annealing = False,
-                  cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4 ):
+                  cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, bilstm_dimension_size = 64, bilstm_merge_mode = "concat", skip_gpu_init = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, model_type = model_type, optimizer = optimizer,
                           activation_function = activation_function, loss_function = loss_function, number_of_hidden_dimensions = number_of_hidden_dimensions,
                           prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, batch_size = batch_size,
@@ -103,9 +103,16 @@ class MLPModel( BaseModel ):
                           trainable_weights = trainable_weights, embedding_path = embedding_path, embedding_modification = embedding_modification,
                           final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
                           weight_decay = weight_decay, use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min,
-                          cosine_annealing_max = cosine_annealing_max )
-        self.version       = 0.11
-        self.network_model = "mlp"
+                          cosine_annealing_max = cosine_annealing_max, bilstm_dimension_size = bilstm_dimension_size, bilstm_merge_mode = bilstm_merge_mode,
+                          network_model = network_model, skip_gpu_init = skip_gpu_init )
+        self.version       = 0.12
+        self.network_model = network_model  # "mlp" or "mlp_similarity"
+
+        if self.network_model not in [ "mlp", "mlp_similarity" ]:
+            self.Print_Log( "MLPModel::__init__() - Error: Network Model Not In Expected List" )
+            self.Print_Log( "MLPModel::__init__() -     Expected Network Model List: [ 'mlp', 'mlp_similarity' ]"  )
+            self.Print_Log( "MLPModel::__init__() -     Specified Network Model    : " + str( network_model ) )
+            exit()
 
 
     ############################################################################################
@@ -152,7 +159,7 @@ class MLPModel( BaseModel ):
             batch_index = sample_index[start_index:end_index]
             X_1_batch   = X_1[batch_index,:].todense()
             X_2_batch   = X_2[batch_index,:].todense()
-            Y_input     = Y[batch_index,:].todense()
+            Y_input     = Y[batch_index,:].todense() if not isinstance( Y, ( list, tuple, np.ndarray ) ) else Y[batch_index,:]
             Y_output    = Y_input
             counter     += 1
 
@@ -392,6 +399,11 @@ class MLPModel( BaseModel ):
 
         use_regularizer = True if self.final_layer_type in [ "cosface", "arcface", "sphereface" ] else False
 
+        if self.Get_Network_Model() == "mlp_similarity" and self.Get_Loss_Function() != "cosine_similarity":
+            self.Print_Log( "MLPModel::Build_Model() - Warning: Loss Function != 'cosine_similarity' For 'MLP Similarity Model'", force_print = True )
+            self.Print_Log( "                          Setting 'self.loss_function = 'cosine_similarity'", force_print = True )
+            self.loss_function = "cosine_similarity"
+
         #######################
         #                     #
         #  Build Keras Model  #
@@ -435,10 +447,14 @@ class MLPModel( BaseModel ):
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( batch_norm_layer )
 
             if use_regularizer:
-                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation_1',
                                        kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation_2',
+                                       kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dense_layer )
             else:
-                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation_1' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation_2' )( dense_layer )
+
 
             dense_layer       = BatchNormalization( name = "Batch_Norm_Layer_2" )( dense_layer )
         else:
@@ -446,10 +462,13 @@ class MLPModel( BaseModel ):
             dropout_layer     = Dropout( name = "Dropout_Layer_2", rate = self.dropout )( dense_layer )
 
             if use_regularizer:
-                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation',
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation_1',
                                        kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'tanh', name = 'Internal_Distributed_Output_Representation_2',
+                                       kernel_initializer = 'he_normal', kernel_regularizer = regularizers.l2( self.weight_decay ) )( dense_layer )
             else:
-                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation_1' )( dropout_layer )
+                dense_layer   = Dense( units = number_of_hidden_dimensions, input_dim = number_of_hidden_dimensions, activation = 'relu', name = 'Internal_Distributed_Output_Representation_2' )( dense_layer )
 
         # Final Model Output Used For Prediction/Classification (Inherited From BaseModel class)
         output_layer   = self.Multi_Option_Final_Layer( number_of_outputs = number_of_outputs, cosface_input_layer = cosface_input_layer, dense_input_layer = dense_layer )

@@ -35,18 +35,18 @@ from NNLBD import LBD
 def Main():
     # Create Model With Default Settings Except
     model = LBD( print_debug_log = True, write_log_to_file = True, model_type = "open_discovery" )
-    
+
     # Load Previously Trained Model
     model.Load_Model( "../test_model/model" )
-    
-    # Continue Refining Model Over Data: "data/cui_mini"
-    #model.Fit( "data/cui_mini", epochs = 30, batch_size = 4, verbose = 1 )
-    
+
+    # Continue Refining Model Over Data: "data/test/cui_mini_open_discovery"
+    #model.Fit( "data/test/cui_mini_open_discovery", epochs = 30, batch_size = 4, verbose = 1 )
+
     # Evaluate Model Of Entire Data-set
     accuracy = model.Evaluate_Prediction( "../data/cui_mini_eval" )
-    
+
     print( "Evaluation Scores: - Accuracy : {:.4f}" . format( accuracy  ) )
-    
+
     print( "~Fin" )
 
 # Runs main function when running file directly

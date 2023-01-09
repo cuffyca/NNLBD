@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    08/05/2020                                                                   #
-#    Revised: 12/23/2022                                                                   #
+#    Revised: 01/03/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -40,8 +40,8 @@ warnings.filterwarnings( 'ignore' )
 # Standard Modules
 import os, re
 
-# Suppress Tensorflow Warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checking Error/Warning Messages
+# Suppress TensorFlow Warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes TensorFlow GPU CUDA Checking Error/Warning Messages
 ''' TF_CPP_MIN_LOG_LEVEL
 0 = all messages are logged (default behavior)
 1 = INFO messages are not printed
@@ -50,13 +50,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checki
 '''
 
 import tensorflow as tf
-#tf.logging.set_verbosity( tf.logging.ERROR )                       # Tensorflow v2.x
-tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
+#tf.logging.set_verbosity( tf.logging.ERROR )                       # TensorFlow v2.x
+tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow v1.x
 
 import numpy as np
 from tensorflow import keras
 
-# Tensorflow v2.x Support
+# TensorFlow v2.x Support
 if re.search( r'2.\d+', tf.__version__ ):
     import tensorflow.keras.backend as K
     from tensorflow.keras import optimizers
@@ -64,7 +64,7 @@ if re.search( r'2.\d+', tf.__version__ ):
     # from keras.callbacks import ModelCheckpoint
     from tensorflow.keras.models import Model
     from tensorflow.keras.layers import Activation, Average, BatchNormalization, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, Multiply
-# Tensorflow v1.15.x Support
+# TensorFlow v1.15.x Support
 else:
     import keras.backend as K
     from keras import optimizers
@@ -97,7 +97,8 @@ class RumelhartHintonModel( BaseModel ):
                   verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False, embedding_path = "", final_layer_type = "dense",
                   feature_scale_value = 1.0, learning_rate_decay = 0.004, embedding_modification = "concatenate", weight_decay = 0.0001,
-                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4 ):
+                  margin = 30.0, scale = 0.35, use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4,
+                  bilstm_dimension_size = 64, bilstm_merge_mode = "concat", skip_gpu_init = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format,
                           optimizer = optimizer, activation_function = activation_function, loss_function = loss_function, momentum = momentum,
@@ -108,9 +109,10 @@ class RumelhartHintonModel( BaseModel ):
                           early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization,
                           trainable_weights = trainable_weights, embedding_path = embedding_path, final_layer_type = final_layer_type,
                           feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay,
-                          embedding_modification = embedding_modification, use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min,
-                          cosine_annealing_max = cosine_annealing_max )
-        self.version       = 0.29
+                          embedding_modification = embedding_modification, margin = margin, scale = scale, use_cosine_annealing = use_cosine_annealing,
+                          cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max, bilstm_dimension_size = bilstm_dimension_size,
+                          bilstm_merge_mode = bilstm_merge_mode, skip_gpu_init = skip_gpu_init )
+        self.version = 0.29
 
         # Check(s) - Set Default Parameters If Not Specified
         self.network_model = "hinton" if self.network_model != "hinton" and self.network_model != "rumelhart" else self.network_model

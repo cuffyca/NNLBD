@@ -36,8 +36,8 @@ def Main():
     model = LBD( network_model = "rumelhart", model_type = "open_discovery",
                  print_debug_log = True, per_epoch_saving = False, use_csr_format = True )
 
-    # Train Model Over Data: "data/cui_mini"
-    model.Fit( training_file_path = "../data/cui_mini", learning_rate = 0.005, epochs = 10, batch_size = 10, verbose = 1 )
+    # Train Model Over Data: "data/test/cui_mini"
+    model.Fit( training_file_path = "../data/test/cui_mini_open_discovery", learning_rate = 0.005, epochs = 10, batch_size = 10, verbose = 1 )
 
     # Evaluate Model Of Entire Data-set
     loss, accuracy, precision, recall, f1_score = model.Evaluate( "../data/cui_mini_eval" )

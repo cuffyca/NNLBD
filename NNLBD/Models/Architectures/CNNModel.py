@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    12/08/2020                                                                   #
-#    Revised: 12/23/2022                                                                   #
+#    Revised: 01/03/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #                                                                                          #
@@ -40,8 +40,8 @@ warnings.filterwarnings( 'ignore' )
 # Standard Modules
 import os, re
 
-# Suppress Tensorflow Warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checking Error/Warning Messages
+# Suppress TensorFlow Warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes TensorFlow GPU CUDA Checking Error/Warning Messages
 ''' TF_CPP_MIN_LOG_LEVEL
 0 = all messages are logged (default behavior)
 1 = INFO messages are not printed
@@ -50,13 +50,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checki
 '''
 
 import tensorflow as tf
-#tf.logging.set_verbosity( tf.logging.ERROR )                       # Tensorflow v2.x
-tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
+#tf.logging.set_verbosity( tf.logging.ERROR )                       # TensorFlow v2.x
+tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow v1.x
 
 import numpy as np
 from tensorflow import keras
 
-# Tensorflow v2.x Support
+# TensorFlow v2.x Support
 if re.search( r'2.\d+', tf.__version__ ):
     import tensorflow.keras.backend as K
     from tensorflow.keras import optimizers
@@ -64,7 +64,7 @@ if re.search( r'2.\d+', tf.__version__ ):
     # from keras.callbacks import ModelCheckpoint
     from tensorflow.keras.models import Model
     from tensorflow.keras.layers import Activation, Average, BatchNormalization, Concatenate, Conv1D, Dense, Dropout, Embedding, Flatten, Input, Lambda, MaxPooling1D, Multiply
-# Tensorflow v1.15.x Support
+# TensorFlow v1.15.x Support
 else:
     import keras.backend as K
     from keras import optimizers
@@ -89,20 +89,23 @@ class CNNModel( BaseModel ):
                   optimizer = 'adam', activation_function = 'sigmoid', loss_function = "binary_crossentropy", number_of_embedding_dimensions = 200,
                   learning_rate = 0.005, epochs = 30, momentum = 0.05, dropout = 0.8, batch_size = 32, prediction_threshold = 0.5, shuffle = True,
                   use_csr_format = True, per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0", verbose = 2,
-                  debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False,
+                  debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, margin = 30.0, scale = 0.35,
                   early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, use_batch_normalization = False, weight_decay = 0.0001,
                   trainable_weights = False, embedding_path = "", final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004,
-                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4 ):
+                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, embedding_modification = "concatenate",
+                  bilstm_dimension_size = 64, bilstm_merge_mode = "concat", skip_gpu_init = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,  learning_rate = learning_rate,
                           batch_size = batch_size, use_csr_format = use_csr_format, prediction_threshold = prediction_threshold, shuffle = shuffle,
                           number_of_embedding_dimensions = number_of_embedding_dimensions, momentum = momentum, epochs = epochs, per_epoch_saving = per_epoch_saving,
                           device_name = device_name, verbose = verbose, debug_log_file_handle = debug_log_file_handle, dropout = dropout, weight_decay = weight_decay,
-                          enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, use_gpu = use_gpu,
-                          early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
+                          enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, use_gpu = use_gpu, margin = margin,
+                          early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence, scale = scale,
                           use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                           final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
-                          use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
+                          use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max,
+                          embedding_modification = embedding_modification, bilstm_dimension_size = bilstm_dimension_size, bilstm_merge_mode = bilstm_merge_mode,
+                          skip_gpu_init = skip_gpu_init )
         self.version       = 0.12
         self.network_model = "cnn"   # Force Setting Model To 'CNN' Model.
 

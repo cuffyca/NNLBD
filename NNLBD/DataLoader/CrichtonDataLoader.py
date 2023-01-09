@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 06/03/2022                                                                   #
+#    Revised: 12/31/2022                                                                   #
 #                                                                                          #
 #    Crichton Data Loader Class For The NNLBD Package.                                     #
 #                                                                                          #
@@ -35,11 +35,11 @@ from NNLBD.DataLoader import DataLoader
 
 class CrichtonDataLoader( DataLoader ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False,
-                  debug_log_file_handle = None, restrict_output = False ):
+                  debug_log_file_handle = None, restrict_output = False, output_is_embeddings = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, shuffle = shuffle,
                           skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, debug_log_file_handle = debug_log_file_handle,
-                          restrict_output = restrict_output )
-        self.version = 0.05
+                          restrict_output = restrict_output, output_is_embeddings = output_is_embeddings )
+        self.version = 0.07
 
     """
         Performs Checks Against The Specified Data File/Data List To Ensure File Integrity Before Further Processing
@@ -112,8 +112,8 @@ class CrichtonDataLoader( DataLoader ):
             tertiary_input_vector  : CSR Matrix or Numpy Array
             output_vector          : CSR Matrix or Numpy Array
     """
-    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
-                           pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True, pad_output = True,
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
         # Check(s)
         if model_type == "open_discovery":
             self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: 'Crichton Data Format' Is Not Currently Supported For 'Open Discovery'", force_print = True )

@@ -8,60 +8,28 @@
             "number_of_iterations": 5
         }
     ],
-    "closed_discovery_train_and_eval_1": [
+    "mlp_similarity_closed_discovery_train_and_eval_1": [
         {
-            "_comment": "Rumelhart: CUI Mini Test Data-set For Closed Discovery",
-            "print_debug_log": "False",
-            "write_log_to_file": "False",
-            "network_model": "rumelhart",
+            "_comment": "MLP Similarity - HOC1 Dataset for Closed Discovery",
+            "network_model": "mlp_similarity",
             "model_type": "closed_discovery",
-            "per_epoch_saving": "False",
-            "use_gpu": "True",
-            "skip_out_of_vocabulary_words": "True",
-            "activation_function": "sigmoid",
-            "loss_function": "binary_crossentropy",
-            "use_csr_format": "True",
-            "trainable_weights": "False",
-            "embedding_path": "../vectors/vectors_random_cui_mini",
-            "train_data_path": "../data/cui_mini",
-            "model_save_path": "../saved_models/rumelhart",
-            "set_per_iteration_model_path": "True",
-            "epochs": 100,
-            "verbose": 1,
-            "learning_rate": 0.001,
+            "activation_function": "tanh",
+            "loss_function": "cosine_similarity",
+            "embedding_path": "../vectors/HOC/test_modified_cs5.embeddings",
+            "train_data_path": "../data/HOC/train_cs5_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/HOC/test_cs5_closed_discovery_without_aggregators_mod",
+            "model_save_path": "../saved_models/concat_fs_ro_lr0.0001/cs5_mlp_sim_model",
+            "epochs": 400,
+            "verbose": 2,
+            "learning_rate": 0.0001,
+            "batch_size": 256,
             "dropout": 0.1,
-            "batch_size": 32,
+            "run_eval_number_epoch": 1,
+            "embedding_modification": "concatenate",
+            "gold_b_instance": "PR:000001754\tPR:000002307\tMESH:D000236",
             "restrict_output": "True",
-            "gold_b_instance": "C003\tTREATS\tC002",
-            "feature_scale_value": 10.0
-        }
-    ],
-    "closed_discovery_train_and_eval_2": [
-        {
-            "_comment": "Hinton: CUI Mini Test Data-set For Closed Discovery",
-            "print_debug_log": "False",
-            "write_log_to_file": "False",
-            "network_model": "hinton",
-            "model_type": "closed_discovery",
-            "per_epoch_saving": "False",
-            "use_gpu": "True",
-            "skip_out_of_vocabulary_words": "True",
-            "activation_function": "sigmoid",
-            "loss_function": "binary_crossentropy",
-            "use_csr_format": "True",
-            "trainable_weights": "False",
-            "embedding_path": "../vectors/vectors_random_cui_mini",
-            "train_data_path": "../data/cui_mini",
-            "model_save_path": "../saved_models/hinton",
-            "set_per_iteration_model_path": "True",
-            "epochs": 100,
-            "verbose": 1,
-            "learning_rate": 0.001,
-            "dropout": 0.1,
-            "batch_size": 32,
-            "restrict_output": "True",
-            "gold_b_instance": "C003\tTREATS\tC002",
-            "feature_scale_value": 10.0
+            "feature_scale_value": 10.0,
+            "set_per_iteration_model_path": "True"
         }
     ]
 }

@@ -48,7 +48,7 @@ def Main():
     # print( "Tertiary : " + str( input_3 ) )
     # print( "Outputs  : " + str( outputs ) )
 
-    # Train Model Over Data: "data/cui_mini"
+    # Train Model Over Data: "data/test/cui_mini"
     model.Fit( "../data/crichton_orig/train_cs1_closed_discovery_without_aggregators_test", epochs = 150, batch_size = 128, learning_rate = 0.001, verbose = 1,
                margin = 0.45, scale = 0.14 )
     # model.Save_Model( "../test_model" )

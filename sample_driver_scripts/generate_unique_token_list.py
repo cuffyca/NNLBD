@@ -33,7 +33,7 @@ def Main():
     # Create Model With Default Settings Except Those Listed Below
     model = LBD( print_debug_log = True )
 
-    model.Get_Data_Loader().Generate_Data_Unique_Token_List( "../data/cui_mini", "\t" )
+    model.Get_Data_Loader().Generate_Data_Unique_Token_List( "../data/test/cui_mini", "\t" )
 
     print( "~Fin" )
 

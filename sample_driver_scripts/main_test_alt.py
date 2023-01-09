@@ -40,7 +40,7 @@ def Main():
                  use_batch_normalization = False, trainable_weights = False, embedding_path = "../vectors/word2vec_cuis_1975_2009_noMin",
                  prediction_threshold = 0.5 )
 
-    # Train Model Over Data: "data/cui_mini"
+    # Train Model Over Data: "data/test/cui_mini"
     model.Fit( "../data/known_smallTest", epochs = 10, batch_size = 32, verbose = 1 )
     model.Save_Model( "../test_model" )
     model.Generate_Model_Metric_Plots( "../test_model" )

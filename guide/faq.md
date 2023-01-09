@@ -5,30 +5,47 @@ We answer some frequently asked questions about running our system here. Hopeful
 
 
 ## Table of Contents
-1. [How can I run your system on a GPU?](#how_to_run_on_gpu)
-2. [How do I run experiments using NNLBD?](#how_to_run_experiments)
-3. [How can I change the GPU the system uses to run experiments?](#how_to_change_desired_gpu)
-4. [How can I save a model?](#how_to_load_model)
-5. [How can I load a model?](#how_to_save_model)
-6. [How can I refine an existing model?](#how_to_refine_model)
-7. [What exactly does the model save?](#what_does_the_model_save)
-8. [What's the basic structure of a configuration file?](#configuration_file_structure)
-9. [Can you run multiple experiments in a single configuration file?](#multiple_experiment_configuration_file)
-10. [How can I reproduce your previous work?](#how_to_reproduce_previous_work)
-11. [What models are supported when using the 'closed_discovery_train_and_eval_x' or 'closed_discovery_refine_and_eval_x' tasks?](#supported_closed_discovery_train_refine_eval_tasks_models)
-12. [Why does the CD-2 model have it's own task specification?](#cd2_model_task_specification)
-13. [What's needed to generate the HOC datasets and embeddings with a Windows OS?](#a_priori_preprocessing_on_windows)
-14. [How can I run multiple iterations of the same experiment?](#how_to_run_multiple_experiment_iterations)
-15. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
-16. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
-17. [Do you plan to add more models to the system?](#add_more_models)
-18. [What models do you plan to add next?](#what_models_are_you_adding_next)
-19. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
+1. [How can I test my NNLBD system environment?](#how_to_test_nnlbd_system)
+2. [How can I run your system on a GPU?](#how_to_run_on_gpu)
+3. [How do I run experiments using NNLBD?](#how_to_run_experiments)
+4. [How can I change the GPU the system uses to run experiments?](#how_to_change_desired_gpu)
+5. [How can I save a model?](#how_to_load_model)
+6. [How can I load a model?](#how_to_save_model)
+7. [How can I refine an existing model?](#how_to_refine_model)
+8. [What exactly does the model save?](#what_does_the_model_save)
+9. [What's the basic structure of a configuration file?](#configuration_file_structure)
+10. [Can you run multiple experiments in a single configuration file?](#multiple_experiment_configuration_file)
+11. [How can I reproduce your previous work?](#how_to_reproduce_previous_work)
+12. [What models are supported when using the 'closed_discovery_train_and_eval_x' or 'closed_discovery_refine_and_eval_x' tasks?](#supported_closed_discovery_train_refine_eval_tasks_models)
+13. [Why does the CD-2 model have it's own task specification?](#cd2_model_task_specification)
+14. [What's needed to generate the HOC datasets and embeddings with a Windows OS?](#a_priori_preprocessing_on_windows)
+15. [How can I run multiple iterations of the same experiment?](#how_to_run_multiple_experiment_iterations)
+16. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
+17. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
+18. [Do you plan to add more models to the system?](#add_more_models)
+19. [What models do you plan to add next?](#what_models_are_you_adding_next)
+20. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
 
+
+# How can I test my NNLBD system environment? <a name="#how_to_test_nnlbd_system"></a>
+
+After performing the installation steps on the main page, you can test your environment by running the following command:
+
+```
+python LBDDriver.py ../json_files/tests/cui_mini_multi_task_test.json
+```
+
+This configuration file contains the following tasks:
+
+1. Train an open discovery `Rumelhart` model on the `cui_mini` dataset using `concatenated` input representations and `vectors_random_cui_mini` embeddings.
+2. Train a closed discovery `Hinton` model on the `cui_mini` dataset using `concatenated` input representations and `vectors_random_cui_mini` embeddings.
+3. Train and evaluate a closed discovery `Hinton` model on the `cui_mini` dataset using `concatenated` input representations and `vectors_random_cui_mini` embeddings. This task will evaluate the `gold_b_instance = C001\tISA\tC002` after every training epoch. This task will also be saved to `../saved_models/cui_mini_hinton`.
+
+    *NOTE: We provide a description of all saved files [here](#what_does_the_model_save).*
 
 # How can I run your system on a GPU? <a name="how_to_run_on_gpu"></a>
 
-Our system depends on `Tensorflow`, which in-turn depends on `CUDA`. So this question gets a little tricky and can be tedious. First, you must determine if you already have `CUDA` installed on your system. You can use the following command below:
+Our system depends on `TensorFlow`, which in-turn depends on `CUDA`. So this question gets a little tricky and can be tedious. First, you must determine if you already have `CUDA` installed on your system. You can use the following command below:
 
 ```
 nvcc --version
@@ -47,18 +64,18 @@ Build cuda_11.2.r11.2/compiler.29618528_0                  <-                ...
 
 In this instance, we're running `CUDA 11.2`. Now comes the tricky part. If you do not have CUDA already installed, then you will need to determine which version is compatible with your installed version of Python 3 [here for Linux](https://www.tensorflow.org/install/source#gpu) or [here for Windows](https://www.tensorflow.org/install/source_windows#gpu).
 
-- If you chose to use `Python 3.6.x`, then you can install `CUDA 10.0 + Tensorflow 1.15.x`, or `CUDA 11.2 + Tensorflow 2.4.0`.
-- If you chose to use `Python 3.10.x`, then you should install `CUDA 11.2` and `Tensorflow 2.9.0`.
+- If you chose to use `Python 3.6.x`, then you can install `CUDA 10.0 + TensorFlow 1.15.x`, or `CUDA 11.2 + TensorFlow 2.4.0`.
+- If you chose to use `Python 3.10.x`, then you should install `CUDA 11.2` and `TensorFlow 2.9.0`.
 - etc.
 
-Just take note that specific versions of `Python` and `Tensorflow` pairs have specific `CUDA` version requirements, and vice versa. Examine the provided compatiblity links carefully and determine which versions work best for you based on our listed requirements for the system.
+Just take note that specific versions of `Python` and `TensorFlow` pairs have specific `CUDA` version requirements, and vice versa. Examine the provided compatiblity links carefully and determine which versions work best for you based on our listed requirements for the system.
 
-- If you have CUDA already installed, then install the version of Python and Tensorflow your CUDA version is listed to be compatible with.
-- If you do not have CUDA installed, then you can choose the versions that are within our tested Tensorflow (1.15.x-2.9.0) and Python (3.6.x-3.10.2) requirements. CUDA installation instructions are provided [here for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) and [here for Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/)... Good luck.
+- If you have CUDA already installed, then install the version of Python and TensorFlow your CUDA version is listed to be compatible with.
+- If you do not have CUDA installed, then you can choose the versions that are within our tested TensorFlow (1.15.x-2.9.0) and Python (3.6.x-3.10.2) requirements. CUDA installation instructions are provided [here for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) and [here for Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/)... Good luck.
 
 After the suffering has ended and CUDA is installed, verify it's installation using the `nvcc --version` command to double-check. Assuming you've received output similar to what we've shown above, you can now use our system with a GPU. Our system will scan for GPUs by default and select the first one if CUDA is available. No further configuration is necessary. However, if you wish to use a specific GPU, then include the `global_setting` in your configuration file: `"device_name": "/gpu:x",` and change the `x` to your desired GPU ID value (i.e. integer value).
 
-*NOTE: Alternative versions of Python and Tensorflow, other than what we've provided, may work with without issue. However, we make no guarantees as these remain untested.*
+*NOTE: Alternative versions of Python and TensorFlow, other than what we've provided, may work with without issue. However, we make no guarantees as these remain untested.*
 
 
 # How do I run experiments using NNLBD? <a name="how_to_run_experiments"></a>
@@ -148,11 +165,11 @@ An example configuration file is shown below:
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "./vectors/test_modified_cs1.embeddings",
-            "train_data_path": "./data/train_cs1_closed_discovery_without_aggregators_new.tsv",
-            "eval_data_path": "./data/test_cs1_closed_discovery_without_aggregators_new.tsv",
-            "model_load_path": "./saved_models/cs1_hinton_model",
-            "model_save_path": "./saved_models/cs1_hinton_model_refined",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
+            "model_load_path": "../saved_models/cs1_hinton_model",
+            "model_save_path": "../saved_models/cs1_hinton_model_refined",
             "epochs": 400,
             "verbose": 2,
             "embedding_modification": "average",
@@ -228,10 +245,10 @@ You sure can! The system is setup such that you can chain as many tasks as you l
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "./vectors/test_modified_cs1.embeddings",
-            "train_data_path": "./data/train_cs1_closed_discovery_without_aggregators_new.tsv",
-            "eval_data_path": "./data/test_cs1_closed_discovery_without_aggregators_new.tsv",
-            "model_save_path": "./saved_models/cs1_hinton_model",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
+            "model_save_path": "../saved_models/cs1_hinton_model",
             "epochs": 50,
             "verbose": 2,
             "embedding_modification": "average"
@@ -242,11 +259,11 @@ You sure can! The system is setup such that you can chain as many tasks as you l
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "./vectors/test_modified_cs1.embeddings",
-            "train_data_path": "./data/train_cs1_closed_discovery_without_aggregators_new.tsv",
-            "eval_data_path": "./data/test_cs1_closed_discovery_without_aggregators_new.tsv",
-            "model_load_path": "./saved_models/cs1_hinton_model",
-            "model_save_path": "./saved_models/cs1_hinton_model_refined",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
+            "model_load_path": "../saved_models/cs1_hinton_model",
+            "model_save_path": "../saved_models/cs1_hinton_model_refined",
             "epochs": 50,
             "verbose": 2,
             "embedding_modification": "average"
@@ -257,10 +274,10 @@ You sure can! The system is setup such that you can chain as many tasks as you l
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "rumelhart",
             "model_type": "closed_discovery",
-            "embedding_path": "./vectors/test_modified_cs1.embeddings",
-            "train_data_path": "./data/train_cs1_closed_discovery_without_aggregators_new.tsv",
-            "eval_data_path": "./data/test_cs1_closed_discovery_without_aggregators_new.tsv",
-            "model_save_path": "./saved_models/cs1_hinton_model_refined",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
+            "model_save_path": "../saved_models/cs1_rumelhart_model",
             "epochs": 200,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -437,23 +454,27 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
     ./test_modified_cs5.embeddings
     ```
 
-8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_model/README.md), we need to perform one more modification of these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_crichton_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_crichton_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+    *NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. We're only interested in the `plain text` variants.*
+
+8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_model/README.md), we need to perform two more modifications on these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_hoc_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_hoc_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+
+Lastly, these files are in `open discovery format` (i.e. `a_concept b_concept c_concept`) and must be converted to `closed discovery format` (i.e. `a_concept c_concept b_concepts`). To accomplish this, we provide our [convert_nnlbd_open_discovery_data_to_closed_discovery_format.py](/miscellaneous_scripts/convert_nnlbd_open_discovery_data_to_closed_discovery_format.py) script. Set the parameters `file_path` and `new_file_path` accordingly, and run the script to convert the data.
 
     Let's say these newly converted files follow the directory structure below:
 
     ```
     Training/Evaluation Dataset File:
     =================================
-    ./train_cs1_closed_discovery_without_aggregators_new.tsv
-    ./train_cs2_closed_discovery_without_aggregators_new.tsv
-    ./train_cs3_closed_discovery_without_aggregators_new.tsv
-    ./train_cs4_closed_discovery_without_aggregators_new.tsv
-    ./train_cs5_closed_discovery_without_aggregators_new.tsv
-    ./test_cs1_closed_discovery_without_aggregators_new.tsv
-    ./test_cs2_closed_discovery_without_aggregators_new.tsv
-    ./test_cs3_closed_discovery_without_aggregators_new.tsv
-    ./test_cs4_closed_discovery_without_aggregators_new.tsv
-    ./test_cs5_closed_discovery_without_aggregators_new.tsv
+    ./train_cs1_closed_discovery_without_aggregators_mod
+    ./train_cs2_closed_discovery_without_aggregators_mod
+    ./train_cs3_closed_discovery_without_aggregators_mod
+    ./train_cs4_closed_discovery_without_aggregators_mod
+    ./train_cs5_closed_discovery_without_aggregators_mod
+    ./test_cs1_closed_discovery_without_aggregators_mod
+    ./test_cs2_closed_discovery_without_aggregators_mod
+    ./test_cs3_closed_discovery_without_aggregators_mod
+    ./test_cs4_closed_discovery_without_aggregators_mod
+    ./test_cs5_closed_discovery_without_aggregators_mod
 
     Word Embedding Files:
     =====================
@@ -487,10 +508,10 @@ When the system reads the configuration file, it looks for a setting named: `num
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "./vectors/test_modified_cs1.embeddings",
-            "train_data_path": "./data/train_cs1_closed_discovery_without_aggregators_new.tsv",
-            "eval_data_path": "./data/test_cs1_closed_discovery_without_aggregators_new.tsv",
-            "model_save_path": "./saved_models/cs1_hinton_model",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
+            "model_save_path": "../saved_models/cs1_hinton_model",
             "epochs": 50,
             "verbose": 2,
             "embedding_modification": "average",
@@ -503,11 +524,11 @@ When the system reads the configuration file, it looks for a setting named: `num
 This will save all 5 models to the following directories:
 
 ```
-./saved_models/cs1_hinton_model_1
-./saved_models/cs1_hinton_model_2
-./saved_models/cs1_hinton_model_3
-./saved_models/cs1_hinton_model_4
-./saved_models/cs1_hinton_model_5
+../saved_models/cs1_hinton_model_1
+../saved_models/cs1_hinton_model_2
+../saved_models/cs1_hinton_model_3
+../saved_models/cs1_hinton_model_4
+../saved_models/cs1_hinton_model_5
 ```
 
 Each will contain their respective saved files.

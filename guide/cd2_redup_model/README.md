@@ -1,5 +1,5 @@
-CD-2 Model Details
-==================
+**C**losed **D**iscovery-2 Model Details
+========================================
 
 ## Table of Contents
 1. [Model Description](#model_description)
@@ -14,7 +14,7 @@ CD-2 Model Details
 
 # Model Description <a name="model_description"></a>
 
-The following figure shows the architecture of the reduplicated CD-2 multi-perceptron model as proposed by [Crichton, et al (2020)](https://doi.org/10.1371/journal.pone.0232891). We train the model to identify implicit relations for closed discovery. Given explicit *A-B-C* relationship term triplets, we input *A*, *C*, and *C* term embeddings into the model and train the model to predict a likelihood of the triplet forming a true relationship (i.e. link prediction).
+The following figure shows the architecture of the reduplicated closed discovery-2 (CD-2) multi-perceptron model as proposed by [Crichton, et al (2020)](https://doi.org/10.1371/journal.pone.0232891). We train the model to identify implicit relations for closed discovery. Given explicit *A-B-C* relationship term triplets, we input *A*, *C*, and *C* term embeddings into the model and train the model to predict a likelihood of the triplet forming a true relationship (i.e. link prediction).
 
 ![Alt text](./model.jpg)
 
@@ -35,13 +35,13 @@ To train the system and perform inference, suitable data is needed. The system e
 | CXCL12 (PR:000006066) | senescence (HOC:42)  | thyroid cancer (MESH:D013964)    |   1   |
 
 
-Terms within each line are separated by whitespace or tab characters as shown below:
+Terms and labels within each line are separated by whitespace or tab characters as shown below:
 
 ```
-entity_a entity_b entity_c
-entity_a entity_b entity_c
+entity_a entity_b entity_c label_1
+entity_a entity_b entity_c label_2
 ...
-entity_a entity_b entity_c
+entity_a entity_b entity_c label_3
 ```
 
 

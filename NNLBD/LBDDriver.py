@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 12/23/2022                                                                   #
+#    Revised: 01/03/2022                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -24,6 +24,7 @@
 
 # Standard Modules
 import json, os, re, sys, time
+import numpy as np
 import matplotlib.pyplot as plt
 import subprocess as sp
 
@@ -35,7 +36,7 @@ sys.path.insert( 0, "../" )
 
 # Custom Modules
 from NNLBD            import LBD
-from NNLBD.Misc       import Utils
+from NNLBD.Misc       import Metrics, Utils
 from NNLBD.DataLoader import StdDataLoader
 
 
@@ -366,10 +367,10 @@ class NNLBD_Driver:
                 # Run Crichton Closed Discovery Train And Eval - (CD2 Model)
                 elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
-                        print( " Error: No Gold B Instance Defined" )
+                        print( " Error: 'gold_b_instance' Not Defined In Configuration File / Unable To Perform Evaluation Ranking" )
                         continue
                     if model_type != "closed_discovery":
-                        print( " Error: Only Closed Discovery Supported" )
+                        print( " Error: Task Only Supports 'Closed Discovery'" )
                         continue
 
                     self.Crichton_Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size, learning_rate = learning_rate, verbose = verbose,
@@ -381,10 +382,10 @@ class NNLBD_Driver:
                 # Run Crichton Closed Discovery Refine And Eval - (CD2 Model Refinement)
                 elif re.match( r"^[Cc]richton_[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
-                        print( " Error: No Gold B Instance Defined" )
+                        print( " Error: 'gold_b_instance' Not Defined In Configuration File / Unable To Perform Evaluation Ranking" )
                         continue
                     if model_type != "closed_discovery":
-                        print( " Error: Only Closed Discovery Supported" )
+                        print( " Error: Task Only Supports 'Closed Discovery'" )
                         continue
 
                     if model_load_path != "":
@@ -404,15 +405,62 @@ class NNLBD_Driver:
                         if model_save_path != "": model.Save_Model( model_save_path )
 
                     else:
-                        print( "Error: Unable To Load Model To Refine / No Model Path Specified" )
+                        print( "Error: \"load_model_path\" Not Specified In Configuration File / Cannot Refine Model" )
 
-                # Run Closed Discovery Train And Eval - (All Models Except 'CD2' Model)
-                elif re.match( r"^[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
+                # Run Closed Discovery Train And Eval - (Only 'mlp_similarity' Model)
+                elif re.match( r"^[Mm][Ll][Pp]_[Ss]imilarity_[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
-                        print( " Error: No Gold B Instance Defined" )
+                        print( " Error: 'gold_b_instance' Not Defined In Configuration File / Unable To Perform Evaluation Ranking" )
                         continue
                     if model_type != "closed_discovery":
-                        print( " Error: Only Closed Discovery Supported" )
+                        print( " Error: Task Only Supports 'Closed Discovery'" )
+                        continue
+
+                    self.MLP_Similarity_Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
+                                                                         learning_rate = learning_rate, verbose = verbose,
+                                                                         run_eval_number_epoch = run_eval_number_epoch, save_best_model = save_best_model,
+                                                                         train_data_path = train_data_path, eval_data_path = eval_data_path,
+                                                                         model_save_path = model_save_path, embedding_path = embedding_path,
+                                                                         gold_b_instance = gold_b_instance )
+
+                    if model_save_path != "": model.Save_Model( model_save_path )
+
+                # Run Closed Discovery Refine And Eval - (Only 'mlp_similarity' Model)
+                elif re.match( r"^[Mm][Ll][Pp]_[Ss]imilarity_[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
+                    if gold_b_instance is None:
+                        print( " Error: 'gold_b_instance' Not Defined In Configuration File / Unable To Perform Evaluation Ranking" )
+                        continue
+                    if model_type != "closed_discovery":
+                        print( " Error: Task Only Supports 'Closed Discovery'" )
+                        continue
+
+                    if model_load_path != "":
+                        if not model.Load_Model( model_load_path, bypass_gpu_init = True ): continue
+
+                        # Update Model Parameters
+                        model.Update_Model_Parameters( print_debug_log = print_debug_log, epochs = epochs, per_epoch_saving = per_epoch_saving,
+                                                       batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle,
+                                                       embedding_path = embedding_path, verbose = verbose, use_cosine_annealing = use_cosine_annealing,
+                                                       cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
+
+                        self.MLP_Similarity_Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
+                                                                             learning_rate = learning_rate, verbose = verbose,
+                                                                             run_eval_number_epoch = run_eval_number_epoch, save_best_model = save_best_model,
+                                                                             train_data_path = train_data_path, eval_data_path = eval_data_path,
+                                                                             model_save_path = model_save_path, embedding_path = embedding_path,
+                                                                             gold_b_instance = gold_b_instance )
+
+                        if model_save_path != "": model.Save_Model( model_save_path )
+                    else:
+                        print( "Error: \"load_model_path\" Not Specified In Configuration File / Cannot Refine Model" )
+
+                # Run Closed Discovery Train And Eval - (Only 'mlp_similarity' Model)
+                elif re.match( r"^[Cc]losed_[Dd]iscovery_[Tt]rain_[Aa]nd_[Ee]val_\d+", run_id ):
+                    if gold_b_instance is None:
+                        print( " Error: 'gold_b_instance' Not Defined In Configuration File / Unable To Perform Evaluation Ranking" )
+                        continue
+                    if model_type != "closed_discovery":
+                        print( " Error: Task Only Supports 'Closed Discovery'" )
                         continue
 
                     self.Closed_Discovery_Train_And_Eval( model = model, epochs = epochs, batch_size = batch_size,
@@ -424,13 +472,13 @@ class NNLBD_Driver:
 
                     if model_save_path != "": model.Save_Model( model_save_path )
 
-                # Run Closed Discovery Refine And Eval - (All Models Except 'CD2' Model)
+                # Run Closed Discovery Refine And Eval - (Only 'mlp_similarity' Model)
                 elif re.match( r"^[Cc]losed_[Dd]iscovery_[Rr]efine_[Aa]nd_[Ee]val_\d+", run_id ):
                     if gold_b_instance is None:
-                        print( " Error: No Gold B Instance Defined" )
+                        print( " Error: 'gold_b_instance' Not Defined In Configuration File / Unable To Perform Evaluation Ranking" )
                         continue
                     if model_type != "closed_discovery":
-                        print( " Error: Only Closed Discovery Supported" )
+                        print( " Error: Task Only Supports 'Closed Discovery'" )
                         continue
 
                     if model_load_path != "":
@@ -450,12 +498,15 @@ class NNLBD_Driver:
                                                               gold_b_instance = gold_b_instance )
 
                         if model_save_path != "": model.Save_Model( model_save_path )
+                    else:
+                        print( "Error: \"load_model_path\" Not Specified In Configuration File / Cannot Refine Model" )
 
                 # Copy JSON File To Model Save Path
                 if model_save_path != "": Utils().Copy_File( self.json_file_path, model_save_path )
 
                 # Clean-Up
                 model = None
+
 
     ############################################################################################
     #                                                                                          #
@@ -768,9 +819,8 @@ class NNLBD_Driver:
             eval_data_loader.Load_Embeddings( embedding_path )
             eval_data_loader.Generate_Token_IDs()
 
-            # Closed Discovery Substitutes B Concepts (Secondary ID Dictionary) For Output
-            #   So We Must Grab The Secondary ID Dictionary Concepts To Evaluate Against.
-            eval_token_list = eval_data_loader.Get_Secondary_ID_Dictionary().keys()
+            # Only Fetch Output Vocabulary (B-Concept Vocabulary)
+            eval_token_list = eval_data_loader.Get_Output_ID_Dictionary().keys()
 
             # Clear Data From DataLoader
             eval_data_loader.Clear_Data()
@@ -815,7 +865,7 @@ class NNLBD_Driver:
             # Fetch All Unique Terms From DataLoader Dictionary
             #   For Closed Discovery The Secondary ID Dictionary Is Substituted With The Output Dictionary i.e. A & C Used To Predict B
             if model.Get_Data_Loader().Get_Restrict_Output():
-                unique_token_list = list( model.Get_Data_Loader().Get_Secondary_ID_Dictionary().keys() )
+                unique_token_list = list( model.Get_Data_Loader().Get_Output_ID_Dictionary().keys() )
             else:
                 unique_token_list = list( model.Get_Data_Loader().Get_Token_ID_Dictionary().keys() )
 
@@ -915,7 +965,6 @@ class NNLBD_Driver:
             # Save Model Metric File For Best Model
             if best_model_saved: self.Generate_Model_Metric_File( file_path = model_save_path + "_best_model", metric_list = model_metrics )
 
-
         # Print Ranking Information Per Epoch
         print( "" )
 
@@ -954,6 +1003,236 @@ class NNLBD_Driver:
 
             self.Generate_Plot( data_list = f1_score_per_epoch, title = "Training: F1-Score vs Epoch", x_label = "Epoch",
                                 y_label = "F1-Score", file_name = "training_f1_vs_epoch.png", save_path = model_save_path )
+
+            # Save Model Metrics To File
+            self.Generate_Model_Metric_File( file_path = model_save_path, metric_list = model_metrics )
+
+        print( "\nBest Rank: " + str( best_ranking ) )
+        print( "Best Ranking Epoch: " + str( best_ranking_epoch ) )
+        print( "Number Of Ties With Best Rank: " + str( best_number_of_ties ) + "\n" )
+
+        if eval_data_path != "":
+            print( "Eval Best Rank: " + str( eval_best_ranking ) )
+            print( "Eval Best Ranking Epoch: " + str( eval_best_ranking_epoch ) )
+            print( "Eval Number Of Ties With Best Rank: " + str( eval_best_number_of_ties ) )
+
+
+    ''' Performs Closed Discovery For The MLP Similarity Model '''
+    def MLP_Similarity_Closed_Discovery_Train_And_Eval( self, model, epochs, batch_size, learning_rate, verbose, run_eval_number_epoch,
+                                                        save_best_model, train_data_path, model_save_path, embedding_path, gold_b_instance, eval_data_path = "" ):
+        # Check(s)
+        if Utils().Check_If_File_Exists( train_data_path ) == False:
+            print( "Error: Specified Training File Does Not Exist" )
+            return
+        if eval_data_path != "" and Utils().Check_If_File_Exists( eval_data_path ) == False:
+            print( "Error: Specified Evaluation File Does Not Exist" )
+            return
+        if embedding_path != "" and Utils().Check_If_File_Exists( embedding_path ) == False:
+            print( "Error: Specified Embedding File Does Not Exist" )
+            return
+
+        # Training/Evaluation Variables (Do Not Modify)
+        ranking_per_epoch             = []
+        ranking_per_epoch_value       = []
+        number_of_ties_per_epoch      = []
+        loss_per_epoch                = []
+        accuracy_per_epoch            = []
+        best_number_of_ties           = 0
+        a_term                        = gold_b_instance.split( '\t' )[0]
+        gold_b_term                   = gold_b_instance.split( '\t' )[1]
+        c_term                        = gold_b_instance.split( '\t' )[2]
+        best_ranking                  = sys.maxsize
+        best_ranking_epoch            = -1
+        eval_best_ranking             = sys.maxsize
+        eval_best_ranking_epoch       = -1
+        eval_token_list               = None
+        eval_ranking_per_epoch        = []
+        eval_ranking_per_epoch_value  = []
+        eval_number_of_ties_per_epoch = []
+        model_metrics                 = []
+
+        # Load Evaluation Data (Use Temporary Data Loader / Outside Of Model's Data Loader)
+        if eval_data_path != "":
+            # Set 'restrict_output = True'. This Implies The DataLoader Will Only Fetch The Unique B Concepts
+            #   From The Evaluation Data. This Simulates The Crichton Approach For A Direct Comparison Against Their Results.
+            eval_data_loader = StdDataLoader( skip_out_of_vocabulary_words = model.Get_Data_Loader().Get_Skip_Out_Of_Vocabulary_Words(),
+                                              restrict_output = True, output_is_embeddings = True )
+            eval_data_loader.Read_Data( eval_data_path )
+            eval_data_loader.Load_Embeddings( embedding_path )
+            eval_data_loader.Generate_Token_IDs()
+
+            # Only Fetch Output Vocabulary (B-Concept Vocabulary)
+            eval_token_list = eval_data_loader.Get_Output_ID_Dictionary().keys()
+
+            # Clear Data From DataLoader
+            eval_data_loader.Clear_Data()
+
+            # Add Header Information To Model Metric List
+            model_metrics.append( "Epoch\tGold B\tRank\t# Of Ties\tScore\t# Of B Terms\tEval Rank"
+                                  "\t# Of Ties\tScore\t# Of Eval B Terms\tLoss\tAccuracy\n" )
+        else:
+            # Add Header Information To Model Metric List
+            model_metrics.append( "Epoch\tGold B\tRank\t# Of Ties\tScore\t# Of B Terms\tLoss\tAccuracy\n" )
+
+        # Create Directory
+        model.utils.Create_Path( model_save_path )
+
+        print( "Beginning Model Data Preparation/Model Training" )
+
+        # Set Correct Number Of Epochs Versus Number Of Epochs To Run Before Evaluation Is Performed
+        epochs = epochs // run_eval_number_epoch
+
+        for iteration in range( epochs ):
+            # Train Model Over Data: "../data/train_cs1_closed_discovery_without_aggregators"
+            model.Fit( train_data_path, epochs = run_eval_number_epoch, batch_size = batch_size, learning_rate = learning_rate )
+
+            # Check
+            if model.Get_Model() == None or model.Get_Model().model_history == None:
+                print( "Error Model Contains No History / Model Failed To Train" )
+                return
+
+            history = model.Get_Model().model_history.history
+            accuracy_score = history['accuracy'][-1] if 'accuracy' in history else history['acc'][-1]
+
+            loss_per_epoch.append( history['loss'][-1] )
+            accuracy_per_epoch.append( accuracy_score )
+
+            # Perform Inference Over The Entire Training Data-set
+            prediction = model.Predict( a_term, c_term, return_raw_values = True )[0]
+
+            # Fetch All Unique Terms From DataLoader Dictionary
+            #   For Closed Discovery The Secondary ID Dictionary Is Substituted With The Output Dictionary i.e. A & C Used To Predict B
+            if model.Get_Data_Loader().Get_Restrict_Output():
+                unique_token_list = list( model.Get_Data_Loader().Get_Output_ID_Dictionary().keys() )
+            else:
+                unique_token_list = list( model.Get_Data_Loader().Get_Token_ID_Dictionary().keys() )
+
+            ################################################################
+            # Rank Unique Token prediction Using Their Probability Values #
+            ################################################################
+
+            prob_dict        = {}     # Probability Rankings Among Training Data Unique B Terms
+            eval_prob_dict   = {}     # Probability Rankings Among Evaluation Data Unique B Terms
+            best_model_saved = False
+
+            # Get Embeddings
+            output_embeddings = model.Get_Data_Loader().Get_Model_Embeddings( embedding_type = "output" )
+
+            if len( unique_token_list ) != len( output_embeddings ):
+                print( "Error: Unique B Concept List != Number Of Embeddings / Unable To Perform Evaluation" )
+                continue
+
+            # For Each Prediction From The Model, Store The Prediction Value And Unique Concept Token Within A Dictionary
+            for token, embedding in zip( unique_token_list, output_embeddings ):
+                cosine_sim_value = Metrics().Cosine_Similarity( prediction, embedding )
+                prob_dict[token] = cosine_sim_value if not np.isnan( cosine_sim_value ) else -99
+
+            # Sort Concept And Probability Dictionary In Reverse Order To Rank Concepts
+            prob_dict    = { k: v for k, v in sorted( prob_dict.items(), key = lambda x: x[1], reverse = True ) }
+
+            # Get Index Of Desired Gold B
+            gold_b_rank  = list( prob_dict.keys() ).index( gold_b_term.lower() ) + 1
+            gold_b_value = prob_dict[gold_b_term.lower()]
+
+            # Get Number Of Ties With Gold B Prediction Value
+            gold_b_ties  = list( prob_dict.values() ).count( gold_b_value ) - 1
+
+            ranking_per_epoch.append( gold_b_rank )
+            ranking_per_epoch_value.append( gold_b_value )
+            number_of_ties_per_epoch.append( gold_b_ties )
+
+            # Keep Track Of The Best Rank
+            if gold_b_rank < best_ranking:
+                best_ranking        = gold_b_rank
+                best_ranking_epoch  = iteration
+                best_number_of_ties = gold_b_ties
+
+                # Saves Best Ranking Model Independent Of General Model
+                if save_best_model and eval_data_path == "":
+                    model.Save_Model( model_path = model_save_path + "_best_model" )    # Save Model
+                    best_model_saved = True
+
+
+            # Perform Ranking Against Evaluation Data-Set If Specified
+            eval_gold_b_rank, eval_gold_b_value, eval_gold_b_ties = -1, -1, -1
+
+            if eval_data_path != "":
+                # Fetch Evaluation Concept Tokens Existing Within Predicted Concept Token List (Known Tokens)
+                eval_prob_dict    = { token: prob_dict[token] for token in eval_token_list if token in prob_dict }
+                eval_prob_dict    = { k: v for k, v in sorted( eval_prob_dict.items(), key = lambda x: x[1], reverse = True ) }
+
+                # Determine Evaluation Rank, Probability Value And Number Of Ties
+                eval_gold_b_rank  = list( eval_prob_dict.keys() ).index( gold_b_term.lower() ) + 1 if gold_b_term.lower() in eval_prob_dict else -1
+                eval_gold_b_value = eval_prob_dict[gold_b_term.lower()] if gold_b_term.lower() in eval_prob_dict else -1
+                eval_gold_b_ties  = list( eval_prob_dict.values() ).count( eval_gold_b_value ) - 1
+
+                eval_ranking_per_epoch.append( eval_gold_b_rank )
+                eval_ranking_per_epoch_value.append( eval_gold_b_value )
+                eval_number_of_ties_per_epoch.append( eval_gold_b_ties )
+
+                if eval_gold_b_rank < eval_best_ranking:
+                    eval_best_ranking        = eval_gold_b_rank
+                    eval_best_ranking_epoch  = iteration
+                    eval_best_number_of_ties = eval_gold_b_ties
+
+                    # Saves Best Ranking Model Independent Of General Model
+                    if save_best_model:
+                        model.Save_Model( model_path = model_save_path + "_best_model" )
+                        best_model_saved = True
+
+                print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
+                       " Of " + str( len( prob_dict ) ) + " Number Of B Terms - Score: " + str( gold_b_value ) + \
+                       " - Number Of Ties: " + str( gold_b_ties ) + "\n          - Eval Rank: " + str( eval_gold_b_rank ) + \
+                       " Of " + str( len( eval_prob_dict ) ) + " Number Of Eval B Terms - Score: " + str( eval_gold_b_value ) + \
+                       " - Number Of Ties: " + str( eval_gold_b_ties ) )
+
+                # Store Data In Model Metric List
+                model_metrics.append( str( iteration ) + "\t" + str( gold_b_term ) + "\t" +  str( gold_b_rank ) + "\t" + str( gold_b_ties ) +
+                                      "\t" + str( gold_b_value ) + "\t" + str( len( prob_dict ) ) + "\t" + str( eval_gold_b_rank ) +
+                                      "\t" + str( eval_gold_b_ties ) + "\t" + str( eval_gold_b_value ) + "\t" + str( len( eval_prob_dict ) ) +
+                                      "\t" + str( history['loss'][-1] ) + "\t" + str( accuracy_score ) + "\n" )
+            else:
+                print( "Epoch : " + str( iteration ) + " - Gold B: " + str( gold_b_term ) + " - Rank: " + str( gold_b_rank ) + \
+                       " Of " + str( len( prob_dict ) ) + " Number Of B Terms - Score: " + str( gold_b_value ) + \
+                       " - Number Of Ties: " + str( gold_b_ties ) )
+
+                # Store Data In Model Metric List
+                model_metrics.append( str( iteration ) + "\t" + str( gold_b_term ) + "\t" +  str( gold_b_rank ) + "\t" + str( gold_b_ties ) +
+                                      "\t" + str( gold_b_value ) + "\t" + str( len( prob_dict ) ) + "\t" + str( history['loss'][-1] ) +
+                                      "\t" + str( accuracy_score ) + "\n" )
+
+            # Save Model Metric File For Best Model
+            if best_model_saved: self.Generate_Model_Metric_File( file_path = model_save_path + "_best_model", metric_list = model_metrics )
+
+        # Print Ranking Information Per Epoch
+        print( "" )
+
+        if eval_data_path != "":
+            for epoch in range( len( ranking_per_epoch ) ):
+                print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
+                       " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) +
+                       " - Eval Rank: " + str( eval_ranking_per_epoch[epoch] ) + " - Eval Value: " + str( eval_ranking_per_epoch_value[epoch] ) +
+                       " - Eval Number Of Ties: " + str( eval_number_of_ties_per_epoch[epoch] ) )
+        else:
+            for epoch in range( len( ranking_per_epoch ) ):
+                print( "Epoch: " + str( epoch ) + " - Rank: " + str( ranking_per_epoch[epoch] ) +
+                       " - Value: " + str( ranking_per_epoch_value[epoch] ) + " - Number Of Ties: " + str( number_of_ties_per_epoch[epoch] ) )
+
+        print( "\nGenerating Model Metric Charts" )
+        if model_save_path != "" and not re.search( r"\/$", model_save_path ):
+            model_save_path += "/"
+
+            self.Generate_Plot( data_list = ranking_per_epoch, title = "Evaluation: Rank vs Epoch", x_label = "Epoch",
+                                y_label = "Rank", file_name = "evaluation_rank_vs_epoch.png", save_path = model_save_path )
+
+            self.Generate_Plot( data_list = number_of_ties_per_epoch, title = "Evaluation: Ties vs Epoch", x_label = "Epoch",
+                                y_label = "Ties", file_name = "evaluation_ties_vs_epoch.png", save_path = model_save_path )
+
+            self.Generate_Plot( data_list = loss_per_epoch, title = "Training: Loss vs Epoch", x_label = "Epoch",
+                                y_label = "Loss", file_name = "training_loss_vs_epoch.png", save_path = model_save_path )
+
+            self.Generate_Plot( data_list = accuracy_per_epoch, title = "Training: Accuracy vs Epoch", x_label = "Epoch",
+                                y_label = "Accuracy", file_name = "training_accuracy_vs_epoch.png", save_path = model_save_path )
 
             # Save Model Metrics To File
             self.Generate_Model_Metric_File( file_path = model_save_path, metric_list = model_metrics )

@@ -4,12 +4,119 @@ Exploring a Neural Network Architecture for Closed Literature-based Discovery
 In this study, we use our [Base Multi-Label Models](./../base_ml_model/README.md) to train and evaluate on the [cancer landmark discovery](https://lbd.lionproject.net/downloads), or Hallmarks of Cancer (HOC), datasets. These datasets are used to identify five recent literature-based discoveries which include identifying hallmarks of cancer through implicit *A-B-C* relationship triplets prior to their known year of discovery. They support both open and closed discovery. Our study evaluates our model's performance for closed discovery.
 
 
+# Table Of Contents
+1. [Easy Method](#easy_method)
+2. [Manual Method](#manual_method)
+3. [Reproducing Our Random Experiments](#reproducing_random_experiments)
+
+
+# Easy Method <a name="easy_method"></a>
+
+This method can be reduplicated using our pre-configured JSON configuration files, the included datasets and embeddings. Run one of the following commands below to reduplicate the model.
+
+## Feature Scaled
+
+| Dataset |  Input Type |   Output Type  |                                                   Command                                                   |
+|:-------:|:-----------:|:--------------:|:-----------------------------------------------------------------------------------------------------------:|
+|   HOC1  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs1_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs1_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs1_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs1_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs1_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs1_hinton_sigmoid_hadamard_ro.json` |
+|   HOC2  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs2_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs2_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs2_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs2_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs2_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs2_hinton_sigmoid_hadamard_ro.json` |
+|   HOC3  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs3_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs3_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs3_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs3_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs3_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs3_hinton_sigmoid_hadamard_ro.json` |
+|   HOC4  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs4_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs4_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs4_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs4_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs4_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs4_hinton_sigmoid_hadamard_ro.json` |
+|   HOC5  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs5_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs5_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs5_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs5_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs5_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/feature_scaling/cs5_hinton_sigmoid_hadamard_ro.json` |
+
+## Non-Feature Scaled
+
+| Dataset |  Input Type |   Output Type  |                                                     Command                                                    |
+|:-------:|:-----------:|:--------------:|:--------------------------------------------------------------------------------------------------------------:|
+|   HOC1  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs1_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs1_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs1_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs1_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs1_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs1_hinton_sigmoid_hadamard_ro.json` |
+|   HOC2  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs2_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs2_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs2_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs2_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs2_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs2_hinton_sigmoid_hadamard_ro.json` |
+|   HOC3  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs3_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs3_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs3_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs3_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs3_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs3_hinton_sigmoid_hadamard_ro.json` |
+|   HOC4  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs4_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs4_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs4_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs4_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs4_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs4_hinton_sigmoid_hadamard_ro.json` |
+|   HOC5  |   Average   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs5_hinton_sigmoid_avg_fo.json`      |
+|         |   Average   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs5_hinton_sigmoid_avg_ro.json`      |
+|         | Concatenate |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs5_hinton_sigmoid_concat_fo.json`   |
+|         | Concatenate | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs5_hinton_sigmoid_concat_ro.json`   |
+|         |  Hadamard   |   Full Output  | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs5_hinton_sigmoid_hadamard_fo.json` |
+|         |  Hadamard   | Reduced Output | `python LBDDriver ../json_files/HOC/hinton_experiments/no_feature_scaling/cs5_hinton_sigmoid_hadamard_ro.json` |
+
+As the models finish training, they will produce their respective directories according to the `model_save_path` setting.
+
+```
+../saved_models/*
+```
+
+Each directory contains the following files:
+
+```
+evaluation_rank_vs_epoch.png         <- Plotted model reported metric graph
+evaluation_ties_vs_epoch.png         <- Plotted model reported metric graph
+model_config.json                    <- Saved model Keras configuration file
+model_metrics.txt                    <- TSV list of model reported evaluation metrics
+model_settings.cfg                   <- NNLBD model configuration file (Do Not Edit!)
+model_token_id_key_data              <- Input/Output Term Mappings
+model.h5                             <- The saved model
+<name_of_configuration_file>.json    <- Copy of your configuration file
+training_accuracy_vs_epoch.png       <- Plotted model reported metric graph
+training_f1_vs_epoch.png             <- Plotted model reported metric graph
+training_loss_vs_epoch.png           <- Plotted model reported metric graph
+training_precision_vs_epoch.png      <- Plotted model reported metric graph
+training_recall_vs_epoch.png         <- Plotted model reported metric graph
+```
+
+
+# Manual Method <a name="manual_method"></a>
+
 Requirements
 ============
  - [Python 2.7](python.org)
  - [Python 3.6.x to 3.10.x](python.org)
  - Perl 5.x (Not really necessary/Only used during *a-priori* pre-processing)
- - Tensorflow 1.15.2 to 2.9.0
+ - TensorFlow 1.15.2 to 2.9.0
  - NNLBD package
  - [Cancer landmark discovery datasets](https://lbd.lionproject.net/downloads)
  - [Neural networks for open and closed Literature-based Discovery](https://github.com/cambridgeltl/nn_for_LBD) (NN for LBD) Python 2.7 package
@@ -18,7 +125,7 @@ Requirements
 *A-priori* Pre-processing
 =========================
 
-*NOTE:* This step depends on the [NN for LBD package](https://github.com/cambridgeltl/nn_for_LBD). Download this package and setup a virtual environment according to their specifications. This package is used to perform the necessary *a-priori* data preprocessing setups to create our training datasets, evaluation datasets, and their accompanying word embeddings.
+*NOTE:* This step depends on the [NN for LBD package](https://github.com/cambridgeltl/nn_for_LBD). Download this package and unarchive it. We will refer to the extracted package's root directory as `nn_for_LBD`. Next, setup a virtual environment according to their instructions. This package is used to perform the necessary *a-priori* data preprocessing setups to create our training datasets, evaluation datasets, and their accompanying word embeddings.
 
 **Windows Users: Their package was exclusively developed for Linux operating systems. It can be run under windows using a Linux bash simulated environment. We recommend [git-for-windows](https://gitforwindows.org/) through CMD or using [CMDER](https://github.com/cmderdev/cmder). Setting up a Linux VM is recommended. We've tested their package using [Linux Mint](https://linuxmint.com/) without issue. However, after you've generated your datasets and embeddings, you can remove the VM and all requirements associated with their package.**
 
@@ -125,23 +232,25 @@ Word Embedding Files:
 
 *NOTE: You may remove all other files and the `NN for LBD` package, and its requirements if you wish. They're no longer necessary.*
 
-These files are almost ready for experimentation. However, the training and testing files contain negative samples which are not utilized within our study. Our model automatically creates negative samples considering its output space is multi-class (multi-label really). The approach taken by their study utilizes these datasets to train and evaluate their models using single-class classification. Thus, negative samples are needed to generalize their model. However, we repurpose these datasets within our study. To remove these samples, along with other unnecessary information, we recommend using our [convert_crichton_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_crichton_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+These files are almost ready for experimentation. However, the training and testing files contain negative samples which are not utilized within our study. Our model automatically creates negative samples considering its output space is multi-class (multi-label really). The approach taken by their study utilizes these datasets to train and evaluate their models using single-class classification. Thus, negative samples are needed to generalize their model. However, we repurpose these datasets within our study. To remove these samples, along with other unnecessary information, we recommend using our [convert_hoc_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_hoc_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+
+Lastly, these files are in `open discovery format` (i.e. `a_concept b_concept c_concept`) and must be converted to `closed discovery format` (i.e. `a_concept c_concept b_concepts`). To accomplish this, we provide our [convert_nnlbd_open_discovery_data_to_closed_discovery_format.py](/miscellaneous_scripts/convert_nnlbd_open_discovery_data_to_closed_discovery_format.py) script. Set the parameters `file_path` and `new_file_path` accordingly, and run the script to convert the data.
 
 Let's say these newly converted files follow the directory structure below:
 
 ```
 Training/Evaluation Dataset File:
 =================================
-./train_cs1_closed_discovery_without_aggregators_new.tsv
-./train_cs2_closed_discovery_without_aggregators_new.tsv
-./train_cs3_closed_discovery_without_aggregators_new.tsv
-./train_cs4_closed_discovery_without_aggregators_new.tsv
-./train_cs5_closed_discovery_without_aggregators_new.tsv
-./test_cs1_closed_discovery_without_aggregators_new.tsv
-./test_cs2_closed_discovery_without_aggregators_new.tsv
-./test_cs3_closed_discovery_without_aggregators_new.tsv
-./test_cs4_closed_discovery_without_aggregators_new.tsv
-./test_cs5_closed_discovery_without_aggregators_new.tsv
+./train_cs1_closed_discovery_without_aggregators_mod
+./train_cs2_closed_discovery_without_aggregators_mod
+./train_cs3_closed_discovery_without_aggregators_mod
+./train_cs4_closed_discovery_without_aggregators_mod
+./train_cs5_closed_discovery_without_aggregators_mod
+./test_cs1_closed_discovery_without_aggregators_mod
+./test_cs2_closed_discovery_without_aggregators_mod
+./test_cs3_closed_discovery_without_aggregators_mod
+./test_cs4_closed_discovery_without_aggregators_mod
+./test_cs5_closed_discovery_without_aggregators_mod
 
 Word Embedding Files:
 =====================
@@ -151,6 +260,8 @@ Word Embedding Files:
 ./test_modified_cs4.embeddings
 ./test_modified_cs5.embeddings
 ```
+
+*NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. We're only interested in the `plain text` variants.*
 
 Now we are ready to begin LBD experimentation using the Multi-Label Models. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
 
@@ -190,10 +301,10 @@ An example of a complete JSON configuration file is shown below:
             "_comment": "HOC1 Hinton - Closed Discovery",
             "network_model": "hinton",
             "model_type": "closed_discovery",
-            "embedding_path": "./vectors/test_modified_cs1.embeddings",
-            "train_data_path": "./data/train_cs1_closed_discovery_without_aggregators_new.tsv",
-            "eval_data_path": "./data/test_cs1_closed_discovery_without_aggregators_new.tsv",
-            "model_save_path": "./saved_models/cs1_hinton_model",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators_mod",
+            "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators_mod",
+            "model_save_path": "../saved_models/cs1_hinton_model",
             "epochs": 400,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -242,8 +353,8 @@ Building LBD Experiment Run ID: closed_discovery_train_and_eval_1
 BaseModel::Initialize_GPU() - CUDA Supported GPU Is Available
 BaseModel::Initialize_GPU() - GPU/CUDA Supported And Enabled
 Beginning Model Data Preparation/Model Training
-LBD::Prepare_Model_Data() - Loading Embeddings: ./vectors/test_modified_cs1.embeddings
-LBD::Prepare_Model_Data() - Reading Training Data: ./data/train_cs1_closed_discovery_without_aggregators_new.tsv
+LBD::Prepare_Model_Data() - Loading Embeddings: ../vectors/HOC/test_modified_cs1.embeddings
+LBD::Prepare_Model_Data() - Reading Training Data: ../data/HOC/train_cs1_closed_discovery_without_aggregators_mod
 LBD::Prepare_Model_Data() - Generating Token IDs From Training Data
 LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data
 RumelhartHintonModel::Fit() - Executing Model Training
@@ -306,11 +417,11 @@ Model Evaluation
 After our model has finished training, it will produce the following directories:
 
 ```
-./saved_models/cs1_hinton_model_1
-./saved_models/cs1_hinton_model_2
-./saved_models/cs1_hinton_model_3
-./saved_models/cs1_hinton_model_4
-./saved_models/cs1_hinton_model_5
+../saved_models/cs1_hinton_model_1
+../saved_models/cs1_hinton_model_2
+../saved_models/cs1_hinton_model_3
+../saved_models/cs1_hinton_model_4
+../saved_models/cs1_hinton_model_5
 ```
 
 Each directory contains the following files:
@@ -359,3 +470,95 @@ True HOC Relationships
 | HOC3 (CS3) | IL-17 (PR:000001138)  | p38 (PR:000003107)   | MKP-1 (PR:000006736)             |
 | HOC4 (CS4) | Nrf2 (PR:000011170)   | ROS (CHEBI:26523)    | pancreatic cancer (MESH:D010190) |
 | HOC5 (CS5) | CXCL12 (PR:000006066) | senescence (HOC:42)  | thyroid cancer (MESH:D013964)    |
+
+
+# Reproducing Our Random Experiments <a name="reproducing_random_experiments"></a>
+
+To validate the efficacy of our method when ranking the true HOC relationships as high-ranked implicit relations for all datasets, we introduce and rank a set of random relationship triplets. The premise behind this approach is as follows: If the model identifies the true HOC relationships as implicit with a high rank (numerically low ranking value), introducing random relations into the method and ranking them should result in a low rank (numerically high ranking value); thus validating the efficacy of our method. Alternatively, if the system ranks these random triplet relationships with a high rank it invalidates our method as not suitable for closed LBD.
+
+In the event we randomly generated a triplet which is a true relationship that exists in either the training or evaluation dataset, we generate 10 random triplets and report the averaged rank among all experiments. To explore this approach, we use two rules when generating the random triplets:
+
+1. We ensure all concepts are unique within the relationship triplet.
+2. We ensure no triplets are repeated.
+
+ To reproduce our random experiments, use one of the following commands:
+
+| Dataset |  Input Type |  Experiment ID |                                                     Command                                                                           |
+|:-------:|:-----------:|:--------------:|:-------------------------------------------------------------------------------------------------------------------------------------:|
+|   HOC1  | Concatenate |        0       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_0.json`   |
+|         | Concatenate |        1       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_1.json`   |
+|         | Concatenate |        2       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_2.json`   |
+|         | Concatenate |        3       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_3.json`   |
+|         | Concatenate |        4       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_4.json`   |
+|         | Concatenate |        5       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_5.json`   |
+|         | Concatenate |        6       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_6.json`   |
+|         | Concatenate |        7       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_7.json`   |
+|         | Concatenate |        8       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_8.json`   |
+|         | Concatenate |        9       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs1_false_experiments/cs1_hinton_sigmoid_concat_ro_9.json`   |
+|   HOC2  | Concatenate |        0       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_0.json`   |
+|         | Concatenate |        1       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_1.json`   |
+|         | Concatenate |        2       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_2.json`   |
+|         | Concatenate |        3       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_3.json`   |
+|         | Concatenate |        4       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_4.json`   |
+|         | Concatenate |        5       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_5.json`   |
+|         | Concatenate |        6       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_6.json`   |
+|         | Concatenate |        7       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_7.json`   |
+|         | Concatenate |        8       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_8.json`   |
+|         | Concatenate |        9       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs2_false_experiments/cs2_hinton_sigmoid_concat_ro_9.json`   |
+|   HOC3  | Concatenate |        0       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_0.json`   |
+|         | Concatenate |        1       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_1.json`   |
+|         | Concatenate |        2       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_2.json`   |
+|         | Concatenate |        3       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_3.json`   |
+|         | Concatenate |        4       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_4.json`   |
+|         | Concatenate |        5       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_5.json`   |
+|         | Concatenate |        6       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_6.json`   |
+|         | Concatenate |        7       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_7.json`   |
+|         | Concatenate |        8       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_8.json`   |
+|         | Concatenate |        9       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs3_false_experiments/cs3_hinton_sigmoid_concat_ro_9.json`   |
+|   HOC4  | Concatenate |        0       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_0.json`   |
+|         | Concatenate |        1       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_1.json`   |
+|         | Concatenate |        2       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_2.json`   |
+|         | Concatenate |        3       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_3.json`   |
+|         | Concatenate |        4       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_4.json`   |
+|         | Concatenate |        5       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_5.json`   |
+|         | Concatenate |        6       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_6.json`   |
+|         | Concatenate |        7       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_7.json`   |
+|         | Concatenate |        8       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_8.json`   |
+|         | Concatenate |        9       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs4_false_experiments/cs4_hinton_sigmoid_concat_ro_9.json`   |
+|   HOC5  | Concatenate |        0       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_0.json`   |
+|         | Concatenate |        1       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_1.json`   |
+|         | Concatenate |        2       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_2.json`   |
+|         | Concatenate |        3       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_3.json`   |
+|         | Concatenate |        4       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_4.json`   |
+|         | Concatenate |        5       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_5.json`   |
+|         | Concatenate |        6       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_6.json`   |
+|         | Concatenate |        7       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_7.json`   |
+|         | Concatenate |        8       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_8.json`   |
+|         | Concatenate |        9       | `python LBDDriver ../json_files/HOC/hinton_experiments/false_experiments/cs5_false_experiments/cs5_hinton_sigmoid_concat_ro_9.json`   |
+
+
+As the models finish training, they will produce their respective directories according to the `model_save_path` setting.
+
+```
+../saved_models/*
+```
+
+Each directory contains the following files:
+
+```
+evaluation_rank_vs_epoch.png         <- Plotted model reported metric graph
+evaluation_ties_vs_epoch.png         <- Plotted model reported metric graph
+model_config.json                    <- Saved model Keras configuration file
+model_metrics.txt                    <- TSV list of model reported evaluation metrics
+model_settings.cfg                   <- NNLBD model configuration file (Do Not Edit!)
+model_token_id_key_data              <- Input/Output Term Mappings
+model.h5                             <- The saved model
+<name_of_configuration_file>.json    <- Copy of your configuration file
+training_accuracy_vs_epoch.png       <- Plotted model reported metric graph
+training_f1_vs_epoch.png             <- Plotted model reported metric graph
+training_loss_vs_epoch.png           <- Plotted model reported metric graph
+training_precision_vs_epoch.png      <- Plotted model reported metric graph
+training_recall_vs_epoch.png         <- Plotted model reported metric graph
+```
+
+The file `model_metrics.txt` is a TSV-formatted file which contains all model training and evaluation metrics.

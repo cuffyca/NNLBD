@@ -32,7 +32,7 @@ from NNLBD.DataLoader import DataLoader
 
 def Main():
     print( "~Begin" )
-    file_path = "../data/cui_mini"
+    file_path = "../data/test/cui_mini"
 
     data_loader = DataLoader()
     data_loader.Read_Data( file_path )

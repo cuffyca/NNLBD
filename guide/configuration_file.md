@@ -90,7 +90,7 @@ Model Settings
 | model_load_path               | String    | ""                    | Set model load path                                                 |
 | checkpoint_directory          | String    | ""                    | Set model checkpoint directory                                      |
 | epochs                        | Integer   | 30                    | Set number of training epochs                                       |
-| verbose                       | Integer   | 1                     | Set Keras/Tensorflow verbosity                                      |
+| verbose                       | Integer   | 1                     | Set Keras/TensorFlow verbosity                                      |
 | learning_rate                 | Float     | 5e-3                  | Set learning rate                                                   |
 | learning_rate_decay           | Float     | 4e-3                  | Set learning rate decay value                                       |
 | feature_scale_value           | Float     | 10                    | Set feature scaling value                                           |
@@ -140,8 +140,8 @@ Here's a complete example of a configuration file.
             "loss_function": "binary_crossentropy",
             "use_csr_format": "True",
             "trainable_weights": "False",
-            "embedding_path": "../vectors/vectors_random_cui_mini",
-            "train_data_path": "../data/cui_mini",
+            "embedding_path": "../vectors/test/vectors_random_cui_mini",
+            "train_data_path": "../data/test/cui_mini_closed_discovery",
             "model_save_path": "../saved_models/rumelhart",
             "set_per_iteration_model_path": "True",
             "epochs": 100,
@@ -168,8 +168,8 @@ Here's a complete example of a configuration file.
             "loss_function": "binary_crossentropy",
             "use_csr_format": "True",
             "trainable_weights": "False",
-            "embedding_path": "../vectors/vectors_random_cui_mini",
-            "train_data_path": "../data/cui_mini",
+            "embedding_path": "../vectors/test/vectors_random_cui_mini",
+            "train_data_path": "../data/test/cui_mini_closed_discovery",
             "model_save_path": "../saved_models/hinton",
             "set_per_iteration_model_path": "True",
             "epochs": 100,
@@ -190,16 +190,16 @@ In this example, the system is instructed to perform training and evaluation of 
 The result of this is produces the following saved model directories:
 
 ```
-./saved_models/hinton_1
-./saved_models/hinton_2
-./saved_models/hinton_3
-./saved_models/hinton_4
-./saved_models/hinton_5
-./saved_models/rumelhart_1
-./saved_models/rumelhart_2
-./saved_models/rumelhart_3
-./saved_models/rumelhart_4
-./saved_models/rumelhart_5
+../saved_models/hinton_1
+../saved_models/hinton_2
+../saved_models/hinton_3
+../saved_models/hinton_4
+../saved_models/hinton_5
+../saved_models/rumelhart_1
+../saved_models/rumelhart_2
+../saved_models/rumelhart_3
+../saved_models/rumelhart_4
+../saved_models/rumelhart_5
 ```
 
 Each directory contains the following files:

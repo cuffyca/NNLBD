@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 06/03/2022                                                                   #
+#    Revised: 01/01/2022                                                                   #
 #                                                                                          #
 #    Standard Data Loader Classs For The NNLBD Package.                                    #
 #                                                                                          #
@@ -46,11 +46,11 @@ from NNLBD.DataLoader import DataLoader
 
 class StdDataLoader( DataLoader ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False, debug_log_file_handle = None,
-                  restrict_output = True ):
+                  restrict_output = True, output_is_embeddings = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, shuffle = shuffle,
                           skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, debug_log_file_handle = debug_log_file_handle,
-                           restrict_output = restrict_output )
-        self.version = 0.06
+                          restrict_output = restrict_output, output_is_embeddings = output_is_embeddings )
+        self.version = 0.07
 
     """
         Performs Checks Against The Specified Data File/Data List To Ensure File Integrity Before Further Processing
@@ -123,8 +123,8 @@ class StdDataLoader( DataLoader ):
             tertiary_input_vector  : CSR Matrix or Numpy Array
             output_vector          : CSR Matrix or Numpy Array
     """
-    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True,
-                           pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True, pad_output = True,
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
         # Check(s)
         if len( data_list ) == 0:
             self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: No Data Specified By User / Using Data Stored In Memory" )
@@ -203,7 +203,7 @@ class StdDataLoader( DataLoader ):
             primary_inputs   = csr_matrix( primary_inputs   ) if stack_inputs == False else []
             secondary_inputs = csr_matrix( secondary_inputs ) if stack_inputs == False else []
             tertiary_inputs  = csr_matrix( tertiary_inputs  ) if stack_inputs == False else []
-            outputs          = csr_matrix( outputs          )
+            if not self.output_is_embeddings: outputs = csr_matrix( outputs )
 
         if len( tmp_thread_data ) == 0:
             self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error Vectorizing Model Data / No Data Returned From Worker Threads", force_print = True )
@@ -278,7 +278,7 @@ class StdDataLoader( DataLoader ):
             ########################################
             # Convert Outputs To CSR Matrix Format #
             ########################################
-            if use_csr_format:
+            if use_csr_format and not self.output_is_embeddings:
                 # CSR Matrices Are Empty, Overwrite Them With The Appropriate Data With The Correct Shape
                 if outputs.shape[1] == 0:
                     outputs = output_array
@@ -298,6 +298,8 @@ class StdDataLoader( DataLoader ):
             secondary_inputs = np.asarray( secondary_inputs )
             tertiary_inputs  = np.asarray( tertiary_inputs  )
             outputs          = np.asarray( outputs          )
+        elif self.output_is_embeddings:
+            outputs          = np.asarray( outputs, dtype = np.float32 )
 
         if isinstance( primary_inputs, list ):
             self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Primary Input Length  : " + str( len( primary_inputs ) ) )
@@ -315,7 +317,7 @@ class StdDataLoader( DataLoader ):
             self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Tertiary Input Length : " + str( tertiary_inputs.shape  ) )
 
         if isinstance( outputs, list ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Output Length         : " + str( len( outputs.shape ) ) )
+            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Output Length         : " + str( len( outputs ) ) )
         elif isinstance( outputs, csr_matrix ):
             self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Output Length         : " + str( outputs.shape        ) )
 
@@ -388,7 +390,6 @@ class StdDataLoader( DataLoader ):
             secondary_input        : List Of Strings (ie. TREATS)
             tertiary_input         : List Of Strings
             outputs                : List Of Strings (May Be A List Of Lists Tokens. ie. [C001 C003 C004], [C002 C001 C010])
-            model_type             : Model Type (String)
             pad_inputs             : Pads Model Inputs. True = One-Hot Vector, False = Array Of Non-Zero Indices (Boolean)
             pad_output             : Pads Model Output. True = One-Hot Vector, False = Array Of Non-Zero Indices (Boolean)
             separate_outputs       : Separates Outputs By Into Individual Vectorized Instances = True, Combine Outputs Per Instance = False. (Only Valid For 'Open Discovery')
@@ -414,8 +415,11 @@ class StdDataLoader( DataLoader ):
         tertiary_input_instances  = tertiary_input.split( instance_separator )
         output_instances          = outputs.split( instance_separator )
 
-        if len( tertiary_input_instances ) < len( primary_input_instances ): tertiary_input_instances = ["" for i in range( len( primary_input_instances ) )]
-        if len( output_instances         ) < len( primary_input_instances ): output_instances         = ["" for i in range( len( primary_input_instances ) )]
+        # Check
+        if self.output_is_embeddings and pad_output:
+            self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Warning: 'self.output_is_embeddings == True' and 'pad_output == True'" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Instance() -          Setting 'pad_output == False'" )
+            pad_output = False
 
         # Placeholders For Vectorized Inputs/Outputs
         primary_input_array   = []
@@ -429,22 +433,17 @@ class StdDataLoader( DataLoader ):
         self.Print_Log( "StdDataLoader::Encode_Model_Instance() -             Tertiary Input : " + str( tertiary_input  ) )
         self.Print_Log( "StdDataLoader::Encode_Model_Instance() -             Outputs        : " + str( outputs         ) )
 
+        if outputs != "":
+            output_embeddings = self.Get_Model_Embeddings( embedding_type = "output" )
+
         for primary_input, secondary_input, tertiary_input, outputs in zip( primary_input_instances, secondary_input_instances, tertiary_input_instances, output_instances ):
             # Get Primary Input ID
             primary_input_id, secondary_input_id, tertiary_input_id = -1, -1, -1
 
-            # Only Reduce Model Outputs To Unique Output Tokens Seen Within The Model Data (For Closed Discovery)
-            #   Secondary Inputs Are Substituted With The Outputs For Closed Discovery
-            if model_type == "closed_discovery" and self.restrict_output:
-                primary_input_id   = self.Get_Token_ID( primary_input,   token_type = None )
-                secondary_input_id = self.Get_Token_ID( secondary_input, token_type = "secondary" )
-                tertiary_input_id  = self.Get_Token_ID( tertiary_input,  token_type = None )
-            # Either Use Unique Token List Among All Inputs/Outputs For Both Open And Closed Discovery
-            #   Or Use Unique Lists Per Input/Output For Open Discovery
-            else:
-                primary_input_id   = self.Get_Token_ID( primary_input,   token_type = None )
-                secondary_input_id = self.Get_Token_ID( secondary_input, token_type = None )
-                tertiary_input_id  = self.Get_Token_ID( tertiary_input,  token_type = None )
+            # Convert Inputs To Token IDs
+            primary_input_id   = self.Get_Token_ID( primary_input,   token_type = None )
+            secondary_input_id = self.Get_Token_ID( secondary_input, token_type = None )
+            tertiary_input_id  = self.Get_Token_ID( tertiary_input,  token_type = None )
 
             # Check(s)
             if primary_input   != "" and primary_input_id   == -1: self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Warning: Primary Input  : \"" + str( primary_input   ) + "\" Not In Token ID Dictionary" )
@@ -463,46 +462,49 @@ class StdDataLoader( DataLoader ):
             temp_tertiary_input_array  = []
             temp_output_array          = []
 
-            ##################
-            # Open Discovery #
-            ##################
-            if model_type == "open_discovery":
-                #####################
-                # Vectorize Outputs #
-                #####################
-                if outputs != "":
-                    # Split Output Tokens Into Multiple Output Instances
-                    output_instance_size = self.Get_Number_Of_Output_Elements() if self.restrict_output else self.Get_Number_Of_Unique_Features()
+            #####################
+            # Vectorize Outputs #
+            #####################
+            if outputs != "":
+                # Split Output Tokens Into Multiple Output Instances
+                output_instance_size = self.Get_Number_Of_Output_Elements() if self.restrict_output else self.Get_Number_Of_Unique_Features()
 
-                    if separate_outputs:
-                        for output in outputs.split():
-                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_output else self.Get_Token_ID( output )
+                if separate_outputs:
+                    for output in outputs.split():
+                        output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_output else self.Get_Token_ID( output )
 
-                            # Token ID Not Found In Token ID Dictionary
-                            if output_id == -1:
-                                self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
-                                return [], [], [], []
+                        # Token ID Not Found In Token ID Dictionary
+                        if output_id == -1:
+                            self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
+                            return [], [], [], []
 
-                            if pad_output:
-                                # One-Hot Encoding
-                                temp_array = np.zeros( ( output_instance_size, ), dtype = int )
-                                temp_array[output_id] = 1
-                                temp_output_array.append( temp_array )
-                            else:
-                                # Single Token ID Per Instance
-                                temp_output_array.append( [output_id] )
-
-                    # Contain All Outputs Into A Single Instance
-                    else:
                         if pad_output:
                             # One-Hot Encoding
                             temp_array = np.zeros( ( output_instance_size, ), dtype = int )
+                            temp_array[output_id] = 1
+                            temp_output_array.append( temp_array )
                         else:
-                            temp_array = []
+                            # Single Token ID Per Instance
+                            temp_output_array.append( [output_id] )
 
-                        for output in outputs.split():
-                            output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_output else self.Get_Token_ID( output )
+                # Contain All Outputs Into A Single Instance
+                else:
+                    if pad_output:
+                        # One-Hot Encoding
+                        temp_array = np.zeros( ( output_instance_size, ), dtype = int )
+                    else:
+                        temp_array = []
 
+                    for output in outputs.split():
+                        output_id = self.Get_Token_ID( output, token_type = "output" ) if self.restrict_output else self.Get_Token_ID( output )
+
+                        if self.output_is_embeddings:
+                            # Token ID Not Found In Token ID Dictionary
+                            if output_id == -1:
+                                continue
+
+                            temp_output_array.append( output_embeddings[output_id] )
+                        else:
                             # Token ID Not Found In Token ID Dictionary
                             if output_id == -1:
                                 self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
@@ -515,8 +517,15 @@ class StdDataLoader( DataLoader ):
                                 # Single Token ID Per Instance
                                 temp_array.append( output_id )
 
-                        temp_output_array.append( temp_array )
+                    if len( temp_array ) > 0: temp_output_array.append( temp_array )
 
+            # Check
+            if len( temp_output_array ) == 0:
+                self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: Length Of 'temp_output_array' == 0`" )
+                return [], [], [], []
+
+            # Vectorize Inputs
+            for _ in range( len( temp_output_array ) ):
                 ###########################
                 # Vectorize Primary Input #
                 ###########################
@@ -592,86 +601,6 @@ class StdDataLoader( DataLoader ):
                         else:
                             # Single Token ID Per Instance
                             temp_tertiary_input_array.append( [tertiary_input_id] )
-
-            ####################
-            # Closed Discovery #
-            ####################
-            else:
-                # Vectorize Inputs/Output For Closed Discovery
-                #    In Comparison To Open Discovery, The Following Code Swaps The Secondary Input Elements And Output Elements For Closed Discovery
-                primary_instance_size   = self.Get_Number_Of_Unique_Features()
-                secondary_instance_size = self.Get_Number_Of_Secondary_Elements() if self.restrict_output else self.Get_Number_Of_Unique_Features()
-                tertiary_instance_size  = self.Get_Number_Of_Unique_Features()
-                output_instance_size    = self.Get_Number_Of_Unique_Features()
-
-                if len( outputs.split() ) > 0:
-                    #############################
-                    # Vectorize Secondary Input #
-                    #############################
-                    for output in outputs.split():
-                        output_id = self.Get_Token_ID( output, None )
-
-                        # Token ID Not Found In Token ID Dictionary
-                        if output_id == -1:
-                            self.Print_Log( "StdDataLoader::Encode_Model_Instance() - Error: \"" + str( output ) + "\" Token Not In Token ID Dictionary" )
-                            return [], [], [], []
-
-                        if pad_inputs:
-                            # One-Hot Encoding
-                            temp_array = np.zeros( ( output_instance_size, ), dtype = int )
-                            temp_array[output_id] = 1
-                            temp_secondary_input_array.append( temp_array )
-                        else:
-                            # Single Token ID Per Instance
-                            temp_secondary_input_array.append( [output_id] )
-
-                    #######################################
-                    # Vectorize Primary Input And Outputs #
-                    #######################################
-                    # Create Matching Number Of Primary Inputs And Outputs
-                    for i in range( len( temp_secondary_input_array ) ):
-                        if pad_inputs:
-                            # One-Hot Encoding
-                            temp_array = np.zeros( ( primary_instance_size, ), dtype = int )
-                            temp_array[primary_input_id] = 1
-                            temp_primary_input_array.append( temp_array )
-                        else:
-                            # Single Token ID Per Instance
-                            temp_primary_input_array.append( [primary_input_id] )
-
-                        if pad_output:
-                            # One-Hot Encoding
-                            temp_array = np.zeros( ( secondary_instance_size, ), dtype = int )
-                            temp_array[secondary_input_id] = 1
-                            temp_output_array.append( temp_array )
-                        else:
-                            # Single Token ID Per Instance
-                            temp_output_array.append( [secondary_input_id] )
-
-                ####################################################
-                # Vectorize Primary, Secondary And Tertiary Inputs #
-                ####################################################
-                # If Outputs Is Empty, We're Just Vectorizing For Prediction
-                # We Just Need To Vectorize Primary, Secondary And Tertiary Inputs
-                else:
-                    # One-Hot Encodings
-                    if pad_inputs:
-                        temp_array = np.zeros( ( primary_instance_size, ), dtype = int )
-                        temp_array[primary_input_id] = 1
-                        temp_primary_input_array.append( temp_array )
-
-                        temp_array = np.zeros( ( output_instance_size, ), dtype = int )
-                        temp_array[secondary_input_id] = 1
-                        temp_secondary_input_array.append( temp_array )
-
-                        if tertiary_input_id != -1:
-                            temp_tertiary_input_array = np.zeros( ( tertiary_instance_size + 1, ), dtype = int )
-                            temp_tertiary_input_array[tertiary_input_id] = 1
-                    # Single Token ID Per Instance
-                    else:
-                        temp_primary_input_array.append( [primary_input_id] )
-                        temp_secondary_input_array.append( [secondary_input_id] )
-                        if tertiary_input_id != -1: temp_tertiary_input_array.append( [tertiary_input_id] )
 
             # Add Vectorized Instances To Instance Lists
             for instance in temp_primary_input_array:
@@ -1244,20 +1173,14 @@ class StdDataLoader( DataLoader ):
             self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Detected Embeddings Loaded / Setting 'pad_inputs = False'" )
             pad_inputs = False
 
-        separate_outputs = False
-
-        if model_type == "open_discovery" and use_csr_format and pad_output == False and separate_outputs == False:
-            self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Detected 'model_type == open_discovery', 'use_csr_format == True' and 'pad_outputs == False' / Setting 'separate_outputs = True'" )
-            separate_outputs = True
-
         self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Thread ID: " + str( thread_id ) + " - Vectorizing Data Using Settings" )
-        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Model Type        : " + str( model_type         ) )
-        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Use CSR Format    : " + str( use_csr_format     ) )
-        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Pad Inputs        : " + str( pad_inputs         ) )
-        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Pad Output        : " + str( pad_output         ) )
-        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Stack Inputs      : " + str( stack_inputs       ) )
-        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - String Delimiter  : " + str( str_delimiter      ) )
-        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Separate Outputs  : " + str( separate_outputs   ) )
+        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Use CSR Format    : " + str( use_csr_format            ) )
+        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Pad Inputs        : " + str( pad_inputs                ) )
+        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Pad Output        : " + str( pad_output                ) )
+        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Stack Inputs      : " + str( stack_inputs              ) )
+        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - String Delimiter  : " + str( str_delimiter             ) )
+        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Restrict Output   : " + str( self.restrict_output      ) )
+        self.Print_Log( "                                        - Thread ID: " + str( thread_id ) + " - Output Embeddings : " + str( self.output_is_embeddings ) )
 
         # Reduce Input/Output Space During Vectorization Of Data (Faster Data Vectorization)
         temp_pad_inputs = False if use_csr_format else pad_inputs
@@ -1281,11 +1204,12 @@ class StdDataLoader( DataLoader ):
             primary_input_data, secondary_input_data, tertiary_input_data, output_data = [], [], [], []
 
             if stack_inputs == False:
+                primary_inputs   = csr_matrix( primary_inputs   )
                 secondary_inputs = csr_matrix( secondary_inputs )
                 tertiary_inputs  = csr_matrix( tertiary_inputs  )
-                outputs          = csr_matrix( outputs          )
+                if not self.output_is_embeddings: outputs = csr_matrix( outputs )
 
-        # Data Format: CUI PREDICATE CUI CUI CUI ... CUI
+        # Data Format: Concept_A Concept_B Concept_C_1 ... Concept_C_N
         for line in data_list:
             self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Thread ID: " + str( thread_id ) + " -> Data Line: " + str( line.strip() ) )
 
@@ -1304,8 +1228,7 @@ class StdDataLoader( DataLoader ):
             output_array          = []
 
             primary_input_array, secondary_input_array, tertiary_input_array, output_array = self.Encode_Model_Instance( elements[0], elements[1], "", " ".join( elements[2:] ),
-                                                                                                                         model_type = model_type, pad_inputs = temp_pad_inputs,
-                                                                                                                         pad_output = temp_pad_output, separate_outputs = separate_outputs )
+                                                                                                                         pad_inputs = temp_pad_inputs, pad_output = temp_pad_output )
 
             # Check(s)
             if self.skip_out_of_vocabulary_words == False and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
@@ -1384,7 +1307,7 @@ class StdDataLoader( DataLoader ):
             ###########
             # Outputs #
             ###########
-            if use_csr_format:
+            if use_csr_format and not self.output_is_embeddings:
                 for temp_array in output_array:
                     if len( temp_array ) > 0:
                         for i, value in enumerate( temp_array ):
@@ -1403,31 +1326,20 @@ class StdDataLoader( DataLoader ):
                     outputs.append( np.asarray( output_array[i] ) )
 
         # Set Variable Lengths For Input/Output Data Matrices/Lists
-        # Assumes Inputs Are Embeddings Indices (Length = 1) And Output Is Binary Classification (Length = 1)
+        #   Assumes Inputs Are Embeddings Indices (Length = 1) And Output Is Binary Classification (Length = 1)
         number_of_primary_rows   = 1
         number_of_secondary_rows = 1
         number_of_tertiary_rows  = 1
         number_of_output_rows    = 1
 
-        if model_type == "open_discovery":
-            if pad_inputs:
-                number_of_primary_rows   = self.Get_Number_Of_Unique_Features()
-                number_of_secondary_rows = self.Get_Number_Of_Unique_Features()
-                number_of_tertiary_rows  = self.Get_Number_Of_Unique_Features()
+        if pad_inputs:
+            number_of_primary_rows   = self.Get_Number_Of_Unique_Features()
+            number_of_secondary_rows = self.Get_Number_Of_Unique_Features()
+            number_of_tertiary_rows  = self.Get_Number_Of_Unique_Features()
 
-            # Number Of Output Rows Are Not Dependent On Padding Inputs
-            if pad_output:
-                number_of_output_rows = self.Get_Number_Of_Output_Elements() if self.Get_Restrict_Output() else self.Get_Number_Of_Unique_Features()
-
-        elif model_type == "closed_discovery":
-            if pad_inputs:
-                number_of_primary_rows   = self.Get_Number_Of_Unique_Features()
-                number_of_secondary_rows = self.Get_Number_Of_Unique_Features()
-                number_of_tertiary_rows  = self.Get_Number_Of_Unique_Features()
-
-            # Number Of Output Rows Are Not Dependent On Padding Inputs
-            if pad_output:
-                number_of_output_rows = self.Get_Number_Of_Secondary_Elements() if self.Get_Restrict_Output() else self.Get_Number_Of_Unique_Features()
+        # Number Of Output Rows Are Not Dependent On Padding Inputs
+        if pad_output:
+            number_of_output_rows = self.Get_Number_Of_Output_Elements() if self.Get_Restrict_Output() else self.Get_Number_Of_Unique_Features()
 
         # Convert Inputs To CSR Matrix Format
         if use_csr_format and stack_inputs == False:
@@ -1514,7 +1426,7 @@ class StdDataLoader( DataLoader ):
                 return
 
         # Convert Outputs To CSR Matrix Format
-        if use_csr_format:
+        if use_csr_format and not self.output_is_embeddings:
             output_row  = np.asarray( output_row  )
             output_col  = np.asarray( output_col  )
             output_data = np.asarray( output_data )

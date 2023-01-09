@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/08/2020                                                                   #
-#    Revised: 06/03/2022                                                                   #
+#    Revised: 01/01/2022                                                                   #
 #                                                                                          #
 #    Base Data Loader Classs For The NNLBD Package.                                        #
 #                                                                                          #
@@ -36,8 +36,8 @@ from NNLBD.Misc import Utils
 
 class DataLoader( object ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False,
-                  debug_log_file_handle = None, restrict_output = True ):
-        self.version                      = 0.17
+                  debug_log_file_handle = None, restrict_output = True, output_is_embeddings = False ):
+        self.version                      = 0.18
         self.debug_log                    = print_debug_log                 # Options: True, False
         self.write_log                    = write_log_to_file               # Options: True, False
         self.debug_log_file_handle        = debug_log_file_handle           # Debug Log File Handle
@@ -50,6 +50,7 @@ class DataLoader( object ):
         self.output_id_dictionary         = {}
         self.skip_out_of_vocabulary_words = skip_out_of_vocabulary_words    # Options: True, False
         self.restrict_output              = restrict_output                 # Reduces Outputs To Unique Tokens Seen Within The Model Data
+        self.output_is_embeddings         = output_is_embeddings            # Used To Determine How To Encode Output (i.e Standard Encoding Or Embeddings)
         self.number_of_primary_tokens     = 0
         self.number_of_secondary_tokens   = 0
         self.number_of_tertiary_tokens    = 0
@@ -70,6 +71,7 @@ class DataLoader( object ):
         self.generated_embedding_ids      = False
         self.embedding_type_list          = ["primary", "secondary", "tertiary", "output"]
         self.padding_token                = "<*>padding<*>"
+        self.output_embeddings            = []
         self.utils                        = Utils()
 
         # Create Log File Handle
@@ -108,8 +110,8 @@ class DataLoader( object ):
             number_of_threads      : Number Of Threads To Deploy For Data Vectorization (Integer)
             str_delimiter          : String Delimiter - Used To Separate Elements Within An Instance (String)
     """
-    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, is_crichton_format = False, pad_inputs = True,
-                           pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+    def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, is_crichton_format = False, pad_inputs = True, pad_output = True,
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
         self.Print_Log( "DataLoader::Encode_Model_Data() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
@@ -208,7 +210,11 @@ class DataLoader( object ):
                 data_list = data_list[1:]
             elif data_list[0] == "a_concept\tb_concept\tc_concept\n":
                 self.Print_Log( "DataLoader::Read_Data() - Detected 'General' Data Format" )
-                self.file_data_header_type = "general_data"
+                self.file_data_header_type = "open_discovery"
+                data_list = data_list[1:]
+            elif data_list[0] == "a_concept\tc_concept\tb_concept\n":
+                self.Print_Log( "DataLoader::Read_Data() - Detected 'General' Data Format" )
+                self.file_data_header_type = "closded_discovery"
                 data_list = data_list[1:]
 
         # Read Data In Segments Of 'number_of_lines_to_read' Chunks
@@ -234,7 +240,10 @@ class DataLoader( object ):
                         self.file_data_header_type = "open_discovery"
                         continue
                     elif data_list[0] == "a_concept\tb_concept\tc_concept\n":
-                        self.file_data_header_type = "general_data"
+                        self.file_data_header_type = "open_discovery"
+                        continue
+                    elif data_list[0] == "a_concept\tc_concept\tb_concept\n":
+                        self.file_data_header_type = "closed_discovery"
                         continue
 
                     # Line Contains Data
@@ -532,15 +541,13 @@ class DataLoader( object ):
 
     """
         Inputs:
-            model_type     : Model Type (Open or Closed Discovery)
             embedding_type : Type Of Embeddings (Primary, Secondary, Tertiary or Output)
 
         Outputs:
             embeddings     : List/Matrix Of Embeddings
     """
-    def Get_Model_Embeddings( self, model_type = "open_discovery", embedding_type = "primary" ):
+    def Get_Model_Embeddings( self, embedding_type = "primary" ):
         self.Print_Log( "StdDataLoader::Get_Model_Embeddings() - Fetching Embeddings" )
-        self.Print_Log( "StdDataLoader::Get_Model_Embeddings() -     Model Type    : " + str( model_type ) )
         self.Print_Log( "StdDataLoader::Get_Model_Embeddings() -     Embedding Type: " + str( embedding_type ) )
 
         if embedding_type is not None and embedding_type not in self.embedding_type_list:
@@ -558,11 +565,12 @@ class DataLoader( object ):
         if embedding_type == "output":
             # Use Restricted Embeddings If Specified i.e. 'self.restrict_output == True'.
             #   Otherwise, Use Full Output For Embeddings.
-            #   (Closed Discovery Substitutes Secondary Embeddings For Output Embeddings As Model Input)
-            if model_type == "open_discovery" and self.Get_Restrict_Output():
-                embeddings = self.Get_Embeddings( embedding_type = "output" )
-            elif model_type == "closed_discovery" and self.Get_Restrict_Output():
-                embeddings = self.Get_Embeddings( embedding_type = "secondary" )
+            if self.Get_Restrict_Output():
+                if len ( self.output_embeddings ) > 0:
+                    embeddings = self.output_embeddings
+                else:
+                    embeddings = self.Get_Embeddings( embedding_type = embedding_type )
+                    self.output_embeddings = embeddings
             else:
                 embeddings = self.Get_Embeddings( embedding_type = None )
 
@@ -852,8 +860,9 @@ class DataLoader( object ):
             None
     """
     def Clear_Embedding_Data( self ):
-        self.embeddings              = []
-        self.embeddings_loaded       = False
+        self.embeddings        = []
+        self.output_embeddings = []
+        self.embeddings_loaded = False
 
     """
         Clears Data From Memory
@@ -873,6 +882,7 @@ class DataLoader( object ):
         self.secondary_inputs             = []
         self.outputs                      = []
         self.embeddings                   = []
+        self.output_embeddings            = []
         self.token_id_dictionary          = {}
         self.primary_id_dictionary        = {}
         self.secondary_id_dictionary      = {}
@@ -978,6 +988,8 @@ class DataLoader( object ):
 
     def Get_Restrict_Output( self ):                return self.restrict_output
 
+    def Get_Output_Is_Embeddings( self ):           return self.output_is_embeddings
+
     def Get_Data( self ):                           return self.data_list
 
     def Get_Primary_Inputs( self ):                 return self.primary_inputs
@@ -1014,9 +1026,11 @@ class DataLoader( object ):
     #                                                                                          #
     ############################################################################################
 
-    def Set_Token_ID_Dictionary( self, id_dictionary ):     self.token_id_dictionary   = id_dictionary
+    def Set_Token_ID_Dictionary( self, id_dictionary ):     self.token_id_dictionary = id_dictionary
 
     def Set_Restrict_Output( self, value ):                 self.restrict_output = value
+
+    def Set_Output_Is_Embeddings( self, value ):            self.output_is_embeddings = value
 
     def Set_Debug_Log_File_Handle( self, file_handle ):     self.debug_log_file_handle = file_handle
 

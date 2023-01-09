@@ -5,12 +5,67 @@ To reproduce this study, we use the [CD-2 Model](./../cd2_redup_model/README.md)
 
 **NOTE: This work reproduces the model for closed discovery only.**
 
+# Table Of Contents
+1. [Easy Method](#easy_method)
+2. [Manual Method](#manual_method)
+
+
+# Easy Method <a name="easy_method"></a>
+
+This method can be reduplicated using our pre-configured JSON configuration files, the included datasets and embeddings. Run one of the following commands below to reduplicate the model.
+
+## Feature Scaled
+
+| Dataset |                                     Command                                   |
+|:-------:|:-----------------------------------------------------------------------------:|
+|   HOC1  | `python LBDDriver ../json_files/HOC/cd2_experiments/feature_scaling/cs1.json` |
+|   HOC2  | `python LBDDriver ../json_files/HOC/cd2_experiments/feature_scaling/cs2.json` |
+|   HOC3  | `python LBDDriver ../json_files/HOC/cd2_experiments/feature_scaling/cs3.json` |
+|   HOC4  | `python LBDDriver ../json_files/HOC/cd2_experiments/feature_scaling/cs4.json` |
+|   HOC5  | `python LBDDriver ../json_files/HOC/cd2_experiments/feature_scaling/cs5.json` |
+
+## Non-Feature Scaled
+
+| Dataset |                                        Command                                   |
+|:-------:|:--------------------------------------------------------------------------------:|
+|   HOC1  | `python LBDDriver ../json_files/HOC/cd2_experiments/no_feature_scaling/cs1.json` |
+|   HOC2  | `python LBDDriver ../json_files/HOC/cd2_experiments/no_feature_scaling/cs2.json` |
+|   HOC3  | `python LBDDriver ../json_files/HOC/cd2_experiments/no_feature_scaling/cs3.json` |
+|   HOC4  | `python LBDDriver ../json_files/HOC/cd2_experiments/no_feature_scaling/cs4.json` |
+|   HOC5  | `python LBDDriver ../json_files/HOC/cd2_experiments/no_feature_scaling/cs5.json` |
+
+As the models finish training, they will produce their respective directories according to the `model_save_path` setting.
+
+```
+../saved_models/*
+```
+
+Each directory contains the following files:
+
+```
+evaluation_rank_vs_epoch.png         <- Plotted model reported metric graph
+evaluation_ties_vs_epoch.png         <- Plotted model reported metric graph
+model_config.json                    <- Saved model Keras configuration file
+model_metrics.txt                    <- TSV list of model reported evaluation metrics
+model_settings.cfg                   <- NNLBD model configuration file (Do Not Edit!)
+model_token_id_key_data              <- Input/Output Term Mappings
+model.h5                             <- The saved model
+<name_of_configuration_file>.json    <- Copy of your configuration file
+training_accuracy_vs_epoch.png       <- Plotted model reported metric graph
+training_f1_vs_epoch.png             <- Plotted model reported metric graph
+training_loss_vs_epoch.png           <- Plotted model reported metric graph
+training_precision_vs_epoch.png      <- Plotted model reported metric graph
+training_recall_vs_epoch.png         <- Plotted model reported metric graph
+```
+
+
+# Manual Method <a name="manual_method"></a>
 
 Requirements
 ============
  - [Python 2.7](python.org)
  - [Python 3.6.x to 3.10.x](python.org)
- - Tensorflow 1.15.2 to 2.9.0
+ - TensorFlow 1.15.2 to 2.9.0
  - NNLBD package
  - [Cancer landmark discovery datasets](https://lbd.lionproject.net/downloads)
  - [Neural networks for open and closed Literature-based Discovery](https://github.com/cambridgeltl/nn_for_LBD) (NN for LBD) Python 2.7 package
@@ -19,7 +74,7 @@ Requirements
 *A-priori* Pre-processing
 =========================
 
-*NOTE:* This step depends on the [NN for LBD package](https://github.com/cambridgeltl/nn_for_LBD). Download this package and setup a virtual environment according to their specifications. This package is used to perform the necessary *a-priori* data preprocessing setups to create our training datasets, evaluation datasets, and their accompanying word embeddings.
+*NOTE:* This step depends on the [NN for LBD package](https://github.com/cambridgeltl/nn_for_LBD). Download this package and unarchive it. We will refer to the extracted package's root directory as `nn_for_LBD`. Next, setup a virtual environment according to their instructions. This package is used to perform the necessary *a-priori* data preprocessing setups to create our training datasets, evaluation datasets, and their accompanying word embeddings.
 
 **Windows Users: Their package was exclusively developed for Linux operating systems. It can be run under windows using a Linux bash simulated environment. We recommend [git-for-windows](https://gitforwindows.org/) through CMD or using [CMDER](https://github.com/cmderdev/cmder). Setting up a Linux VM is recommended. We've tested their package using [Linux Mint](https://linuxmint.com/) without issue. However, after you've generated your datasets and embeddings, you can remove the VM and all requirements associated with their package.**
 
@@ -124,6 +179,8 @@ Word Embedding Files:
 ./test_modified_cs5.embeddings
 ```
 
+*NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. We're only interested in the `plain text` variants.*
+
 Now we are ready to begin LBD experimentation using the CD-2 model. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
 
 
@@ -170,10 +227,10 @@ An example of a complete JSON configuration file is shown below:
             "model_type": "closed_discovery",
             "activation_function": "softplus",
             "loss_function": "binary_crossentropy",
-            "embedding_path": "./vectors/test_modified_cs1.embeddings",
-            "train_data_path": "./data/train_cs1_closed_discovery_without_aggregators.tsv",
-            "eval_data_path": "./data/test_cs1_closed_discovery_without_aggregators.tsv",
-            "model_save_path": "./saved_models/cd2_cs1_model",
+            "embedding_path": "../vectors/HOC/test_modified_cs1.embeddings",
+            "train_data_path": "../data/HOC/train_cs1_closed_discovery_without_aggregators.tsv",
+            "eval_data_path": "../data/HOC/test_cs1_closed_discovery_without_aggregators.tsv",
+            "model_save_path": "../saved_models/cd2_cs1_model",
             "epochs": 300,
             "verbose": 2,
             "learning_rate": 0.001,
@@ -224,8 +281,8 @@ BaseModel::Initialize_GPU() - CUDA Supported / GPU Is Available
 BaseModel::Initialize_GPU() - GPU/CUDA Supported And Enabled
 Preparing Evaluation Data
 Beginning Model Data Preparation/Model Training
-LBD::Prepare_Model_Data() - Loading Embeddings: ../vectors/test_modified_cs1.embeddings
-LBD::Prepare_Model_Data() - Reading Training Data: ../data/train_cs1_closed_discovery_without_aggregators.tsv
+LBD::Prepare_Model_Data() - Loading Embeddings: ../vectors/HOC/test_modified_cs1.embeddings
+LBD::Prepare_Model_Data() - Reading Training Data: ../data/HOC/train_cs1_closed_discovery_without_aggregators.tsv
 LBD::Prepare_Model_Data() - Generating Token IDs From Training Data
 LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data
 CrichtonDataLoader::Worker_Thread_Function() - Warning: Vectorizing Input/Output Data - Element Does Not Exist
@@ -250,12 +307,14 @@ CD2Model::Fit() - Executing Model Training
 196/196 - 2s - loss: 0.2266 - accuracy: 0.9245 - Precision: 0.9554 - Recall: 0.8911 - F1_Score: 0.9214 - 2s/epoch - 9ms/step
 CD2Model::Fit() - Finished Model Training
 Epoch : 5 - Gold B: PR:000002307 - Rank: 60 Of 2294 Number Of B Terms - Score: 3.354067087173462 - Number Of Ties: 1
+...
 
 Epoch: 1 - Rank: 379 - Value: 2.1351935863494873 - Number Of Ties: 0
 Epoch: 2 - Rank: 221 - Value: 2.325946092605591 - Number Of Ties: 0
 Epoch: 3 - Rank: 219 - Value: 2.6589300632476807 - Number Of Ties: 0
 Epoch: 4 - Rank: 26 - Value: 3.2427830696105957 - Number Of Ties: 1
 Epoch: 5 - Rank: 60 - Value: 3.354067087173462 - Number Of Ties: 1
+...
 
 Generating Model Metric Charts
 
@@ -285,11 +344,11 @@ Model Evaluation
 After our model has finished training, it will produce the following directories:
 
 ```
-./saved_models/cd2_cs1_model_1
-./saved_models/cd2_cs1_model_2
-./saved_models/cd2_cs1_model_3
-./saved_models/cd2_cs1_model_4
-./saved_models/cd2_cs1_model_5
+../saved_models/cd2_cs1_model_1
+../saved_models/cd2_cs1_model_2
+../saved_models/cd2_cs1_model_3
+../saved_models/cd2_cs1_model_4
+../saved_models/cd2_cs1_model_5
 ```
 
 Each directory contains the following files:
@@ -324,7 +383,7 @@ These files include the saved model, configuration settings to load and re-use t
 Final Notes
 ===========
 
-Preliminary testing of this models shows it performs well on the HOC datasets. This model is redupilcated using Tensorflow/Keras and later versions of Python to compare its performance to future work. We recommend consulting the original authors manuscript [here](https://doi.org/10.1371/journal.pone.0232891) for a comprehensive evaluation of the model's performance.
+Preliminary testing of this models shows it performs well on the HOC datasets. This model is redupilcated using TensorFlow/Keras and later versions of Python to compare its performance to future work. We recommend consulting the original authors manuscript [here](https://doi.org/10.1371/journal.pone.0232891) for a comprehensive evaluation of the model's performance.
 
 
 True HOC Relationships

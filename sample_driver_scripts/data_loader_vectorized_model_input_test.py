@@ -35,11 +35,11 @@ from NNLBD.DataLoader import StdDataLoader, CrichtonDataLoader
 def Main():
     print( "~Begin" )
 
-    file_path      = "../data/cui_mini"
-    embedding_path = "../vectors/vectors_random_cui_mini"
+    file_path      = "../data/cui_mini_closed_discovery"
+    embedding_path = "../vectors/test/vectors_random_cui_mini"
 
     file_path_alt      = "../data/train_cs1_closed_discovery_without_aggregators_mod"
-    embedding_path_alt = "../vectors/test_modified_cs1.embeddings"
+    embedding_path_alt = "../vectors/HOC/test_modified_cs1.embeddings"
 
     data_loader = StdDataLoader( print_debug_log = False, skip_out_of_vocabulary_words = True )
     data_loader.Read_Data( file_path )

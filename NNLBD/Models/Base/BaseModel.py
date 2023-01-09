@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 09/21/2022                                                                   #
+#    Revised: 01/03/2022                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -30,8 +30,8 @@ warnings.filterwarnings( 'ignore' )
 import math, os, re, time
 import subprocess as sp
 
-# Suppress Tensorflow Warnings
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checking Error/Warning Messages
+# Suppress TensorFlow Warnings
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes TensorFlow GPU CUDA Checking Error/Warning Messages
 ''' TF_CPP_MIN_LOG_LEVEL
 0 = all messages are logged (default behavior)
 1 = INFO messages are not printed
@@ -40,20 +40,20 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes Tensorflow GPU CUDA Checki
 '''
 
 import tensorflow as tf
-#tf.logging.set_verbosity( tf.logging.ERROR )                       # Tensorflow v2.x
-tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # Tensorflow v1.x
+#tf.logging.set_verbosity( tf.logging.ERROR )                       # TensorFlow v2.x
+tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow v1.x
 
 import math as m
 import numpy as np
 from tensorflow import keras
 
-# Tensorflow v2.x Support
+# TensorFlow v2.x Support
 if re.search( r'2.\d+', tf.__version__ ):
     import tensorflow.keras.backend as K
     from tensorflow.keras import regularizers
     from tensorflow.keras.layers import Dense, Layer
     from tensorflow.keras.metrics import categorical_accuracy
-# Tensorflow v1.15.x Support
+# TensorFlow v1.15.x Support
 else:
     import keras.backend as K
     from keras import regularizers
@@ -119,7 +119,7 @@ class BaseModel( object ):
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss", early_stopping_persistence = 3,
                   use_batch_normalization = False, checkpoint_directory = "./ckpt_models", trainable_weights = False, embedding_path = "",
                   scale = 30.0, margin = 0.35, feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, use_cosine_annealing = False,
-                  cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4 ):
+                  cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, skip_gpu_init = False ):
         self.version                         = 0.19
         self.network_model                   = network_model
         self.model                           = None                            # Automatically Set After Calling 'Build_Model()' Function
@@ -213,7 +213,8 @@ class BaseModel( object ):
 
 
         # Checks To See If The User Wants To Utilize The GPU or CPU For Training/Inference.
-        if self.Initialize_GPU() == False:
+        if not skip_gpu_init and self.Initialize_GPU() == False:
+            self.Print_Log( "BaseModel::Init() - Error Initializing GPU / Exiting", force_print = True )
             exit()
 
         self.Print_Log( "BaseModel::Init() - Complete" )
@@ -258,7 +259,7 @@ class BaseModel( object ):
 
         # GPU/CUDA Checks
         self.Print_Log( "BaseModel::Initialize_GPU() - Checking For GPU/CUDA Compatibility" )
-        self.Print_Log( "BaseModel::Initialize_GPU() - Tensorflow Version: " + str( tf.__version__ ) )
+        self.Print_Log( "BaseModel::Initialize_GPU() - TensorFlow Version: " + str( tf.__version__ ) )
 
         if re.search( r'2.d+', tf.__version__ ):
             self.Print_Log( "BaseModel::Initialize_GPU() - CUDA Version: " + str( tf.sysconfig.get_build_info()["cuda_version"] ) )
@@ -270,7 +271,7 @@ class BaseModel( object ):
                 self.Print_Log( "BaseModel::Initialize_GPU() - Warning: 'use_gpu == True' and 'device_name = /cpu:xx' / Auto-Detecting Available GPU", force_print = True )
                 enable_gpu_polling = True
 
-            # Is Tensorflow Built With CUDA / CUDA Supported
+            # Is TensorFlow Built With CUDA / CUDA Supported
             if tf.test.is_built_with_cuda():
                 available_gpus     = []
                 desired_device_ids = []
@@ -279,9 +280,9 @@ class BaseModel( object ):
                 physical_gpus      = tf.config.experimental.list_physical_devices( device_type = "GPU" )
 
                 if len( physical_gpus ) == 0:
-                    self.Print_Log( "BaseModel::Initialize_GPU() - Error: No GPUs Detected By Tensorflow / Using CPU", force_print = True )
-                    self.Print_Log( "BaseModel::Initialize_GPU() -        Ensure Your Version Of Tensorflow Supports The Installed CUDA Version", force_print = True )
-                    self.Print_Log( "BaseModel::Initialize_GPU() -        Tensorflow Version: " + str( tf.__version__ ), force_print = True )
+                    self.Print_Log( "BaseModel::Initialize_GPU() - Error: No GPUs Detected By TensorFlow / Using CPU", force_print = True )
+                    self.Print_Log( "BaseModel::Initialize_GPU() -        Ensure Your Version Of TensorFlow Supports The Installed CUDA Version", force_print = True )
+                    self.Print_Log( "BaseModel::Initialize_GPU() -        TensorFlow Version: " + str( tf.__version__ ), force_print = True )
 
                     if re.search( r'2.d+', tf.__version__ ):
                         self.Print_Log( "BaseModel::Initialize_GPU() -        CUDA Version: " + str( tf.sysconfig.get_build_info()["cuda_version"] ), force_print = True )
@@ -371,7 +372,7 @@ class BaseModel( object ):
                     self.Print_Log( "BaseModel::Initialize_GPU() - Error: " + str( e ) )
                     return False
             else:
-                self.Print_Log( "BaseModel::Initialize_GPU() - Warning: Tensorflow Not Compiled With CUDA Support", force_print = True )
+                self.Print_Log( "BaseModel::Initialize_GPU() - Warning: TensorFlow Not Compiled With CUDA Support", force_print = True )
                 self.Print_Log( "                            - Using CPU", force_print = True )
                 self.device_name = "/cpu:0"
         else:
@@ -677,7 +678,7 @@ class BaseModel( object ):
         self.Print_Log( "BaseModel::~                 Version " + str( self.version ) + "\t\t\t\t\t\t\t~", force_print = True )
         self.Print_Log( "BaseModel::=========================================================\n"         , force_print = True )
 
-        self.Print_Log( "BaseModel::  Built with Tensorflow v1.14.0", force_print = True )
+        self.Print_Log( "BaseModel::  Built with TensorFlow v1.14.0", force_print = True )
         self.Print_Log( "BaseModel::  Built with Keras v2.3.1",       force_print = True )
         self.Print_Log( "BaseModel::  Installed TensorFlow v" + str( tf.__version__ ), force_print = True )
         self.Print_Log( "BaseModel::  Installed Keras v"      + str( keras.__version__ ) + "\n", force_print = True )

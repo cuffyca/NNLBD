@@ -32,7 +32,7 @@ from NNLBD import LBD
 
 def Main():
     print( "~Begin" )
-    file_path           = "../data/cui_mini"
+    file_path           = "../data/test/cui_mini"
     actual_epochs       = 10
     instances_per_batch = 2
 

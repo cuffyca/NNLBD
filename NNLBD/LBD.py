@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 09/21/2022                                                                   #
+#    Revised: 01/04/2022                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -49,7 +49,7 @@ class LBD:
                   trainable_weights = False, embedding_path = "", embedding_modification = "concatenate", final_layer_type = "dense",
                   feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, restrict_output = False,
                   use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4 ):
-        self.version                       = 0.21
+        self.version                       = 0.22
         self.model                         = None                            # Automatically Set After Calling 'LBD::Build_Model()' Function
         self.debug_log                     = print_debug_log                 # Options: True, False
         self.write_log                     = write_log_to_file               # Options: True, False
@@ -65,17 +65,22 @@ class LBD:
 
         # Create New DataLoader Instance With Options
         # Model Specific DataLoader Parameters/Settings
-        if network_model in [ "rumelhart", "hinton", "bilstm", "cnn", "mlp" ]:
-            self.data_loader = StdDataLoader( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
-                                              skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, restrict_output = restrict_output,
-                                              debug_log_file_handle = self.debug_log_file_handle )
+        if network_model in [ "rumelhart", "hinton", "bilstm", "cnn", "mlp", "mlp_similarity" ]:
+            self.data_loader = StdDataLoader()
         elif network_model in [ "cd2" ]:
-            self.data_loader = CrichtonDataLoader( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
-                                                   skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, restrict_output = restrict_output,
-                                                   debug_log_file_handle = self.debug_log_file_handle )
+            self.data_loader = CrichtonDataLoader()
         else:
             print( "LBD::Init() - Error Model \"" + str( network_model ) + "\"'s DataLoader Not Implemented" )
             raise NotImplementedError
+
+        # Set Encoding Output Encoding Type To 'Embeddings' (Only For Embedding Similarity Models)
+        output_is_embeddings = True if network_model == "mlp_similarity" else False
+
+        # Initialize DataLoader Parameters
+        if self.data_loader:
+            self.data_loader.__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file,
+                                       skip_out_of_vocabulary_words = skip_out_of_vocabulary_words, restrict_output = restrict_output,
+                                       debug_log_file_handle = self.debug_log_file_handle, output_is_embeddings = output_is_embeddings )
 
         # Create New Utils Instance
         self.utils = Utils()
@@ -83,7 +88,7 @@ class LBD:
         self.Print_Log( "LBD::Init() - Current Working Directory: \"" + str( self.utils.Get_Working_Directory() ) + "\"" )
 
         # Check(s)
-        if network_model not in ["rumelhart", "hinton", "bilstm", "cnn", "cd2", "mlp"]:
+        if network_model not in [ "rumelhart", "hinton", "bilstm", "cnn", "cd2", "mlp", "mlp_similarity" ]:
             self.Print_Log( "LBD::Init() - Warning: Network Model Type Is Not 'rumelhart', 'hinton', 'bilstm', 'cnn', 'cd2', 'mlp'", force_print = True )
             self.Print_Log( "            - Resetting Network Model Type To: 'rumelhart'", force_print = True )
             network_model  = "rumelhart"
@@ -106,67 +111,38 @@ class LBD:
         if per_epoch_saving:
             self.Create_Checkpoint_Directory()
 
-        # Create LBD Model Type
+        # Initialize LBD Model Architecture
         if network_model == "hinton" or network_model == "rumelhart":
-            self.model = RumelhartHintonModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model,
-                                               model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
-                                               learning_rate = learning_rate, epochs = epochs, momentum = momentum, dropout = dropout, batch_size = batch_size,
-                                               prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, use_gpu = use_gpu,
-                                               per_epoch_saving = per_epoch_saving, device_name = device_name, debug_log_file_handle = self.debug_log_file_handle,
-                                               enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, verbose = verbose,
-                                               early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
-                                               use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
-                                               final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
-                                               embedding_modification = embedding_modification, weight_decay = weight_decay, use_cosine_annealing = use_cosine_annealing,
-                                               cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
+            self.model = RumelhartHintonModel( skip_gpu_init = True )
         elif network_model == "bilstm":
-            self.model = BiLSTMModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, verbose = verbose,
-                                      model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
-                                      learning_rate = learning_rate, epochs = epochs, momentum = momentum, dropout = dropout, batch_size = batch_size,
-                                      prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, use_gpu = use_gpu,
-                                      per_epoch_saving = per_epoch_saving,  bilstm_merge_mode = bilstm_merge_mode, bilstm_dimension_size = bilstm_dimension_size,
-                                      device_name = device_name, debug_log_file_handle = self.debug_log_file_handle, enable_tensorboard_logs = enable_tensorboard_logs,
-                                      enable_early_stopping = enable_early_stopping, early_stopping_metric_monitor = early_stopping_metric_monitor,
-                                      early_stopping_persistence = early_stopping_persistence, use_batch_normalization = use_batch_normalization,
-                                      trainable_weights = trainable_weights, embedding_path = embedding_path, final_layer_type = final_layer_type,
-                                      feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay,
-                                      use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
+            self.model = BiLSTMModel( skip_gpu_init = True )
         elif network_model == "cnn":
-            self.model = CNNModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model,
-                                   model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
-                                   learning_rate = learning_rate, epochs = epochs, momentum = momentum, dropout = dropout, batch_size = batch_size,
-                                   prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, use_gpu = use_gpu,
-                                   per_epoch_saving = per_epoch_saving, device_name = device_name, debug_log_file_handle = self.debug_log_file_handle,
-                                   enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, verbose = verbose,
-                                   early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
-                                   use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
-                                   final_layer_type = final_layer_type, feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay,
-                                   weight_decay = weight_decay, use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min,
-                                   cosine_annealing_max = cosine_annealing_max )
+            self.model = CNNModel( skip_gpu_init = True )
         elif network_model == "cd2":
-            self.model = CD2Model( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model,
-                                   model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
-                                   learning_rate = learning_rate, epochs = epochs, momentum = momentum, dropout = dropout, batch_size = batch_size,
-                                   prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, use_gpu = use_gpu,
-                                   per_epoch_saving = per_epoch_saving, device_name = device_name, debug_log_file_handle = self.debug_log_file_handle,
-                                   enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, verbose = verbose,
-                                   early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
-                                   use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
-                                   embedding_modification = embedding_modification, final_layer_type = final_layer_type, feature_scale_value = feature_scale_value,
-                                   learning_rate_decay = learning_rate_decay, weight_decay = weight_decay, use_cosine_annealing = use_cosine_annealing,
-                                   cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
+            self.model = CD2Model( skip_gpu_init = True )
         elif network_model == "mlp":
-            self.model = MLPModel( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, margin = margin,
-                                   model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
-                                   learning_rate = learning_rate, epochs = epochs, momentum = momentum, dropout = dropout, batch_size = batch_size,
-                                   prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, use_gpu = use_gpu,
-                                   per_epoch_saving = per_epoch_saving, device_name = device_name, debug_log_file_handle = self.debug_log_file_handle,
-                                   enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, scale = scale,
-                                   early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
-                                   use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
-                                   embedding_modification = embedding_modification, verbose = verbose, final_layer_type = final_layer_type,
-                                   feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, weight_decay = weight_decay,
-                                   use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max )
+            self.model = MLPModel( skip_gpu_init = True )
+        elif network_model == "mlp_similarity":
+            self.model          = MLPModel( skip_gpu_init = True )
+            activation_function = "tanh"
+            loss_function       = "cosine_similarity"
+
+        # Initialize Model Parameters
+        if self.model:
+            self.model.__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, margin = margin,
+                                 model_type = model_type, optimizer = optimizer, activation_function = activation_function, loss_function = loss_function,
+                                 learning_rate = learning_rate, epochs = epochs, momentum = momentum, dropout = dropout, batch_size = batch_size,
+                                 prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format, use_gpu = use_gpu,
+                                 per_epoch_saving = per_epoch_saving, device_name = device_name, debug_log_file_handle = self.debug_log_file_handle,
+                                 enable_tensorboard_logs = enable_tensorboard_logs, enable_early_stopping = enable_early_stopping, scale = scale,
+                                 early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
+                                 use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
+                                 embedding_modification = embedding_modification, verbose = verbose, final_layer_type = final_layer_type, weight_decay = weight_decay,
+                                 feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, use_cosine_annealing = use_cosine_annealing,
+                                 cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max, bilstm_dimension_size = bilstm_dimension_size,
+                                 bilstm_merge_mode = bilstm_merge_mode )
+
+        self.Print_Log( "LBD::Init() - Complete" )
 
     """
        Remove Variables From Memory
@@ -190,7 +166,7 @@ class LBD:
                                  cosine_annealing_min = None, cosine_annealing_max = None ):
         if self.model is not None:
             if self.model.Is_Model_Loaded():
-                self.Print_Log( "Update_Model_Parameters() - Warning: Model Has Already Been Built / Unable To Update Some Model Parameters", force_print = True )
+                self.Print_Log( "LBD::Update_Model_Parameters() - Warning: Model Has Already Been Built / Unable To Update Some Model Parameters", force_print = True )
 
             if print_debug_log               is not None and self.model.Get_Debug_Log()                      != print_debug_log                 : self.model.Set_Debug_Log( print_debug_log )
             if optimizer                     is not None and self.model.Get_Optimizer()                      != optimizer                       : self.model.Set_Optimizer( optimizer )
@@ -294,10 +270,10 @@ class LBD:
         #    Representations, So We Just Set 'simulate_embeddings_loaded' Parameter To 'True' In The DataLoader Class To Avoid Generating Them Again.
         if data_loader.Is_Embeddings_Loaded() and data_loader.Simulate_Embeddings_Loaded_Mode() == False:
             # Use Full Embeddings For All Models As Input
-            primary_embeddings   = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "primary"   )
-            secondary_embeddings = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "secondary" )
-            tertiary_embeddings  = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "tertiary"  )
-            output_embeddings    = data_loader.Get_Model_Embeddings( model_type = self.Get_Model_Type(), embedding_type = "output"    )
+            primary_embeddings   = data_loader.Get_Model_Embeddings( embedding_type = "primary"   )
+            secondary_embeddings = data_loader.Get_Model_Embeddings( embedding_type = "secondary" )
+            tertiary_embeddings  = data_loader.Get_Model_Embeddings( embedding_type = "tertiary"  )
+            output_embeddings    = data_loader.Get_Model_Embeddings( embedding_type = "output"    )
 
             if len( primary_embeddings   ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Primary Embeddings Data Length == 0"   )
             if len( secondary_embeddings ) == 0: self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Secondary Embeddings Data Length == 0" )
@@ -322,9 +298,9 @@ class LBD:
         train_input_1, train_input_2, train_input_3, train_outputs = None, None, None, None
 
         # Model Specific DataLoader Parameters/Settings
-        pad_inputs         = False
-        pad_output         = True if self.model.Get_Network_Model() != "cd2"    else False
-        stack_inputs       = True if self.model.Get_Network_Model() == "bilstm" else False
+        pad_inputs   = False
+        pad_output   = True if self.model.Get_Network_Model() != "cd2"    else False
+        stack_inputs = True if self.model.Get_Network_Model() == "bilstm" else False
 
         if self.Is_Embeddings_Loaded():
             self.Print_Log( "LBD::Prepare_Model_Data() - Warning: 'pad_inputs == True' When Embeddings Have Been Loaded Into The DataLoader / Setting 'pad_inputs = False'" )
@@ -369,14 +345,16 @@ class LBD:
 
         # CSR Matrix Format
         if self.model.Get_Use_CSR_Format():
-            number_of_train_1_input_instances = train_input_1.shape[0]
-            number_of_train_2_input_instances = train_input_2.shape[0] if train_input_2 != None else -1
-            number_of_train_3_input_instances = train_input_3.shape[0] if train_input_3 != None else -1
-            number_of_train_output_instances  = train_outputs.shape[0] if train_outputs != None else -1
+            number_of_train_1_input_instances = train_input_1.shape[0] if train_input_1 is not None else -1
+            number_of_train_2_input_instances = train_input_2.shape[0] if train_input_2 is not None else -1
+            number_of_train_3_input_instances = train_input_3.shape[0] if train_input_3 is not None else -1
+            number_of_train_output_instances  = train_outputs.shape[0] if train_outputs is not None else -1
+
             if train_input_1 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Primary Input Shape  : " + str( train_input_1.shape ) )
             if train_input_2 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Secondary Input Shape: " + str( train_input_2.shape ) )
             if train_input_3 is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Tertiary Input Shape : " + str( train_input_3.shape ) )
             if train_outputs is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape         : " + str( train_outputs.shape ) )
+
         # List/Array Format
         else:
             number_of_train_1_input_instances = len( train_input_1 )
@@ -395,7 +373,7 @@ class LBD:
             if train_outputs is not None: self.Print_Log( "LBD::Prepare_Model_Data() - Output Shape            : (" + str( len( train_outputs ) ) + ", " + str( len( train_outputs[0] ) ) + ")" )
 
         # Check(s)
-        if self.model.Get_Network_Model() in ["rumelhart", "hinton", "mlp", "cnn"]:
+        if self.model.Get_Network_Model() in ["rumelhart", "hinton", "mlp", "cnn", "mlp_similarity"]:
             if number_of_train_1_input_instances == 0 or number_of_train_2_input_instances == 0 or \
                 number_of_train_output_instances == 0:
                 self.Print_Log( "LBD::Prepare_Model_Data() - Error Vectorizing Model Input/Output Data", force_print = True )
@@ -442,18 +420,17 @@ class LBD:
         number_of_train_2_inputs = data_loader.Get_Number_Of_Unique_Features()
         number_of_train_3_inputs = data_loader.Get_Number_Of_Unique_Features()
 
-        if self.model.Get_Model_Type() == "open_discovery" and data_loader.Get_Restrict_Output():
+        if data_loader.Get_Restrict_Output():
             number_of_outputs = data_loader.Get_Number_Of_Output_Elements()
-        elif self.model.Get_Model_Type() == "closed_discovery" and data_loader.Get_Restrict_Output():
-            number_of_outputs = data_loader.Get_Number_Of_Secondary_Elements()
         else:
             number_of_outputs = data_loader.Get_Number_Of_Unique_Features()
 
         if self.model.Get_Network_Model() == "bilstm":
-            number_of_outputs  = data_loader.Get_Number_Of_Output_Elements() if self.model.Get_Model_Type() == "open_discovery"   else data_loader.Get_Number_Of_Secondary_Elements()
+            number_of_outputs  = data_loader.Get_Number_Of_Output_Elements()
             number_of_features = data_loader.Get_Number_Of_Unique_Features()
 
         if self.model.Get_Network_Model() == "cd2": number_of_outputs = 1
+        if self.model.Get_Network_Model() == "mlp_similarity": number_of_outputs = data_loader.Get_Embedding_Dimension_Size()
 
         self.Print_Log( "                          - Number Of Features         : " + str( number_of_features          ) )
         self.Print_Log( "                          - Number Of Primary Inputs   : " + str( number_of_train_1_inputs    ) )
@@ -470,7 +447,7 @@ class LBD:
         if self.Is_Model_Loaded() == False:
             if self.model.Get_Network_Model() in ["bilstm", "cnn"]:
                 self.model.Build_Model( number_of_features, number_of_hidden_dimensions, number_of_outputs, embeddings = data_loader.Get_Embeddings() )
-            elif self.model.Get_Network_Model() in ["rumelhart", "hinton", "mlp"]:
+            elif self.model.Get_Network_Model() in ["rumelhart", "hinton", "mlp", "mlp_similarity"]:
                 self.model.Build_Model( number_of_train_1_inputs, number_of_train_2_inputs, number_of_hidden_dimensions,
                                         number_of_outputs, number_of_primary_embeddings = number_of_train_1_inputs,
                                         number_of_secondary_embeddings = number_of_train_2_inputs, primary_embeddings = primary_embeddings,
@@ -597,11 +574,11 @@ class LBD:
                  encoded_primary_input = None, encoded_secondary_input = None, encoded_tertiary_input = None, encoded_output = None,
                  return_vector = False, return_raw_values = False, instance_separator = '<:>' ):
         # Start Elapsed Time Timer
-        start_time          = time.time()
+        start_time        = time.time()
 
-        prediction          = []
-        prediction_tokens   = ""
-        vectorize_data      = True
+        prediction        = []
+        prediction_tokens = ""
+        vectorize_data    = True
 
         # Check For Vectorized Input Matrices Have Been Passed As Parameters
         if encoded_primary_input is not None or encoded_secondary_input is not None \
@@ -629,18 +606,9 @@ class LBD:
             return_vector = True
 
         # Check If We're Performing Closed Discovery. If So Swap Secondary Input To Output For Prediction.
-        if encoded_primary_input is None and encoded_secondary_input is None and self.Get_Network_Model() not in ["mlp", "cd2"] \
-           and self.Get_Model_Type() == "closed_discovery" and output == "":
-            self.Print_Log( "LBD::Predict() - Closed Discovery Prediction - Swapping Primary And Output Concepts" )
-            self.Print_Log( "               - Secondary Input: " + str( secondary_input ) )
-            self.Print_Log( "               - Output         : " + str( output          ) )
-
-            output          = secondary_input
-            secondary_input = "<*>padding<*>"
-
-            self.Print_Log( "LBD::Predict() - New Secondary input And Output Concepts" )
-            self.Print_Log( "               - Secondary Input: " + str( secondary_input ) )
-            self.Print_Log( "               - Output         : " + str( output          ) )
+        if encoded_primary_input is None and encoded_secondary_input is None and output == "":
+            self.Print_Log( "LBD::Predict() - Output == \"\" / Setting 'output = <*>padding<*>'" )
+            output = "<*>padding<*>"
 
         #######################################################################
         #                                                                     #
@@ -659,9 +627,8 @@ class LBD:
 
         if vectorize_data:
             encoded_primary_input, encoded_secondary_input, encoded_tertiary_input, encoded_output = self.Encode_Model_Instance( primary_input, secondary_input, tertiary_input, output,
-                                                                                                                                 model_type = self.Get_Model_Type(),
-                                                                                                                                 pad_inputs = pad_inputs, pad_output = pad_output,
-                                                                                                                                 instance_separator = instance_separator )
+                                                                                                                                 model_type = self.Get_Model_Type(), pad_inputs = pad_inputs,
+                                                                                                                                 pad_output = pad_output, instance_separator = instance_separator )
 
         # Check(s)
         if ( isinstance( encoded_primary_input, np.ndarray ) and len( encoded_primary_input ) == 0 ) or ( isinstance( encoded_primary_input, csr_matrix ) and encoded_primary_input.shape[0] == 0 ):
@@ -701,8 +668,8 @@ class LBD:
             if isinstance( encoded_secondary_input, csr_matrix ): encoded_secondary_input = encoded_secondary_input.todense()
             if isinstance( encoded_tertiary_input,  csr_matrix ): encoded_tertiary_input  = encoded_tertiary_input.todense()
             prediction = self.model.Predict( encoded_primary_input, encoded_secondary_input, encoded_tertiary_input )
-        elif self.model.Get_Network_Model() == "mlp":
-            prediction = self.model.Predict( encoded_primary_input, encoded_secondary_input, encoded_output )
+        elif self.model.Get_Network_Model() in ["mlp", "mlp_similarity"]:
+            prediction = self.model.Predict( encoded_primary_input, encoded_secondary_input )
         else:
             self.Print_Log( "LBD::Predict() - Error: Unknown Network Type / Functionality Not Implemented", force_print = True )
             return []
@@ -1307,12 +1274,13 @@ class LBD:
     """
         Vectorized/Binarized Model Data - Used For Training/Evaluation Data
     """
-    def Encode_Model_Data( self, data_list = [], model_type = None, use_csr_format = None, pad_inputs = True,
-                           pad_output = True, stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+    def Encode_Model_Data( self, data_list = [], model_type = None, use_csr_format = None, pad_inputs = True, pad_output = True,
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t'):
         if model_type     == None: model_type     = self.Get_Model_Type()
         if use_csr_format == None: use_csr_format = self.Get_Model().Get_Use_CSR_Format()
         return self.Get_Data_Loader().Encode_Model_Data( data_list, model_type = model_type, use_csr_format = use_csr_format, pad_inputs = pad_inputs,
-                                                         pad_output = pad_output, stack_inputs = stack_inputs, number_of_threads = number_of_threads, keep_in_memory = keep_in_memory, str_delimiter = str_delimiter )
+                                                         pad_output = pad_output, stack_inputs = stack_inputs, number_of_threads = number_of_threads,
+                                                         keep_in_memory = keep_in_memory, str_delimiter = str_delimiter )
 
     """
         Vectorized/Binarized Model Data - Single Input Instances And Output Instance
@@ -1366,15 +1334,23 @@ class LBD:
         if network_model != None:
             self.Print_Log( "LBD::Load_Model() - Creating Model Data Loader" )
 
+            # Set Output Encoding Type (Based On Model)
+            output_is_embeddings = True if network_model == "mlp_similarity" else False
+
             # Create New DataLoader Instance With Options
             # Model Specific DataLoader Parameters/Settings
-            if network_model in [ "rumelhart", "hinton", "bilstm", "cnn", "mlp" ]:
-                self.data_loader = StdDataLoader( print_debug_log = self.debug_log, write_log_to_file = self.write_log, debug_log_file_handle = self.debug_log_file_handle )
+            if network_model in [ "rumelhart", "hinton", "bilstm", "cnn", "mlp", "mlp_similarity" ]:
+                self.data_loader = StdDataLoader()
             elif network_model in [ "cd2" ]:
-                self.data_loader = CrichtonDataLoader( print_debug_log = self.debug_log, write_log_to_file = self.write_log, debug_log_file_handle = self.debug_log_file_handle )
+                self.data_loader = CrichtonDataLoader()
             else:
                 print( "LBD::Load_Model() - Error Model \"" + str( network_model ) + "\"'s DataLoader Not Implemented" )
                 raise NotImplementedError
+
+            # Initialize DataLoader Parameters
+            if self.data_loader:
+                self.data_loader.__init__( print_debug_log = self.debug_log, write_log_to_file = self.write_log,
+                                           debug_log_file_handle = self.debug_log_file_handle, output_is_embeddings = output_is_embeddings )
 
             # Check If Previous Model Utilized Embeddings To Train
             if self.Get_Setting_Value_From_Model_Settings( model_path + model_name + "_settings.cfg", "EmbeddingsLoaded" ) == "True":
@@ -1385,20 +1361,24 @@ class LBD:
             self.model.Set_Debug_Log_File_Handle( None )
 
             if network_model == "hinton" or network_model == "rumelhart":
-                self.model = RumelhartHintonModel( debug_log_file_handle = self.debug_log_file_handle,
-                                                   network_model = network_model, use_gpu = use_gpu, device_name = device_name )
+                self.model = RumelhartHintonModel( skip_gpu_init = True )
             elif network_model == "bilstm":
-                self.model = BiLSTMModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
+                self.model = BiLSTMModel( skip_gpu_init = True )
             elif network_model == "cd2":
-                self.model = CD2Model( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
+                self.model = CD2Model( skip_gpu_init = True )
             elif network_model == "mlp":
-                self.model = MLPModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
+                self.model = MLPModel( skip_gpu_init = True )
             elif network_model == "cnn":
-                self.model = CNNModel( debug_log_file_handle = self.debug_log_file_handle, use_gpu = use_gpu, device_name = device_name )
+                self.model = CNNModel( skip_gpu_init = True )
             else:
                 self.Print_Log( "LBD::Load_Model() - Error: Trying To Load Unsupported Model Architecture Or Type", force_print = True )
                 self.Print_Log( "LBD::Load_Model() -        Specified Model: " + str( network_model ), force_print = True )
                 return False
+
+            # Initialize Model Parameters
+            if self.model:
+                self.model.__init__( network_model = network_model, debug_log_file_handle = self.debug_log_file_handle,
+                                     use_gpu = use_gpu, device_name = device_name )
 
             # Load The Model From File & Model Settings To Model Object
             self.Print_Log( "LBD::Load_Model() - Loading Model", force_print = True )

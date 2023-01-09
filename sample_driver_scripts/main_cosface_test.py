@@ -37,7 +37,7 @@ def Main():
                  embedding_path = "../vectors/crichton_orig/test_modified_cs1.reduced_embeddings", device_name = "/gpu:0",
                  embedding_modification = "hadamard", optimizer = 'adam', use_csr_format = True, verbose = 2 )
 
-    # Train Model Over Data: "data/cui_mini"
+    # Train Model Over Data: "data/test/cui_mini"
     model.Fit( "../data/crichton_orig/train_cs1_closed_discovery_without_aggregators_mod_test", epochs = 750, verbose = 2,
                learning_rate = 0.005, dropout = 0, margin = 5, scale = 0.35, batch_size = 10,
                shuffle = True )
