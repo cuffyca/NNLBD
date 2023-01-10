@@ -570,19 +570,18 @@ if not dataloader.Save_Binary_Embeddings( embeddings = embeddings, save_file_pat
 
 # I see the global setting `enable_gpu_polling`. What does this do? <a name="what_is_gpu_polling"></a>
 
-When executing the system to run tasks, it will poll the desired GPU device to see how much memory is listed as available (or free). If the desired GPU does not have sufficient memory available, no task will be executed. The system will remain active and check every 10 seconds for 2 weeks until the GPU reports enough memory to start running tasks.
+When executing the system to run tasks, it will poll all detected GPU devices to see how much memory is listed as available (or free). The first GPU with more than the specified `acceptable_available_memory` will be selected for running experiments. If no GPU has the desired amount of memory available, no task will be executed. The system will remain active and check every 10 seconds for 2 weeks until a GPU reports enough memory to start running tasks.
 
-To use this function, include these three parameters within the `global settings` section of your configuration file:
+To use this function, include these two parameters within the `global settings` section of your configuration file:
 
 ```json
-"device_name": "/gpu:0",
 "enable_gpu_polling": "True",
 "acceptable_available_memory": 4096
 ```
 
 Also, tell the system how much `acceptable_available_memory` is desired to run your experiment.
 
-*NOTE: If you have exclusive access to you, then this function is not useful to you.*
+*NOTE: If you have exclusive GPU access available to you, then this function is not useful to you.*
 
 
 # Why did you reduplicate an existing model if the authors released their code? <a name="why_reduplicate_cd2"></a>
