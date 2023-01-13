@@ -6,22 +6,9 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 01/03/2022                                                                   #
+#    Revised: 01/13/2022                                                                   #
 #                                                                                          #
-#    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
-#                                                                                          #
-#    Expected Format:                                                                      #
-#         C001	TREATS	C002	C004	C009                                               #
-#         C001	ISA	    C003                                                               #
-#         C002	TREATS	C005	C006	C010                                               #
-#         ...                                                                              #
-#         C004	ISA	    C010                                                               #
-#         C005	TREATS	C003	C004	C006                                               #
-#         C005	AFFECTS	C001	C009	C010                                               #
-#                                                                                          #
-#    How To Run:                                                                           #
-#        See 'main.py' For Running Example. Execute Via:                                   #
-#                    "python main.py"                                                      #
+#    Generates A Neural Network Used For LBD.                                              #
 #                                                                                          #
 #    Authors:                                                                              #
 #    --------                                                                              #

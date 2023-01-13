@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/02/2020                                                                   #
-#    Revised: 01/03/2022                                                                   #
+#    Revised: 01/13/2022                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD, Trains Using Data In Format Below.           #
 #    Reduplicates Crichton, et al (2020) - CD-2 Model                                      #
@@ -19,10 +19,6 @@
 #         C004	ISA	    C010    0.2                                                        #
 #         C005	TREATS	C003	0.0                                                        #
 #         C005	AFFECTS	C001	0.8                                                        #
-#                                                                                          #
-#    How To Run:                                                                           #
-#        See 'main.py' For Running Example. Execute Via:                                   #
-#                    "python main.py"                                                      #
 #                                                                                          #
 #    Authors:                                                                              #
 #    --------                                                                              #
