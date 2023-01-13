@@ -6,27 +6,29 @@ We answer some frequently asked questions about running our system here. Hopeful
 
 ## Table of Contents
 1. [How can I test my NNLBD system environment?](#how_to_test_nnlbd_system)
-2. [How can I run your system on a GPU?](#how_to_run_on_gpu)
-3. [How do I run experiments using NNLBD?](#how_to_run_experiments)
-4. [How can I change the GPU the system uses to run experiments?](#how_to_change_desired_gpu)
-5. [How can I save a model?](#how_to_load_model)
-6. [How can I load a model?](#how_to_save_model)
-7. [How can I refine an existing model?](#how_to_refine_model)
-8. [What exactly does the model save?](#what_does_the_model_save)
-9. [What's the basic structure of a configuration file?](#configuration_file_structure)
-10. [Can you run multiple experiments in a single configuration file?](#multiple_experiment_configuration_file)
-11. [How can I reproduce your previous work?](#how_to_reproduce_previous_work)
-12. [What models are supported when using the 'closed_discovery_train_and_eval_x' or 'closed_discovery_refine_and_eval_x' tasks?](#supported_closed_discovery_train_refine_eval_tasks_models)
-13. [Why does the CD-2 model have it's own task specification?](#cd2_model_task_specification)
-14. [What's needed to generate the HOC datasets and embeddings with a Windows OS?](#a_priori_preprocessing_on_windows)
-15. [How can I run multiple iterations of the same experiment?](#how_to_run_multiple_experiment_iterations)
-16. [What embedding formats are supported?](#supported_embedding_formats)
-17. [Can I convert between Word2vec binary and plain text embeddings](#convert_between_w2v_binary_and_plain_text)
-18. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
-19. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
-20. [Do you plan to add more models to the system?](#add_more_models)
-21. [What models do you plan to add next?](#what_models_are_you_adding_next)
-22. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
+2. [How can I run your system only using the CPU?](#how_to_run_on_cpu)
+3. [How can I run your system on a GPU?](#how_to_run_on_gpu)
+4. [How do I run experiments using NNLBD?](#how_to_run_experiments)
+5. [How can I change the GPU the system uses to run experiments?](#how_to_change_desired_gpu)
+6. [How can I save a model?](#how_to_load_model)
+7. [How can I load a model?](#how_to_save_model)
+8. [How can I refine an existing model?](#how_to_refine_model)
+9. [What exactly does the model save?](#what_does_the_model_save)
+10. [What's the basic structure of a configuration file?](#configuration_file_structure)
+11. [Can you run multiple experiments in a single configuration file?](#multiple_experiment_configuration_file)
+12. [How can I reproduce your previous work?](#how_to_reproduce_previous_work)
+13. [What models are supported when using the 'closed_discovery_train_and_eval_x' or 'closed_discovery_refine_and_eval_x' tasks?](#supported_closed_discovery_train_refine_eval_tasks_models)
+14. [Why does the CD-2 model have it's own task specification?](#cd2_model_task_specification)
+15. [What's needed to generate the HOC datasets and embeddings with a Windows OS?](#a_priori_preprocessing_on_windows)
+16. [How can I run multiple iterations of the same experiment?](#how_to_run_multiple_experiment_iterations)
+17. [What embedding formats are supported?](#supported_embedding_formats)
+18. [Can I convert between Word2vec binary and plain text embeddings](#convert_between_w2v_binary_and_plain_text)
+19. [I see the global setting 'enable_gpu_polling'. What does this do?](#what_is_gpu_polling)
+20. [When loading a model trained on a different GPU, my model runs on CPU. How can I fix this?](#gpu_issue_with_loaded_models)
+21. [Why did you reduplicate an existing model if the authors released their code?](#why_reduplicate_cd2)
+22. [Do you plan to add more models to the system?](#add_more_models)
+23. [What models do you plan to add next?](#what_models_are_you_adding_next)
+24. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
 
 
 # How can I test my NNLBD system environment? <a name="how_to_test_nnlbd_system"></a>
@@ -44,6 +46,15 @@ This configuration file contains the following tasks:
 3. Train and evaluate a closed discovery `Hinton` model on the `cui_mini` dataset using `concatenated` input representations and `vectors_random_cui_mini` embeddings. This task will evaluate the `gold_b_instance = C001\tISA\tC002` after every training epoch. This task will also be saved to `../saved_models/cui_mini_hinton`.
 
     *NOTE: We provide a description of all saved files [here](#what_does_the_model_save).*
+
+
+# How can I run your system only using the CPU? <a name="how_to_run_on_cpu"></a>
+
+If your system does not have a CUDA-based GPU, or the appropriate CUDA version installed, it will use the CPU by default. Otherwise, if you explicitly wish to use the CPU you can do the following:
+
+Include the `global_setting` in your configuration file: `"device_name": "/cpu:x",` and change the `x` to your desired CPU ID value (i.e. integer value).
+
+Example: `"device_name": "/cpu:0",`
 
 # How can I run your system on a GPU? <a name="how_to_run_on_gpu"></a>
 
@@ -76,6 +87,8 @@ Just take note that specific versions of `Python` and `TensorFlow` pairs have sp
 - If you do not have CUDA installed, then you can choose the versions that are within our tested TensorFlow (1.15.x-2.9.0) and Python (3.6.x-3.10.2) requirements. CUDA installation instructions are provided [here for Linux](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html) and [here for Windows](https://docs.nvidia.com/cuda/cuda-installation-guide-microsoft-windows/)... Good luck.
 
 After the suffering has ended and CUDA is installed, verify it's installation using the `nvcc --version` command to double-check. Assuming you've received output similar to what we've shown above, you can now use our system with a GPU. Our system will scan for GPUs by default and select the first one if CUDA is available. No further configuration is necessary. However, if you wish to use a specific GPU, then include the `global_setting` in your configuration file: `"device_name": "/gpu:x",` and change the `x` to your desired GPU ID value (i.e. integer value).
+
+Example: `"device_name": "/gpu:0",`
 
 *NOTE: Alternative versions of Python and TensorFlow, other than what we've provided, may work with without issue. However, we make no guarantees as these remain untested.*
 
@@ -582,6 +595,17 @@ To use this function, include these two parameters within the `global settings` 
 Also, tell the system how much `acceptable_available_memory` is desired to run your experiment.
 
 *NOTE: If you have exclusive GPU access available to you, then this function is not useful to you.*
+
+
+# When loading a model trained on a different GPU, my model runs on CPU. How can I fix this? <a name="gpu_issue_with_loaded_models"></a>
+
+The system attempts to reduplicate the training environment of your model. This means it will attempt to use the same  GPU device you specified for model training. If you attempt to re-load the model on a different system from the training environment, you may encounter issues with the desired GPU device. e.g. If the environment the model has been trained with contained multiple GPUs and the new environment contains less GPUs.
+
+For example, if the system was trained using the seventh GPU (`/gpu:6`) in a multi-GPU server, but the new system only contains one GPU (`/gpu:0`). The system will attempt to load the model using the seventh GPU (`/gpu:6`) once again. This results in an error and it falls back to using the CPU (`/cpu:0`). To fix this, you will need to edit the model's saved configuration file.
+
+We provide an example of all model saved files [here](#what-exactly-does-the-model-save).
+
+Edit the setting `DeviceName<:>/desired_device:x` in the `model_settings.cfg` file, with your desired device. Your model should load on the GPU without issue.
 
 
 # Why did you reduplicate an existing model if the authors released their code? <a name="why_reduplicate_cd2"></a>
