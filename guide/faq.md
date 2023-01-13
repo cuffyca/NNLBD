@@ -599,11 +599,11 @@ Also, tell the system how much `acceptable_available_memory` is desired to run y
 
 # When loading a model trained on a different GPU, my model runs on CPU. How can I fix this? <a name="gpu_issue_with_loaded_models"></a>
 
-The system attempts to reduplicate the training environment of your model. This means it will attempt to use the same  GPU device you specified for model training. If you attempt to re-load the model on a different system from the training environment, you may encounter issues with the desired GPU device. e.g. If the environment the model has been trained with contained multiple GPUs and the new environment contains less GPUs.
+The system attempts to reduplicate the training environment of your model. This means it will attempt to use the same  GPU device you specified for model training. If you attempt to re-load the model on a different system from the training environment, you may encounter issues with the desired GPU device. e.g. If the environment the model was trained on contained multiple GPUs and the new environment contains less GPUs.
 
 For example, if the system was trained using the seventh GPU (`/gpu:6`) in a multi-GPU server, but the new system only contains one GPU (`/gpu:0`). The system will attempt to load the model using the seventh GPU (`/gpu:6`) once again. This results in an error and it falls back to using the CPU (`/cpu:0`). To fix this, you will need to edit the model's saved configuration file.
 
-We provide an example of all model saved files [here](#what-exactly-does-the-model-save).
+We provide an example of all model saved files [here](#what_does_the_model_save).
 
 Edit the setting `DeviceName<:>/desired_device:x` in the `model_settings.cfg` file, with your desired device. Your model should load on the GPU without issue.
 
