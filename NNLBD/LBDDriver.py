@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    02/14/2021                                                                   #
-#    Revised: 01/03/2022                                                                   #
+#    Revised: 01/13/2022                                                                   #
 #                                                                                          #
 #    Reads JSON experiment configuration data and runs LBD class using JSON data.          #
 #        Driver Script                                                                     #
@@ -500,6 +500,12 @@ class NNLBD_Driver:
                         if model_save_path != "": model.Save_Model( model_save_path )
                     else:
                         print( "Error: \"load_model_path\" Not Specified In Configuration File / Cannot Refine Model" )
+
+                # Task Does Not Defined
+                else:
+                    print( "Warning: Specified Task Not Defined" )
+                    print( "         Specified Task: " + str( run_id ) )
+                    continue
 
                 # Copy JSON File To Model Save Path
                 if model_save_path != "": Utils().Copy_File( self.json_file_path, model_save_path )

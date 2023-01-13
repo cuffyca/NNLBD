@@ -29,7 +29,7 @@ We answer some frequently asked questions about running our system here. Hopeful
 22. [Why did you code x-y-z like a-b-c and not use o-p-q instead?](#your_coding_sucks)
 
 
-# How can I test my NNLBD system environment? <a name="#how_to_test_nnlbd_system"></a>
+# How can I test my NNLBD system environment? <a name="how_to_test_nnlbd_system"></a>
 
 After performing the installation steps on the main page, you can test your environment by running the following command:
 
@@ -190,7 +190,7 @@ closed_discovery_refine_and_eval_x
 ```
 
 
-# What exactly does the model save? <a name="#what_does_the_model_save"></a>
+# What exactly does the model save? <a name="what_does_the_model_save"></a>
 
 When saving a model, the system saves a couple file at minimum. These are shown below. However, depending on the `Experimental Task` chosen, more files can be added to this including graph images of model training and evaluation performance, a TSV file containing evaluation metrics (for easier importing into a spreadsheet), and a copy of your configuration file.
 
