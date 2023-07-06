@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 01/01/2022                                                                   #
+#    Revised: 05/21/2023                                                                   #
 #                                                                                          #
 #    Standard Data Loader Classs For The NNLBD Package.                                    #
 #                                                                                          #
@@ -792,17 +792,14 @@ class StdDataLoader( DataLoader ):
         self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Parameter Settings:" )
         self.Print_Log( "StdDataLoader::Generate_Token_IDs()             Only Reduce Outputs : " + str( restrict_output ) )
 
-        # Insert Padding At First Index Of The Token ID Dictionaries
-        padding_token = self.Get_Padding_Token()
-
-        if padding_token not in self.token_id_dictionary    : self.token_id_dictionary[padding_token]     = 0
-        if padding_token not in self.primary_id_dictionary  : self.primary_id_dictionary[padding_token]   = 0
-        if padding_token not in self.secondary_id_dictionary: self.secondary_id_dictionary[padding_token] = 0
-        if padding_token not in self.tertiary_id_dictionary : self.tertiary_id_dictionary[padding_token]  = 0
-        if padding_token not in self.output_id_dictionary   : self.output_id_dictionary[padding_token]    = 0
+        # Build Unique Per Input/Output Token ID Dictionaries - Primary, Secondary & Output
+        super().Generate_Token_IDs( data_list )
 
         # Generate Embeddings Based On Embeddings (Assumes Word2vec Format)
         if len( self.embeddings ) > 0 and self.generated_embedding_ids == False:
+            self.token_id_dictionary = {}
+            self.token_id_dictionary[self.padding_token] = 0
+
             # Index 0 Of Embeddings Matrix Is Padding
             embeddings = np.zeros( ( len( self.embeddings ) + 1, len( self.embeddings[1].split() ) - 1 ) )
 
@@ -824,9 +821,6 @@ class StdDataLoader( DataLoader ):
             self.embeddings = np.asarray( embeddings ) * scale_embedding_weight_value if scale_embedding_weight_value != 1.0 else np.asarray( embeddings )
 
             self.generated_embedding_ids = True
-
-        # Build Unique Per Input/Output Token ID Dictionaries - Primary, Secondary & Output
-        super().Generate_Token_IDs( data_list )
 
         self.Print_Log( "StdDataLoader::Generate_Token_IDs() - Complete" )
 

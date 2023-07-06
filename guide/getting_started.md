@@ -6,7 +6,7 @@ NNLBD System Description
 2. [Getting Started](#getting_started)
 3. [Configuration File](#configuration_file)
 4. [Models](#models)
-    1. [Base Multi-Label Models](#base_ml_models)
+    1. [Base Multi-Label Model](#base_ml_model)
     2. [CD-2 Reduplication Model](#cd2_redup_model)
     <!--3. [TBD](#tbd_model)-->
 5. [Model Output](#model_output)
@@ -48,7 +48,7 @@ We provide details for our models included within the system. Each model section
     Miscellaneous Experimental Details
 
 
-## Base Multi-Label Models <a name="base_ml_models"></a>
+## Base Multi-Label Model <a name="base_ml_model"></a>
 
 The following figure shows the architecture of our base mulit-label deep learning multi-perceptron model. We train the model to identify implicit relations for closed discovery. Given explicit *A-B-C* relationship term triplets, we input *A* and *C* term embeddings into the model and train the model to predict all associated *B* terms.
 
@@ -83,6 +83,6 @@ In this section, we provide guide to reproduce our published works. We list each
 
 ## Exploring a Neural Network Architecture for Closed Literature-based Discovery <a name="exploring_ann_for_closed_lbd"></a>
 
-- This study focuses on deploying our [Base Multi-Label Models](./base_ml_model/README.md) to identify Hallmarks of Cancer over recent LBD discoveries as described [here](https://lbd.lionproject.net/downloads). Details to reduplicate our study can be found [here](./reduplicating_work/dla_for_closed_lbd.md). <!--A link to our manuscript is also located [here]().-->
+- This study focuses on deploying our [Base Multi-Label Model](./base_ml_model/README.md) to identify Hallmarks of Cancer over recent LBD discoveries as described [here](https://lbd.lionproject.net/downloads). Details to reduplicate our study can be found [here](./reduplicating_work/dla_for_closed_lbd.md). <!--A link to our manuscript is also located [here]().-->
 
 - **NOTE: This manuscript is currently under review.**

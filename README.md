@@ -76,7 +76,7 @@ To manually install the required packages, execute the following commands:
 
 - Python v3.10.2 and TensorFlow v2.9.0 - *(Recommended)*
     ```cmd
-    pip install -U h5py==3.7.0 Keras==2.9.0 matplotlib==3.5.2 numpy==1.22.4 scipy==1.9.0 sparse==0.13.0 tensorflow==2.9.0
+    pip install -U h5py==3.7.0 Keras==2.9.0 matplotlib==3.5.2 numpy==1.22.4 scipy==1.9.0 tensorflow==2.9.0
     ```
 
 - Python v3.6 and TensorFlow v2.4.0
@@ -100,19 +100,21 @@ To run one of our models, we provide details for getting started [here](./guide/
 We also provide an FAQ [here](./guide/faq.md).
 
 
-<!--
 Reference
 =========
 ```bibtex
-@ARTICLE {
-    author  = "Clint Cuffy and Bridget T. McInnes",
-    title   = "",
-    journal = "",
-    year    = "",
-    month   = ""
+@article{CUFFY2023104362,
+   title = {Exploring a deep learning neural architecture for closed Literature-based discovery},
+   journal = {Journal of Biomedical Informatics},
+   volume = {143},
+   pages = {104362},
+   year = {2023},
+   issn = {1532-0464},
+   doi = {https://doi.org/10.1016/j.jbi.2023.104362},
+   url = {https://www.sciencedirect.com/science/article/pii/S1532046423000837},
+   author = {Clint Cuffy and Bridget T. McInnes}
 }
 ```
--->
 
 
 License

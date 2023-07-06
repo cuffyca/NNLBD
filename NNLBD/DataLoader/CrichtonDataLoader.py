@@ -9,6 +9,7 @@
 #    Revised: 12/31/2022                                                                   #
 #                                                                                          #
 #    Crichton Data Loader Class For The NNLBD Package.                                     #
+#    Supported LBD Type(s): Closed Discovery                                               #
 #                                                                                          #
 #    Authors:                                                                              #
 #    --------                                                                              #

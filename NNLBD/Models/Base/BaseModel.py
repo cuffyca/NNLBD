@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 01/03/2022                                                                   #
+#    Revised: 02/12/2023                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -340,7 +340,7 @@ class BaseModel( object ):
                     available_gpus       = [physical_gpus[id] for id in available_device_ids]
 
                     # Get Numerical ID Value Of Desired GPU Device
-                    desired_device_ids.append( int( self.device_name.split( ":" )[-1] ) if re.search( r'/[Gg][Pp][Uu]:', self.device_name ) else int( self.device_name ) )
+                    desired_device_ids.append( int( self.device_name.split( ":" )[-1] ) if re.match( r'^/[Gg][Pp][Uu]:', self.device_name ) else int( self.device_name ) )
 
                 self.Print_Log( "BaseModel::Initialize_GPU() - GPU Device List: " + str( physical_gpus ) )
                 self.Print_Log( "BaseModel::Initialize_GPU() - Available GPU Device List: " + str( available_gpus ) )

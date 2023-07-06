@@ -1,4 +1,4 @@
-a_concept	b_concept	c_concept
+a_concept	b_concept	c_concepts
 C001	TREATS	C002	C004	C009
 C001	ISA	C003
 C001	AFFECTS	C003	C005

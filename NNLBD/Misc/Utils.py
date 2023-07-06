@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 12/23/2022                                                                   #
+#    Revised: 01/13/2022                                                                   #
 #                                                                                          #
 #    Utilities Class For The NNLBD Package.                                                #
 #                                                                                          #
@@ -137,11 +137,12 @@ class Utils:
         Inputs:
             file_path : File Path (String)
             lowercase : Lowercases All Text (Bool)
+            encoding  : Encoding Format (String)
 
         Outputs:
             data_list : File Data By Line As Each List Element (List)
     """
-    def Read_Data( self, file_path, lowercase = False ):
+    def Read_Data( self, file_path, lowercase = False, encoding = "utf-8" ):
         data_list = []
 
         # Load Training File
@@ -150,7 +151,7 @@ class Utils:
 
         # Read File Data
         try:
-            with open( file_path, "r" ) as in_file:
+            with open( file_path, "r", encoding = encoding ) as in_file:
                 data_list = in_file.readlines()
                 data_list = [ line.strip() for line in data_list ]                  # Removes Trailing Space Characters From CUI Data Strings
                 if lowercase: data_list = [ line.lower() for line in data_list ]    # Lowercase All Text

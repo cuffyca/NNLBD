@@ -324,12 +324,12 @@ We have only tested the `hinton` and `rumelhart` models. All other remain untest
 
 # Why does the CD-2 model have it's own task specification? <a name="cd2_model_task_specification"></a>
 
-This model's output differs from all others (i.e. it's output space is single-class classification vs our multi-label models). This requires a specific evaluation approach in comparison to our general approach. To separate these approaches, we created distinct tasks for the `CD-2` model.
+This model's output differs from all others (i.e. it's output space is single-class classification vs our multi-label model). This requires a specific evaluation approach in comparison to our general approach. To separate these approaches, we created distinct tasks for the `CD-2` model.
 
 
 # What's needed to generate the HOC datasets and embeddings with a Windows OS? <a name="a_priori_preprocessing_on_windows"></a>
 
-When reduplicating our previous works for our [Base Multi-Label Models](./base_ml_model/README.md) over the [Cancer landmark discovery datasets](https://lbd.lionproject.net/downloads), you will need to use the [NN for LBD](https://github.com/cambridgeltl/nn_for_LBD) system to generate the training datasets, evaluation datasets, and word embeddings. (See [here](./reduplicating_work/dla_for_closed_lbd.md) for further details). To get around using a Linux operating system to use the `NN for LBD` package, you will need to take a couple of extra steps.
+When reduplicating our previous works for our [Base Multi-Label Model](./base_ml_model/README.md) over the [Cancer landmark discovery datasets](https://lbd.lionproject.net/downloads), you will need to use the [NN for LBD](https://github.com/cambridgeltl/nn_for_LBD) system to generate the training datasets, evaluation datasets, and word embeddings. (See [here](./reduplicating_work/dla_for_closed_lbd.md) for further details). To get around using a Linux operating system to use the `NN for LBD` package, you will need to take a couple of extra steps.
 
 ## Requirements
 
@@ -471,7 +471,7 @@ When reduplicating our previous works for our [Base Multi-Label Models](./base_m
 
     *NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. You can use either variant. The system will automatically determine which has been selected and load them accordingly.*
 
-8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Models](./base_ml_model/README.md), we need to perform two more modifications on these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Models`. To remove these samples, along with other unnecessary information, we recommend using our [convert_hoc_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_hoc_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
+8. Now we can use the [CD-2 model](./cd2_redup_model/README.md). If you wish to use these datasets with our [Multi-Label Model](./base_ml_model/README.md), we need to perform two more modifications on these datasets. The training and testing files contain negative samples which are not utilized for the `Multi-Label Model`. To remove these samples, along with other unnecessary information, we recommend using our [convert_hoc_data_to_nnlbd_format_v2.py](/miscellaneous_scripts/convert_hoc_data_to_nnlbd_format_v2.py) script. Edit the variables `file_path` and `new_file_path` to make these changes. If you wish to perform this manually, omit the `label` column within each dataset and any instances with label `0.0` (e.g. these are negative sample instances). Also remove the header line (i.e. first line): '`node1 node2 node3 label`'.
 
 Lastly, these files are in `open discovery format` (i.e. `a_concept b_concept c_concept`) and must be converted to `closed discovery format` (i.e. `a_concept c_concept b_concepts`). To accomplish this, we provide our [convert_nnlbd_open_discovery_data_to_closed_discovery_format.py](/miscellaneous_scripts/convert_nnlbd_open_discovery_data_to_closed_discovery_format.py) script. Set the parameters `file_path` and `new_file_path` accordingly, and run the script to convert the data.
 
@@ -500,7 +500,7 @@ Lastly, these files are in `open discovery format` (i.e. `a_concept b_concept c_
     ./test_modified_cs5.embeddings.bin
     ```
 
-    Now we are ready to begin LBD experimentation using the Multi-Label Models. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
+    Now we are ready to begin LBD experimentation using the Multi-Label Model. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
 
 
 # How can I run multiple iterations of the same experiment? <a name="how_to_run_multiple_experiment_iterations"></a>
@@ -550,7 +550,11 @@ Each will contain their respective saved files.
 
 # What embedding formats are supported? <a name="supported_embedding_formats"></a>
 
-Our system supports Word2vec-style plain text and binary embeddings. The system will automatically determine which embeddings you've specified when loading your experiments.
+Our system supports Word2vec-style (W2V) plain text and binary embeddings. The system will automatically determine which embeddings you've specified when loading your experiments.
+
+We have preliminary W2V binary-formatted multi-word term support (i.e. multi-word terms separated by whitespace saved in W2V binary format). But we do not recommend using this for experiments. You should use plain text format for these embeddings instead. Our system handles this with no issues.
+
+If you wish to save multi-word term embeddings in W2V binary format, we recommending setting the `multi_word_mod = True` when calling the `DataLoader::Save_Binary_Embeddings()` function (This is enabled by default). When loading your embeddings, the system will automatically convert the multi-word terms to normal formatting. This options saves multi-word terms by replacing any whitespace separation characters with underscores. When loading, the system will detect this and replace them with the standard whitespace characters.
 
 # Can I convert between Word2vec binary and plain text embeddings? <a name="convert_between_w2v_binary_and_plain_text"></a>
 
@@ -560,12 +564,12 @@ Binary-to-Plain Text Embeddings
 ```python
 from NNLBD.DataLoader import DataLoader
 
-binary_embedding_path = "./word2vec_binary_embeddings.bin"
+binary_embedding_path = "./word2vec_binary_embeddings.bin"  # Existing File
+text_embedding_path   = "./word2vec_text_embeddings.bin"    # New Converted File
 dataloader            = DataLoader()
 plain_text_embeddings = dataloader.Load_Embeddings( file_path = binary_embedding_path )
-
-# Do With Them As You Wish
-...
+if not dataloader.Save_Text_Embeddings( embeddings = plain_text_embeddings, save_file_path = text_embedding_path ):
+    print( "Error Converting Embeddings To Plain Text Format" )
 ```
 
 Plain Text-to-Binary Embeddings

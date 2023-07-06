@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/08/2020                                                                   #
-#    Revised: 01/08/2022                                                                   #
+#    Revised: 05/21/2023                                                                   #
 #                                                                                          #
 #    Base Data Loader Classs For The NNLBD Package.                                        #
 #                                                                                          #
@@ -20,9 +20,9 @@
 
 
 # Standard Modules
-import itertools, re, scipy, threading, types
+import itertools, re, scipy, struct
 import numpy as np
-from scipy.sparse import csr_matrix, hstack, vstack
+from scipy.sparse import csr_matrix
 
 # Custom Modules
 from NNLBD.Misc import Utils
@@ -201,12 +201,12 @@ class DataLoader( object ):
 
             # Check For File Data Type Header
             if data_list[0] == "a_concept\tc_concept\tb_concepts\n":
-                self.Print_Log( "DataLoader::Read_Data() - Detected 'Open Discovery' Data Format" )
-                self.file_data_header_type = "closed_discovery"
+                self.Print_Log( "DataLoader::Read_Data() - Detected 'Open Discovery+' Data Format" )
+                self.file_data_header_type = "closed_discovery+"
                 data_list = data_list[1:]
             elif data_list[0] == "a_concept\tb_concept\tc_concepts\n":
-                self.Print_Log( "DataLoader::Read_Data() - Detected 'Closed Discovery' Data Format" )
-                self.file_data_header_type = "open_discovery"
+                self.Print_Log( "DataLoader::Read_Data() - Detected 'Closed Discovery+' Data Format" )
+                self.file_data_header_type = "open_discovery+"
                 data_list = data_list[1:]
             elif data_list[0] == "a_concept\tb_concept\tc_concept\n":
                 self.Print_Log( "DataLoader::Read_Data() - Detected 'General' Data Format" )
@@ -214,7 +214,7 @@ class DataLoader( object ):
                 data_list = data_list[1:]
             elif data_list[0] == "a_concept\tc_concept\tb_concept\n":
                 self.Print_Log( "DataLoader::Read_Data() - Detected 'General' Data Format" )
-                self.file_data_header_type = "closded_discovery"
+                self.file_data_header_type = "closed_discovery"
                 data_list = data_list[1:]
 
         # Read Data In Segments Of 'number_of_lines_to_read' Chunks
@@ -234,10 +234,10 @@ class DataLoader( object ):
 
                     # Check For File Data Type Header
                     if data_list[0] == "a_concept\tc_concept\tb_concepts\n":
-                        self.file_data_header_type = "closed_discovery"
+                        self.file_data_header_type = "closed_discovery+"
                         continue
                     elif data_list[0] == "a_concept\tb_concept\tc_concepts\n":
-                        self.file_data_header_type = "open_discovery"
+                        self.file_data_header_type = "open_discovery+"
                         continue
                     elif data_list[0] == "a_concept\tb_concept\tc_concept\n":
                         self.file_data_header_type = "open_discovery"
@@ -272,8 +272,17 @@ class DataLoader( object ):
 
     """
         Checks Embedding File Format And Decides Which Embedding Load Function To Call: Text Or Binary Embedding Loader
+
+        Inputs:
+            file_path        : file path (String)
+            lowercase        : Lowercases All Read Text (Bool)
+            encoding_format  : Encoding Format Of Embeddings (Words). Used In Load_Binary_Embeddings() (String)
+            store_embeddings : True = Keep In Memory, False = Return To User Without Storing In Memory (Boolean)
+
+        Outputs:
+            embedding_data   : List Static Embeddings
     """
-    def Load_Embeddings( self, file_path, encoding_format = "utf-8", store_embeddings = True ):
+    def Load_Embeddings( self, file_path, lowercase = False, encoding_format = "utf-8", store_embeddings = True ):
         # Check(s)
         if file_path == "":
             self.Print_Log( "DataLoader::Load_Embeddings() - Warning: No File Path Specified", force_print = True )
@@ -286,7 +295,7 @@ class DataLoader( object ):
 
             # Check If File Is Binary-Formatted (Assume Not Until Proven Otherwise)
             is_binary_format, read_chunk_size = False, 512
-            number_of_chunks_to_read          = 5
+            number_of_chunks_to_read          = 10
 
             with open( file_path, 'rb' ) as read_file_handle:
 
@@ -304,20 +313,32 @@ class DataLoader( object ):
 
             # Determined File Is Binary-Encoded Embeddings
             if is_binary_format:
-                return self.Load_Binary_Embeddings( file_path = file_path, store_embeddings = store_embeddings, encoding_format = encoding_format )
+                return self.Load_Binary_Embeddings( file_path = file_path, lowercase = lowercase,
+                                                    store_embeddings = store_embeddings, encoding_format = encoding_format )
 
             # Determine File Is Plain Text Embeddings
-            return self.Load_Text_Embeddings( file_path = file_path, store_embeddings = store_embeddings )
+            return self.Load_Text_Embeddings( file_path = file_path, lowercase = lowercase,
+                                              store_embeddings = store_embeddings )
 
         self.Print_Log( "DataLoader::Load_Embeddings() - Error: Embedding File Not Found In Path \"" + str( file_path ) + "\"", force_print = True )
         return []
 
     """
         Reads Word2vec Formatted Binary Formatted Embeddings
+
+        Inputs:
+            file_path                   : file path (String)
+            lowercase                   : Lowercases All Read Text (Bool)
+            encoding_format             : Encoding Format Of Embeddings (Words). Used In Load_Binary_Embeddings() (String)
+            store_embeddings            : True = Keep In Memory, False = Return To User Without Storing In Memory (Boolean)
+            try_to_load_multi_word_terms: Attempts To Load Multi-Word Term Vectors (i.e. Words Separated By Whitespace) (Boolean) - Waning: Not Finished
+
+        Outputs:
+            embedding_data              : List Plain Text Embeddings
     """
-    def Load_Binary_Embeddings( self, file_path, encoding_format = "utf-8", store_embeddings = True ):
+    def Load_Binary_Embeddings( self, file_path, lowercase = False, encoding_format = "utf-8", store_embeddings = True, try_to_load_multi_word_terms = False ):
         if not file_path or file_path == "":
-            self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( file_path ) )
+            self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( file_path ), force_print = True )
             return []
 
         self.Print_Log( "DataLoader::Load_Binary_Embeddings() - File: " + str( file_path ) )
@@ -328,33 +349,112 @@ class DataLoader( object ):
 
             with open( file_path, 'rb' ) as read_file_handle:
                 # Read Heading Information: Number Of Vectors and Vector Length
-                number_of_embeddings, embedding_length = map( int, read_file_handle.readline().split() )
+                header_elements = read_file_handle.readline().split()
+
+                # Check For Multi-Word Term Flag
+                multi_word_term_flag = True if len( header_elements ) == 3 else False
+
+                number_of_embeddings, embedding_length = map( int, header_elements[0:2] )
+                unpacked_embedding_size                = np.float32().itemsize * embedding_length
 
                 # Store Header Information
                 # text_word_embeddings.append( str( number_of_embeddings ) + " " + str( embedding_length ) )
 
+                word_bytes, word_embedding_bytes = [], []
+
                 for _ in range( int( number_of_embeddings ) ):
                     # Read Word
-                    word = ""
+                    word, temp_word      = b'', b''
+                    word_found, read_cnt = 0, False
 
                     while True:
-                        character = read_file_handle.read( 1 ).decode( encoding_format )
-                        word += character
-                        if character == ' ': break
+                        character  = read_file_handle.read( 1 )
+                        temp_word += character
+                        read_cnt  += 1
 
-                    # Remove Newline From Beginning of Word
-                    word = word.lstrip()
+                        if character == b' ':
+                            # Account For Trailing Whitespace ' ' Before Line Ending
+                            if word == b'' and temp_word == b' ': continue
 
-                    # Read Word Embedding
-                    word_embedding = str( np.fromfile( read_file_handle, np.float32, embedding_length ) )
+                            if try_to_load_multi_word_terms:
+                                # Check If 'temp_word' Is Able To Be Unpacked
+                                #   i.e. 'temp_word' Is 4 Bytes And Unpackable To Floatf
+                                #   If It Is, Don't Add To Word, It's Actually Part Of The Word Embedding
+                                try:
+                                    if word_found:
+                                        num_within_range, num_of_loops = 0, round( len( temp_word ) / 4 )
 
-                    # Clean Word Embedding
-                    word_embedding = re.sub( "\[|\]|\n",  "", word_embedding )
-                    word_embedding = re.sub( "\s+",      " ", word_embedding )
-                    word_embedding = re.sub( "^\s+|\s+$", "", word_embedding )
+                                        # Skip 'temp_word's Which Contain Four (Or More) Alpha Or Numeric Characters
+                                        #    i.e. More Than Likely They're Part Of Multi-Word Terms
+                                        if re.match( r'^\w{4,}|^\d{4,}', temp_word.decode( encoding_format ) ):
+                                            pass
+                                        else:
+                                            for l_idx in range( num_of_loops ):
+                                                # Ignore String Byte Of All Integers
+                                                temp_word_byte = temp_word[l_idx*4:(l_idx*4)+4]
 
-                    # Store Word And Word Embedding
-                    text_word_embeddings.append( word + word_embedding )
+                                                # Try To Unpack The Byte Array, If It Succeeds Go To The Next Step
+                                                #   If It Fails, Then It's Probably Part Of A Multi-Word Term... Add It To The Current Term
+                                                temp_float = struct.unpack( "f", temp_word_byte )
+
+                                                # Check If Value Is Within Normal Word Embedding Boundaries
+                                                #   If Not, Let It Slide... It's Probably A Word Within A Multi-Word Term
+                                                #   (Yes, There Will Be Cases In Which A Sub-Word Converts To A Float)
+                                                #   e.g. 'chlo' in 'chloride'
+                                                if -1.0 <= temp_float[0] <= 1.0: num_within_range += 1
+
+                                            # If All Byte Arrays Of 4 Elements Check Out, Then It's More Than Likely Part Of The Word Embedding
+                                            #   Go Back To Before We Extracted 'temp_word'
+                                            if num_of_loops > 0 and num_within_range == num_of_loops:
+                                                read_file_handle.seek( curr_word_pos, 0 )
+                                                break
+
+                                # Unpacking 'temp_word' Failed. Add 'temp_word' To 'word' And Continue
+                                except Exception:
+                                    pass
+
+                            word          += temp_word
+                            curr_word_pos  = read_file_handle.tell()
+                            temp_word      = b''
+                            word_found     = True
+                            if not try_to_load_multi_word_terms: break
+                        # Non-Text Characters Were Extracted From The File (i.e. Embedding Float Elements)
+                        elif word_found and r'\x' in str( temp_word ):
+                            read_file_handle.seek( curr_word_pos, 0 )
+                            break
+                        # We've Called 'read_file_handle.read( 1 )' 500 Or More Times And Read Nothing
+                        #   Report Warning: The Number Of Embeddings != The Number Of Extracted Embeddings
+                        elif read_cnt >= 500 and word == b'' and temp_word == b'':
+                            self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Error: Number Of Embeddings != Number Of Extracted Embeddings", force_print = True )
+                            self.Print_Log( "DataLoader::Load_Binary_Embeddings() -        Number Of Embeddings: " + str( number_of_embeddings ),   force_print = True )
+                            self.Print_Log( "DataLoader::Load_Binary_Embeddings() -        Number Of Extractede Embeddings: " + str( _ ),           force_print = True )
+                            break
+
+                    # Try Decoding The Extracted Word Embedding String (Used For Debugging)
+                    try:
+                        t_word = word.decode( encoding_format )
+                    except Exception:
+                        self.Print_Log( "DataLoader::Load_Binary_Embeddings() - Error Reading Binary Embeddings", force_print = True )
+                        self.Print_Log( "DataLoader::Load_Binary_Embeddings() -     Last Word: " + str( word_bytes[-1].decode( encoding_format ) ), force_print = True )
+                        self.Print_Log( "DataLoader::Load_Binary_Embeddings() -     Curr Word: " + str( word ), force_print = True )
+                        return []
+
+                    # Store Word And Read Word Embedding
+                    word_bytes.append( word )
+                    word_embedding_bytes.append( np.fromfile( read_file_handle, np.float32, embedding_length ) )
+
+                    # Determine Current File Position After Numpy Read
+                    curr_word_pos += unpacked_embedding_size
+
+                # Decode Bytes To Strings And Remove Newline From Beginning of Word
+                words = [ bytes.decode( encoding = encoding_format ).lstrip() for bytes in word_bytes ]
+                if lowercase: words = [ word.lower() for word in words ]
+
+                # If Multi-Word Term Flag, Substitute Underscore In Multi-Word Term With Whitespace
+                if multi_word_term_flag: words = [ re.sub( r'\_', " ", word ) for word in words ]
+
+                # Store Word And Word Embedding
+                text_word_embeddings = [ word + " ".join( map( str, word_embedding ) ) for word, word_embedding in zip( words, word_embedding_bytes ) ]
 
             # Store Embeddings
             if store_embeddings:
@@ -369,38 +469,89 @@ class DataLoader( object ):
 
     """
         Saves Word2vec Formatted Embeddings In W2V Binary Format
+
+        Inputs:
+            embeddings      : List Of Embeddings - Standard W2V Format (List)
+            save_file_path  : Binary Embedding Save File Path (String)
+            encoding_format : Encoding Format Of Embeddings (String)
+            multi_word_mod  : Save Using Multi-Word Term Modificiation (Boolean)
+
+        Outputs:
+            Boolean
     """
-    def Save_Binary_Embeddings( self, embeddings = [], save_file_path = "", encoding_format = "utf-8" ):
+    def Save_Binary_Embeddings( self, embeddings = [], save_file_path = "", encoding_format = "utf-8", multi_word_mod = True ):
         if len( embeddings ) == 0:
-            self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ) )
+            self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ), force_print = True )
             return False
         if not save_file_path or save_file_path == "":
-            self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ) )
+            self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ), force_print = True )
             return False
 
         self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Saving Binary Embeddings To File: " + str( save_file_path ) )
 
         with open( save_file_path, 'wb' ) as write_file_handle:
-            # Determine Header Information
+            # Determine Header Information: Number Of Embeddings And Vector Length
             number_of_embeddings = len( embeddings )
-            vector_length        = len( embeddings[1].split() ) - 1     # Assumes Second Word Is Not Multi-Word Term With Whitespaces
 
-            header_info = bytes( str( number_of_embeddings ) + " " + str( vector_length ) + "\n", encoding = encoding_format )
+            # Determine Vector Length: Determine Where Word Embedding Ends (Accounts For Multi-Word Term Embeddings)
+            idx_to_check, temp_vector_length =  [1, -1], []
+
+            for idx in idx_to_check:
+                split_idx = 0
+
+                for element in embeddings[idx].split():
+                    if re.match( r'^-*\d+\.\d+|^-*\d+[Ee][-+]*\d+', element ): break
+                    split_idx += 1
+
+                # Check: There Must Be At Least One Word Within The Word Embedding
+                if split_idx == 0: split_idx = 1
+
+                temp_vector_length.append( len( embeddings[idx].split()[split_idx:] ) )
+
+            vector_length = min( temp_vector_length )
+
+            # Determine If Multi-Word Mod Is Necessary / Turn Off If Not Needed
+            if multi_word_mod:
+                contains_multi_word_terms = False
+
+                for i in range( number_of_embeddings ):
+                    embedding_elements   = embeddings[i].split()
+                    word, word_embedding = embedding_elements[0:-vector_length], embedding_elements[-vector_length:]
+                    if len( word ) > 1: contains_multi_word_terms = True
+
+                multi_word_mod = contains_multi_word_terms
+
+            if multi_word_mod:
+                header_info = bytes( str( number_of_embeddings ) + " " + str( vector_length ) + " " + str( "<1>" ) + "\n", encoding = encoding_format )
+            else:
+                header_info = bytes( str( number_of_embeddings ) + " " + str( vector_length ) + "\n", encoding = encoding_format )
 
             # Write Header Information
             write_file_handle.write( header_info )
 
             for i in range( number_of_embeddings ):
-                word, word_embedding = embeddings[i].split( " ", maxsplit = 1 )
-                word                 = bytes( str( word ) + " ", encoding = encoding_format )
+                embedding_elements   = embeddings[i].split()
+                word, word_embedding = embedding_elements[0:-vector_length], embedding_elements[-vector_length:]
+
+                if len( word_embedding ) < vector_length:
+                    self.Print_Log( "DataLoader::Save_Binary_Embeddings() - Error: Embedding Length Less Than Expected Length", force_print = True )
+                    self.Print_Log( "DataLoader::Save_Binary_Embeddings() -        Word    : " + str( word ),                   force_print = True )
+                    self.Print_Log( "DataLoader::Save_Binary_Embeddings() -        Expected: " + str( vector_length ),          force_print = True )
+                    self.Print_Log( "DataLoader::Save_Binary_Embeddings() -        Obtained: " + str( len( word_embedding ) ),  force_print = True )
+                    return False
+
+                # If Multi-Word Mod Flag, Substitute Whitespace Between Word Of Multi-Word Term With Underscore
+                if multi_word_mod:
+                    word = bytes( str( "_".join( word ) ) + " ", encoding = encoding_format )
+                else:
+                    word = bytes( str( " ".join( word ) ) + " ", encoding = encoding_format )
 
                 # Write Word In Binary Format
                 write_file_handle.write( word )
 
                 # Pack Embedding
-                word_embedding = np.asarray( word_embedding.split(), dtype = np.float32 )
-                word_embedding = word_embedding.tobytes()
-                write_file_handle.write( word_embedding )
+                word_embedding = np.asarray( word_embedding, dtype = np.float32 )
+                write_file_handle.write( word_embedding.tobytes() )
 
             write_file_handle.close()
 
@@ -408,10 +559,22 @@ class DataLoader( object ):
             return True
 
     """
-        Load Word2vec Formatted Text Embeddings
-            Format Example: word float_1 float_2 float_3 ... float_n
+        Loads Static Embeddings From File
+          Expects Standard/Plain Text Vector Format
+
+          i.e. token_a 0.1001 0.1345 ... 0.8002
+               ...
+               token_n 0.9355 0.1749 ... 0.6042
+
+        Inputs:
+            file_path        : file path (String)
+            lowercase        : Lowercases All Read Text (Bool)
+            store_embeddings : True = Keep In Memory, False = Return To User Without Storing In Memory (Boolean)
+
+        Outputs:
+            embedding_data   : List Plain Text Embeddings
     """
-    def Load_Text_Embeddings( self, file_path, store_embeddings = True ):
+    def Load_Text_Embeddings( self, file_path, lowercase = False, store_embeddings = True, location = "a" ):
         embedding_data = []
 
         # Check(s)
@@ -423,45 +586,125 @@ class DataLoader( object ):
 
         if self.utils.Check_If_File_Exists( file_path ):
             self.Print_Log( "DataLoader::Load_Text_Embeddings() - Loading Embeddings" )
-            embedding_data = self.Read_Data( file_path, keep_in_memory = False )
+            embedding_data = self.utils.Read_Data( file_path = file_path, lowercase = lowercase )
+        else:
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Error: Embedding File Not Found In Path \"" + str( file_path ) + "\"", force_print = True )
+            return []
 
-            # Check(s)
-            if len( embedding_data ) == 0:
-                self.Print_Log( "DataLoader::Load_Text_Embeddings() - Error: Embedding File Contains No Data / Length == 0" )
-                return []
+        # Check(s)
+        if len( embedding_data ) == 0:
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Error: Embedding File Contains No Data / Length == 0", force_print = True )
+            return []
 
-            # Detect Number Of Embeddings And Embedding Dimensions (Word2vec Format/Header)
-            number_of_embeddings = 0
-            embedding_length     = 0
-            possible_header_info = embedding_data[0]
+        # Detect Number Of Embeddings And Embedding Dimensions (Word2vec Format/Header)
+        number_of_embeddings = 0
+        embedding_length     = 0
+        possible_header_info = embedding_data[0]
 
-            # Set Embedding Variables And Remove Word2vec Header From Data
-            if re.match( r'^\d+\s+\d+', possible_header_info ):
-                self.Print_Log( "DataLoader::Load_Text_Embeddings() - Detected Word2vec Embedding Header" )
-                header_elements      = possible_header_info.split()
-                number_of_embeddings = header_elements[0]
-                embedding_length     = header_elements[1]
-                embedding_data       = embedding_data[1:]
-                self.Print_Log( "                              - Number Of Reported Embeddings: " + str( number_of_embeddings ) )
-                self.Print_Log( "                              - Number Of Reported Embedding Dimensions: " + str( embedding_length ) )
-            else:
-                self.Print_Log( "DataLoader::Load_Text_Embeddings() - No Word2vec Embedding Header Detected / Computing Header Info" )
-                number_of_embeddings = len( embedding_data )
-                embedding_length     = len( embedding_data[1].split() ) - 1
+        # Set Embedding Variables And Remove Word2vec Header From Data
+        if re.match( r'^\d+\s+\d+', possible_header_info ):
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Detected Word2vec Embedding Header" )
+            header_elements      = possible_header_info.split()
+            number_of_embeddings = header_elements[0]
+            embedding_length     = header_elements[1]
+            embedding_data       = embedding_data[1:]
+            self.Print_Log( "                                   - Number Of Reported Embeddings          : " + str( number_of_embeddings ) )
+            self.Print_Log( "                                   - Number Of Reported Embedding Dimensions: " + str( embedding_length     ) )
+        else:
+            self.Print_Log( "DataLoader::Load_Text_Embeddings() - No Word2vec Embedding Header Detected / Computing Header Info" )
+            number_of_embeddings = len( embedding_data )
 
-            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Number Of Actual Embeddings: " + str( len( embedding_data ) ) )
-            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Number Of Actual Embedding Dimensions: " + str( len( embedding_data[1].split() ) - 1 ) )
+            # Determine Vector Length: Determine Where Word Embedding Ends (Accounts For Multi-Word Term Embeddings)
+            idx_to_check, temp_vector_length =  [1, -1], []
 
-            # Store Embeddings
-            if store_embeddings:
-                self.embeddings        = embedding_data
-                self.embeddings_loaded = True
+            for idx in idx_to_check:
+                split_idx = 0
 
-            self.Print_Log( "DataLoader::Load_Text_Embeddings() - Complete" )
-            return embedding_data
+                for element in embedding_data[idx].split():
+                    if re.match( r'^-*\d+\.\d+|^-*\d+[Ee][-+]*\d+', element ): break
+                    split_idx += 1
 
-        self.Print_Log( "DataLoader::Load_Text_Embeddings() - Error: Embedding File Not Found In Path \"" + str( file_path ) + "\"", force_print = True )
-        return []
+                # Check: There Must Be At Least One Word Within The Word Embedding
+                if split_idx == 0: split_idx = 1
+
+                temp_vector_length.append( len( embedding_data[idx].split()[split_idx:] ) )
+
+            embedding_length = min( temp_vector_length )
+
+        self.Print_Log( "DataLoader::Load_Text_Embeddings() - Number Of Actual Embeddings          : " + str( number_of_embeddings ) )
+        self.Print_Log( "DataLoader::Load_Text_Embeddings() - Number Of Actual Embedding Dimensions: " + str( embedding_length     ) )
+
+        # Store Embeddings
+        if store_embeddings:
+            self.embeddings        = embedding_data
+            self.embeddings_loaded = True
+
+        self.Print_Log( "DataLoader::Load_Text_Embeddings() - Complete" )
+        return embedding_data
+
+    """
+        Saves Word2vec Formatted Embeddings In Plain Text Format
+
+        Inputs:
+            embeddings       : List Of Embeddings - Standard W2V Format (List)
+            save_file_path   : Binary Embedding Save File Path (String)
+            encoding_format  : Encoding Format Of Embeddings (String)
+
+        Outputs:
+            Boolean
+    """
+    def Save_Text_Embeddings( self, embeddings = [], save_file_path = "", encoding_format = "utf-8" ):
+        if len( embeddings ) == 0:
+            self.Print_Log( "DataLoader::Save_Text_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ), force_print = True )
+            return False
+        if not save_file_path or save_file_path == "":
+            self.Print_Log( "DataLoader::Save_Text_Embeddings() - Error: Embedding File Path Empty Or Not Defined: " + str( save_file_path ), force_print = True )
+            return False
+
+        self.Print_Log( "DataLoader::Save_Text_Embeddings() - Saving Plain Text Embeddings To File: " + str( save_file_path ) )
+
+        with open( save_file_path, 'w', encoding = encoding_format ) as write_file_handle:
+            # Determine Header Information
+            number_of_embeddings = len( embeddings )
+
+            # Determine Vector Length: Determine Where Word Embedding Ends (Accounts For Multi-Word Term Embeddings)
+            idx_to_check, temp_vector_length =  [1, -1], []
+
+            for idx in idx_to_check:
+                split_idx = 0
+
+                for element in embeddings[idx].split():
+                    if re.match( r'^-*\d+\.\d+|^-*\d+[Ee][-+]*\d+', element ): break
+                    split_idx += 1
+
+                # Check: There Must Be At Least One Word Within The Word Embedding
+                if split_idx == 0: split_idx = 1
+
+                temp_vector_length.append( len( embeddings[idx].split()[split_idx:] ) )
+
+            vector_length = min( temp_vector_length )
+
+            # Write Header Info
+            header_info = str( number_of_embeddings ) + " " + str( vector_length ) + "\n"
+
+            # Write Header Information
+            write_file_handle.write( header_info )
+
+            for i in range( number_of_embeddings ):
+                word, word_embedding = embeddings[i].split( " ", maxsplit = 1 )
+                word           = str( word )
+                word_embedding = str( word_embedding )
+
+                # Clean Word Embedding
+                word_embedding = re.sub( "\[|\]|\n|^\s+|\s+$",  "", word_embedding )
+                word_embedding = re.sub( "\s+", " ", word_embedding )
+
+                write_file_handle.write( word + " " + word_embedding + "\n" )
+
+            write_file_handle.close()
+
+        self.Print_Log( "DataLoader::Save_Text_Embeddings() - Complete" )
+        return True
 
     def Load_Token_ID_Key_Data( self, file_path ):
         self.Print_Log( "DataLoader::Load_Token_ID_Key_Data() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
@@ -482,6 +725,15 @@ class DataLoader( object ):
             data_list = self.data_list
 
         self.Print_Log( "DataLoader::Generate_Token_IDs() - Building Token ID Dictionaries" )
+
+        # Insert Padding At First Index Of The Token ID Dictionaries
+        padding_token = self.Get_Padding_Token()
+
+        if padding_token not in self.token_id_dictionary     : self.token_id_dictionary[padding_token]     = 0
+        if padding_token not in self.primary_id_dictionary   : self.primary_id_dictionary[padding_token]   = 0
+        if padding_token not in self.secondary_id_dictionary : self.secondary_id_dictionary[padding_token] = 0
+        if padding_token not in self.tertiary_id_dictionary  : self.tertiary_id_dictionary[padding_token]  = 0
+        if padding_token not in self.output_id_dictionary    : self.output_id_dictionary[padding_token]    = 0
 
         # Process Elements In Data List, Line-By-Line
         self.Print_Log( "DataLoader::Generate_Token_IDs() - Building Unique Input/Output Dictionaries" )

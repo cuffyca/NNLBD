@@ -1,7 +1,7 @@
 Exploring a Neural Network Architecture for Closed Literature-based Discovery
 =============================================================================
 
-In this study, we use our [Base Multi-Label Models](./../base_ml_model/README.md) to train and evaluate on the [cancer landmark discovery](https://lbd.lionproject.net/downloads), or Hallmarks of Cancer (HOC), datasets. These datasets are used to identify five recent literature-based discoveries which include identifying hallmarks of cancer through implicit *A-B-C* relationship triplets prior to their known year of discovery. They support both open and closed discovery. Our study evaluates our model's performance for closed discovery.
+In this study, we use our [Base Multi-Label Model](./../base_ml_model/README.md) to train and evaluate on the [cancer landmark discovery](https://lbd.lionproject.net/downloads), or Hallmarks of Cancer (HOC), datasets. These datasets are used to identify five recent literature-based discoveries which include identifying hallmarks of cancer through implicit *A-B-C* relationship triplets prior to their known year of discovery. They support both open and closed discovery. Our study evaluates our model's performance for closed discovery.
 
 
 # Table Of Contents
@@ -263,7 +263,7 @@ Word Embedding Files:
 
 *NOTE: The shell script generates `plain text` embeddings, then converts them to `binary` vectors. You can use either variant. The system will automatically determine which has been selected and load them accordingly.*
 
-Now we are ready to begin LBD experimentation using the Multi-Label Models. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
+Now we are ready to begin LBD experimentation using the Multi-Label Model. You may remove the `./nn_for_LBD` directory and any associated files. **Please, keep the aforementioned files before removing the main `./nn_for_LBD` directory.**
 
 
 Preparing Our Model
@@ -442,7 +442,7 @@ training_precision_vs_epoch.png      <- Plotted model reported metric graph
 training_recall_vs_epoch.png         <- Plotted model reported metric graph
 ```
 
-These files include the saved model, configuration settings to load and re-use the model, as well as pertinent model evaluation details. The image files provide a visual depiction of the training and evaluation metrics provided by the model. However, the `model_metrics.txt` file is what we're interested in. This file contains the evaluation metrics and other important details used to determine our model's efficacy. An example of this file is provided below. We average the metrics of all 5 runs to detemine the performance of our model.
+These files include the saved model, configuration settings to load and re-use the model, as well as pertinent model evaluation details. The image files provide a visual depiction of the training and evaluation metrics provided by the model. However, the `model_metrics.txt` file is what we're interested in. This file contains the evaluation metrics and other important details used to determine our model's efficacy. An example of this file is provided below. We average the metrics of all 5 runs to determine the performance of our model.
 
 | Epoch |    Gold B    | Rank | # Of Ties |    Score      | # Of B Terms | Eval Rank | # Of Ties |     Score     | # Of Eval B Terms |          Loss          |       Accuracy           |        Precision      |         Recall         |        F1_Score       |
 |:-----:|:------------:|:----:|:---------:|:-------------:|:------------:|:---------:|:---------:|:-------------:|:-----------------:|:----------------------:|:------------------------:|:---------------------:|:----------------------:|:---------------------:|

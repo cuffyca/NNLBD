@@ -1,10 +1,10 @@
-#  Converts NNLBD Closed Discovery Data Format:
-#      concept_a\tconcept_c\tconcept_b_1\t...\tconcept_b_n
-#
-#  To NNLBD Open Discovery Data Format:
+#  Converts NNLBD Open Discovery Data Format:
 #      concept_a\tconcept_b\tconcept_c_1\t...\tconcept_c_n
 #
-#  NOTE: This script assumes the original data is in 'Closed Discovery' format.
+#  To NNLBD Closed Discovery Data Format:
+#      concept_a\tconcept_c\tconcept_b_1\t...\tconcept_b_n
+#
+#  NOTE: This script assumes the original data is in 'Open Discovery' format.
 #
 #  ~ Statler
 
@@ -12,8 +12,8 @@ import re, time
 
 def Main():
     # User-Specified Variables
-    file_path     = "./../data/HOC/old/train_cs1_closed_discovery_without_aggregators_mod"
-    new_file_path = "./../data/HOC/train_cs1_closed_discovery_without_aggregators_mod"
+    file_path     = "./../data/test/cui_mini_open_discovery"
+    new_file_path = "./../data/test/cui_mini_closed_discovery_new"
     delimiter     = "\t"
 
 
@@ -71,7 +71,7 @@ def Main():
 
         # Write Header To New NNLBD Formatted File
         write_file_handle = open( new_file_path, "w" )
-        write_file_handle.write( "a_concept\tb_concept\tc_concept\n" )
+        write_file_handle.write( "a_concept\tc_concept\tb_concepts\n" )
 
         # Write Re-Formatted Data To New File
         for a_b_relation in a_b_relations:
@@ -86,7 +86,7 @@ def Main():
         print( "Error: Unable To Open Data File \"" + str( file_path ) + "\"" )
         exit()
 
-    print( "Number Of Instances: " + str( number_of_instances        ) )
+    print( "Number Of Instances: " + str( number_of_instances ) )
 
     # Compute Elapsed Time
     elapsed_time = "{:.2f}".format( time.time() - start_time )

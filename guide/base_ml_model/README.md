@@ -1,5 +1,5 @@
-Multi-Label Models Details
-==========================
+Multi-Label Model Details
+=========================
 
 ## Table of Contents
 1. [Model Description](#model_description)

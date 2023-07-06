@@ -10,10 +10,10 @@ import time
 
 def Main():
     # User-Specified Variables
-    file_path     = "./../data/train_cs1_closed_discovery_without_aggregators.tsv"
-    new_file_path = "./../data/train_cs1_closed_discovery_without_aggregators_new.tsv"
+    file_path     = "./../data/HOC/train_cs1_closed_discovery_without_aggregators.tsv"
+    new_file_path = "./../data/HOC/train_cs1_closed_discovery_without_aggregators_mod_test"
     skip_zero_jaccard_similarity_instances = True   # Skips Negative Samples
-    closed_discovery_format                = False  # Changes Data From Open Discovery (OD) To Closed Discovery (CD) Format, Otherwise OD Format
+    closed_discovery_format                = True  # Changes Data From Open Discovery (OD) To Closed Discovery (CD) Format, Otherwise OD Format
 
 
     # --------------------------- #
@@ -45,13 +45,14 @@ def Main():
 
             if not line: break
 
+            line          = line.rstrip()
             line_elements = line.split( "\t" )
 
             # Group A-C Concept Relation And Linking B Concepts
-            if len( line_elements ) > 3:
-                a_concept   = line_elements[0]
-                b_concept   = line_elements[1]
-                c_concept   = line_elements[2]
+            if len( line_elements ) >= 3:
+                a_concept = line_elements[0]
+                b_concept = line_elements[1]
+                c_concept = line_elements[2]
 
                 if a_concept == "node1" and b_concept == "node2" and c_concept == "node3": continue
 
