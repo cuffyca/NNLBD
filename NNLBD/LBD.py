@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/10/2020                                                                   #
-#    Revised: 01/04/2022                                                                   #
+#    Revised: 01/03/2024                                                                   #
 #                                                                                          #
 #    Main LBD Driver Class For The NNLBD Package.                                          #
 #                                                                                          #
@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 from scipy.sparse import csr_matrix
 
 # Custom Modules
-from NNLBD.DataLoader           import CrichtonDataLoader, StdDataLoader
+from NNLBD.DataLoader           import CrichtonDataLoader, StdDataLoader, BERTDataLoader
 from NNLBD.Models.Architectures import *
 from NNLBD.Misc                 import Utils
 
@@ -47,9 +47,9 @@ class LBD:
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, checkpoint_directory = "./ckpt_models",
                   trainable_weights = False, embedding_path = "", embedding_modification = "concatenate", final_layer_type = "dense",
-                  feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, restrict_output = False,
-                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4 ):
-        self.version                       = 0.22
+                  feature_scale_value = 1.0, learning_rate_decay = 0.004, model_path = "", weight_decay = 0.0001, restrict_output = False,
+                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, lowercase = False ):
+        self.version                       = 0.23
         self.model                         = None                            # Automatically Set After Calling 'LBD::Build_Model()' Function
         self.debug_log                     = print_debug_log                 # Options: True, False
         self.write_log                     = write_log_to_file               # Options: True, False
@@ -58,6 +58,11 @@ class LBD:
         self.model_data_prepared           = False                           # Options: True, False (Default: False)
         self.data_loader                   = None
         self.debug_log_file_name           = "LBD_Log.txt"                   # File Name (String)
+
+        self.supported_models              = [ "rumelhart", "hinton",
+                                               "bilstm", "cnn", "cd2",
+                                               "mlp", "mlp_similarity",
+                                               "bert" ]
 
         # Create Log File Handle
         if self.write_log and self.debug_log_file_handle is None:
@@ -69,6 +74,8 @@ class LBD:
             self.data_loader = StdDataLoader()
         elif network_model in [ "cd2" ]:
             self.data_loader = CrichtonDataLoader()
+        elif network_model in [ "bert" ]:
+            self.data_loader = BERTDataLoader( bert_model = model_path, lowercase = lowercase )
         else:
             print( "LBD::Init() - Error Model \"" + str( network_model ) + "\"'s DataLoader Not Implemented" )
             raise NotImplementedError
@@ -88,8 +95,8 @@ class LBD:
         self.Print_Log( "LBD::Init() - Current Working Directory: \"" + str( self.utils.Get_Working_Directory() ) + "\"" )
 
         # Check(s)
-        if network_model not in [ "rumelhart", "hinton", "bilstm", "cnn", "cd2", "mlp", "mlp_similarity" ]:
-            self.Print_Log( "LBD::Init() - Warning: Network Model Type Is Not 'rumelhart', 'hinton', 'bilstm', 'cnn', 'cd2', 'mlp'", force_print = True )
+        if network_model not in self.supported_models:
+            self.Print_Log( "LBD::Init() - Warning: Network Model Type Is Not " + str( self.supported_models ), force_print = True )
             self.Print_Log( "            - Resetting Network Model Type To: 'rumelhart'", force_print = True )
             network_model  = "rumelhart"
             continue_query = input( "Continue? (Y/N)\n" )
@@ -126,6 +133,8 @@ class LBD:
             self.model          = MLPModel( skip_gpu_init = True )
             activation_function = "tanh"
             loss_function       = "cosine_similarity"
+        elif network_model == "bert":
+            self.model = BERTModel( skip_gpu_init = True )
 
         # Initialize Model Parameters
         if self.model:
@@ -138,9 +147,9 @@ class LBD:
                                  early_stopping_metric_monitor = early_stopping_metric_monitor, early_stopping_persistence = early_stopping_persistence,
                                  use_batch_normalization = use_batch_normalization, trainable_weights = trainable_weights, embedding_path = embedding_path,
                                  embedding_modification = embedding_modification, verbose = verbose, final_layer_type = final_layer_type, weight_decay = weight_decay,
-                                 feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, use_cosine_annealing = use_cosine_annealing,
-                                 cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max, bilstm_dimension_size = bilstm_dimension_size,
-                                 bilstm_merge_mode = bilstm_merge_mode )
+                                 feature_scale_value = feature_scale_value, learning_rate_decay = learning_rate_decay, model_path = model_path,
+                                 use_cosine_annealing = use_cosine_annealing, cosine_annealing_min = cosine_annealing_min, cosine_annealing_max = cosine_annealing_max,
+                                 bilstm_dimension_size = bilstm_dimension_size, bilstm_merge_mode = bilstm_merge_mode )
 
         self.Print_Log( "LBD::Init() - Complete" )
 
@@ -208,7 +217,7 @@ class LBD:
        Prepares Model And Data For Training/Testing
            Current Neural Architecture Implementations: Rumelhart, Hinton & BiLSTM
     """
-    def Prepare_Model_Data( self, training_file_path = "", data_instances = [], number_of_hidden_dimensions = 200, force_run = False ):
+    def Prepare_Model_Data( self, training_file_path = "", eval_file_path = "", data_instances = [], number_of_hidden_dimensions = 200, force_run = False ):
         if self.Is_Model_Data_Prepared() and force_run == False:
             self.Print_Log( "LBD::Prepare_Model_Data() - Warning: Model Data Has Already Been Prepared" )
             return True
@@ -238,7 +247,9 @@ class LBD:
             else:
                 self.model.Set_Embeddings_Loaded( data_loader.Is_Embeddings_Loaded() )
 
-        # Read Training Data
+        ######################
+        # Read Training Data #
+        ######################
         if len( data_instances ) == 0:
             self.Print_Log( "LBD::Prepare_Model_Data() - Reading Training Data: " + str( training_file_path ), force_print = True )
             training_data = data_loader.Read_Data( training_file_path )
@@ -263,6 +274,24 @@ class LBD:
                 data_loader.Generate_Token_IDs( data_instances, skip_association_value = True )
             else:
                 data_loader.Generate_Token_IDs( data_instances )
+
+        ########################
+        # Read Evaluation Data #
+        ########################
+        if eval_file_path != "":
+            self.Print_Log( "LBD::Prepare_Model_Data() - Reading Evaluoation Data: " + str( eval_file_path ), force_print = True )
+            eval_data = data_loader.Read_Data( eval_file_path, keep_in_memory = False )
+
+            # Generate Token IDs
+            self.Print_Log( "LBD::Prepare_Model_Data() - Generating Token IDs From Training Data", force_print = True )
+
+            if self.model.Get_Network_Model() == "cd2":
+                data_loader.Generate_Token_IDs( skip_association_value = True )
+            else:
+                data_loader.Generate_Token_IDs()
+        else:
+            eval_data = []
+
 
         primary_embeddings, secondary_embeddings, tertiary_embeddings, output_embeddings = [], [], [], []
 
@@ -296,6 +325,7 @@ class LBD:
         self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Training Data", force_print = True )
 
         train_input_1, train_input_2, train_input_3, train_outputs = None, None, None, None
+        eval_input_1, eval_input_2, eval_input_3, eval_outputs     = None, None, None, None
 
         # Model Specific DataLoader Parameters/Settings
         pad_inputs   = False
@@ -306,18 +336,29 @@ class LBD:
             self.Print_Log( "LBD::Prepare_Model_Data() - Warning: 'pad_inputs == True' When Embeddings Have Been Loaded Into The DataLoader / Setting 'pad_inputs = False'" )
             pad_inputs = False
 
-        # Train On Data Instances Passed By Parameter (Batch Training)
+        # Encode Training Instances Passed By Parameter (Batch Training)
         if len( data_instances ) == 0:
             train_input_1, train_input_2, train_input_3, train_outputs = self.Encode_Model_Data( model_type = self.model.Get_Model_Type(),
                                                                                                  use_csr_format = self.model.Get_Use_CSR_Format(),
                                                                                                  pad_inputs = pad_inputs, pad_output = pad_output,
                                                                                                  stack_inputs = stack_inputs )
-        # Train On Data Instances Within The DataLoader Class
+        # Encode Training Instances Within The DataLoader Class
         else:
             train_input_1, train_input_2, train_input_3, train_outputs = self.Encode_Model_Data( training_data, model_type = self.model.Get_Model_Type(),
                                                                                                  use_csr_format = self.model.Get_Use_CSR_Format(),
                                                                                                  pad_inputs = pad_inputs, pad_output = pad_output,
                                                                                                  stack_inputs = stack_inputs )
+
+        # Encode Evaluation Instances Passed By Parameter
+        if len( eval_data ) > 0:
+            self.Print_Log( "LBD::Prepare_Model_Data() - Binarizing/Vectorizing Model Inputs & Outputs From Evaluation Data", force_print = True )
+
+            eval_input_1, eval_input_2, eval_input_3, eval_outputs = self.Encode_Model_Data( eval_data, model_type = self.model.Get_Model_Type(),
+                                                                                             use_csr_format = self.model.Get_Use_CSR_Format(),
+                                                                                             pad_inputs = pad_inputs, pad_output = pad_output,
+                                                                                             stack_inputs = stack_inputs, is_evaluation_data = True )
+        else:
+            self.Print_Log( "LBD::Prepare_Model_Data() - Error: 'eval_data' Contains No Data", force_print = True )
 
         # Check(s)
         if isinstance( train_input_1, ( list, tuple, np.ndarray ) ) and len( train_input_1 ) == 0: train_input_1 = None
@@ -455,6 +496,8 @@ class LBD:
             elif self.model.Get_Network_Model() == "cd2":
                 self.model.Build_Model( number_of_features, number_of_train_1_inputs, number_of_train_2_inputs, number_of_train_3_inputs,
                                         number_of_hidden_dimensions, number_of_outputs, data_loader.Get_Embeddings() )
+            elif self.model.Get_Network_Model() == "bert":
+                self.model.Build_Model( max_sequence_length = train_input_1.shape[-1], number_of_outputs = 1 )
             else:
                 self.Print_Log( "LBD::Prepare_Model_Data() - Error: Specified Network Model Not Supported", force_print = True )
         else:
@@ -559,10 +602,10 @@ class LBD:
             primary_input           : Primary Model Input (String)
             secondary_input         : Secondary Model Input (String)
             tertiary_input          : Tertiary Model Input (String)
-            encoded_primary_input   : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            encoded_secondary_input : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            encoded_tertiary_input  : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            encoded_output          : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_primary_input   : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
+            encoded_secondary_input : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
+            encoded_tertiary_input  : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
+            encoded_output          : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
             return_vector           : True = Return Prediction Vector, False = Return Predicted Tokens (Boolean)
             return_raw_values       : True = Output Raw Prediction Values From Model / False = Output Values After Passing Through Prediction Threshold (Boolean)
             instance_separator      : String Delimiter Used To Separate Model Data Instances (String)
@@ -663,7 +706,7 @@ class LBD:
             # Concatenate Inputs Across Columns
             train_inputs = np.hstack( ( encoded_primary_input, encoded_secondary_input ) )
             prediction = self.model.Predict( train_inputs )
-        elif self.model.Get_Network_Model() == "cd2":
+        elif self.model.Get_Network_Model() in ["cd2", "bert"]:
             if isinstance( encoded_primary_input,   csr_matrix ): encoded_primary_input   = encoded_primary_input.todense()
             if isinstance( encoded_secondary_input, csr_matrix ): encoded_secondary_input = encoded_secondary_input.todense()
             if isinstance( encoded_tertiary_input,  csr_matrix ): encoded_tertiary_input  = encoded_tertiary_input.todense()
@@ -916,10 +959,10 @@ class LBD:
         Outputs Model's Prediction Vector Given Inputs
 
         Inputs:
-            encoded_primary_input   : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            encoded_secondary_input : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            encoded_tertiary_input  : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
-            encoded_output          : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Vectorize_Model_Data() / DataLoader::Vectorize_Model_Inputs() functions).
+            encoded_primary_input   : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
+            encoded_secondary_input : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
+            encoded_tertiary_input  : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
+            encoded_output          : Model Input Matrix Of One Or More Vectorized Model Input (ie. Output From DataLoader::Encode_Model_Data() / DataLoader::Encode_Model_Instance() functions).
             return_vector           : True = Return Prediction Vector, False = Return Predicted Tokens (Boolean)
             return_raw_values       : True = Output Raw Prediction Values From Model / False = Output Values After Passing Through Prediction Threshold (Boolean)
 
@@ -1275,12 +1318,13 @@ class LBD:
         Vectorized/Binarized Model Data - Used For Training/Evaluation Data
     """
     def Encode_Model_Data( self, data_list = [], model_type = None, use_csr_format = None, pad_inputs = True, pad_output = True,
-                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t'):
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t', is_validation_data = False, is_evaluation_data = False ):
         if model_type     == None: model_type     = self.Get_Model_Type()
         if use_csr_format == None: use_csr_format = self.Get_Model().Get_Use_CSR_Format()
         return self.Get_Data_Loader().Encode_Model_Data( data_list, model_type = model_type, use_csr_format = use_csr_format, pad_inputs = pad_inputs,
                                                          pad_output = pad_output, stack_inputs = stack_inputs, number_of_threads = number_of_threads,
-                                                         keep_in_memory = keep_in_memory, str_delimiter = str_delimiter )
+                                                         keep_in_memory = keep_in_memory, str_delimiter = str_delimiter, is_validation_data = is_validation_data,
+                                                         is_evaluation_data = is_evaluation_data )
 
     """
         Vectorized/Binarized Model Data - Single Input Instances And Output Instance
@@ -1600,6 +1644,7 @@ class LBD:
         if self.write_log and self.debug_log_file_handle is not None:
             self.debug_log_file_handle.write( text + "\n" ) if print_new_line else self.debug_log_file_handle.write( text )
 
+
     ############################################################################################
     #                                                                                          #
     #    Accessor Functions                                                                    #
@@ -1616,9 +1661,27 @@ class LBD:
 
     def Get_Primary_Inputs( self ):                 return self.data_loader.Get_Primary_Inputs()
 
+    def Get_Val_Primary_Inputs( self ):             return self.data_loader.Get_Val_Primary_Inputs()
+
+    def Get_Eval_Primary_Inputs( self ):            return self.data_loader.Get_Eval_Primary_Inputs()
+
     def Get_Secondary_Inputs( self ):               return self.data_loader.Get_Secondary_Inputs()
 
+    def Get_Val_Secondary_Inputs( self ):           return self.data_loader.Get_Val_Secondary_Inputs()
+
+    def Get_Eval_Secondary_Inputs( self ):          return self.data_loader.Get_Eval_Secondary_Inputs()
+
+    def Get_Tertiary_Inputs( self ):                return self.data_loader.Get_Tertiary_Inputs()
+
+    def Get_Val_Tertiary_Inputs( self ):            return self.data_loader.Get_Val_Tertiary_Inputs()
+
+    def Get_Eval_Tertiary_Inputs( self ):           return self.data_loader.Get_Eval_Tertiary_Inputs()
+
     def Get_Outputs( self ):                        return self.data_loader.Get_Outputs()
+
+    def Get_Val_Outputs( self ):                    return self.data_loader.Get_Val_Outputs()
+
+    def Get_Eval_Outputs( self ):                   return self.data_loader.Get_Eval_Outputs()
 
     def Get_Number_Of_Unique_Features( self ):      return self.data_loader.Get_Number_Of_Unique_Features()
 
@@ -1644,6 +1707,7 @@ class LBD:
 
     def Get_Next_Batch( self, file_path, number_of_elements_to_fetch ):
         return self.data_loader.Get_Next_Batch( file_path, number_of_elements_to_fetch )
+
 
     ############################################################################################
     #                                                                                          #

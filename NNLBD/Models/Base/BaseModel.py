@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/20/2020                                                                   #
-#    Revised: 02/12/2023                                                                   #
+#    Revised: 11/23/2023                                                                   #
 #                                                                                          #
 #    Base Neural Network Architecture Class For NNLBD.                                     #
 #                                                                                          #
@@ -39,6 +39,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes TensorFlow GPU CUDA Checki
 3 = INFO, WARNING, and ERROR messages are not printed
 '''
 
+# Custom Modules
+from NNLBD.Misc import Utils
+
+if not Utils().Check_For_Installed_Modules( ["tensorflow"] ):
+    print( "BaseModel::Init() - Error: One Or More Required Modules Not Installed" )
+    exit()
+
 import tensorflow as tf
 #tf.logging.set_verbosity( tf.logging.ERROR )                       # TensorFlow v2.x
 tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow v1.x
@@ -47,21 +54,18 @@ import math as m
 import numpy as np
 from tensorflow import keras
 
-# TensorFlow v2.x Support
-if re.search( r'2.\d+', tf.__version__ ):
-    import tensorflow.keras.backend as K
-    from tensorflow.keras import regularizers
-    from tensorflow.keras.layers import Dense, Layer
-    from tensorflow.keras.metrics import categorical_accuracy
 # TensorFlow v1.15.x Support
-else:
+if re.search( r'1.\d+', tf.__version__ ):
     import keras.backend as K
     from keras import regularizers
     from keras.layers import Dense, Layer
     from keras.metrics import categorical_accuracy
-
-# Custom Modules
-from NNLBD.Misc import Utils
+# TensorFlow v2.x Support
+else:
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import regularizers
+    from tensorflow.keras.layers import Dense, Layer
+    from tensorflow.keras.metrics import categorical_accuracy
 
 
 ############################################################################################
@@ -118,8 +122,8 @@ class BaseModel( object ):
                   per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0", verbose = 2, debug_log_file_handle = None, embedding_modification = "concatenate",
                   enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss", early_stopping_persistence = 3,
                   use_batch_normalization = False, checkpoint_directory = "./ckpt_models", trainable_weights = False, embedding_path = "",
-                  scale = 30.0, margin = 0.35, feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, use_cosine_annealing = False,
-                  cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, skip_gpu_init = False ):
+                  scale = 30.0, margin = 0.35, feature_scale_value = 1.0, model_path = "", learning_rate_decay = 0.004, weight_decay = 0.0001,
+                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, skip_gpu_init = False ):
         self.version                         = 0.19
         self.network_model                   = network_model
         self.model                           = None                            # Automatically Set After Calling 'Build_Model()' Function
@@ -138,6 +142,7 @@ class BaseModel( object ):
         self.feature_scale_value             = feature_scale_value             # Default: 1.0 (Float)
         self.learning_rate_decay             = learning_rate_decay             # Default: 0.004 (Float)
         self.weight_decay                    = weight_decay                    # Default: 0.0001 (Float)
+        self.model_path                      = model_path                      # Default: "" (String)
         self.model_type                      = model_type                      # Options: "open_discovery" or "closed_discovery"
         self.prediction_threshold            = prediction_threshold            # Float Value: 0.5 (Default) => Inflection Point Of The Sigmoid Function
         self.trainable_weights               = trainable_weights               # Options: True, False
@@ -552,6 +557,7 @@ class BaseModel( object ):
 
             if key == "NetworkModel"               : self.network_model                   = str( value )
             if key == "ModelType"                  : self.model_type                      = str( value )
+            if key == "ModelPath"                  : self.model_path                      = str( value )
             if key == "Epochs"                     : self.epochs                          = int( value )
             if key == "Verbose"                    : self.verbose                         = int( value )
             if key == "Dropout"                    : self.dropout                         = float( value )
@@ -617,6 +623,7 @@ class BaseModel( object ):
 
         fh.write( "NetworkModel<:>"                + str( self.network_model                  ) + "\n" )
         fh.write( "ModelType<:>"                   + str( self.model_type                     ) + "\n" )
+        fh.write( "ModelPath<:>"                   + str( self.model_path                     ) + "\n" )
         fh.write( "Epochs<:>"                      + str( self.epochs                         ) + "\n" )
         fh.write( "Verbose<:>"                     + str( self.verbose                        ) + "\n" )
         fh.write( "Dropout<:>"                     + str( self.dropout                        ) + "\n" )
@@ -690,6 +697,7 @@ class BaseModel( object ):
 
         self.Print_Log( "BaseModel::    Neural Network Model          : " + str( self.network_model                  ), force_print = True )
         self.Print_Log( "BaseModel::    Neural Model Type             : " + str( self.model_type                     ), force_print = True )
+        self.Print_Log( "BaseModel::    Model Path                    : " + str( self.model_path                     ), force_print = True )
         self.Print_Log( "BaseModel::    Epochs                        : " + str( self.epochs                         ), force_print = True )
         self.Print_Log( "BaseModel::    Verbose                       : " + str( self.verbose                        ), force_print = True )
         self.Print_Log( "BaseModel::    Dropout                       : " + str( self.dropout                        ), force_print = True )
@@ -858,6 +866,8 @@ class BaseModel( object ):
     #                                                                                          #
     #    Keras Model Metrics                                                                   #
     #                                                                                          #
+    #        NOTE: These Are Micro-Level (Global) Metrics.                                     #
+    #                                                                                          #
     #        Source: https://gist.github.com/arnaldog12/5f2728f229a8bd3b4673b72786913252       #
     #                                                                                          #
     ############################################################################################
@@ -1015,6 +1025,8 @@ class BaseModel( object ):
     def Get_Feature_Scaling_Value( self ):          return self.feature_scale_value
 
     def Get_Model_Type( self ):                     return self.model_type
+
+    def Get_Model_Path( self ):                     return self.model_path
 
     def Get_Prediction_Threshold( self ):           return self.prediction_threshold
 

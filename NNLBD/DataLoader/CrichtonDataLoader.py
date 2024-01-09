@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 12/31/2022                                                                   #
+#    Revised: 07/17/2023                                                                   #
 #                                                                                          #
 #    Crichton Data Loader Class For The NNLBD Package.                                     #
 #    Supported LBD Type(s): Closed Discovery                                               #
@@ -22,7 +22,7 @@
 # Standard Modules
 import re, scipy, threading
 import numpy as np
-from scipy.sparse import csr_matrix, hstack, vstack
+from scipy.sparse import csr_matrix
 
 # Custom Modules
 from NNLBD.DataLoader import DataLoader
@@ -59,7 +59,7 @@ class CrichtonDataLoader( DataLoader ):
             self.Print_Log( "CrichtonDataLoader::Check_Data_File_Format() - Opening Data File From Path" )
 
             try:
-                read_file_handle = open( file_path, "r" )
+                read_file_handle = open( file_path, "r", encoding = "utf8" )
             except FileNotFoundError:
                 self.Print_Log( "CrichtonDataLoader::Check_Data_File_Format() - Error: Unable To Open Data File \"" + str( file_path ) + "\"", force_print = True )
 
@@ -106,6 +106,8 @@ class CrichtonDataLoader( DataLoader ):
             keep_in_memory         : True = Keep Model Data In Memory After Vectorizing, False = Discard Data After Vectorizing (Data Is Always Returned) (Boolean)
             number_of_threads      : Number Of Threads To Deploy For Data Vectorization (Integer)
             str_delimiter          : String Delimiter - Used To Separate Elements Within An Instance (String)
+            is_validation_data     : True = Data To Be Encoded Is Validation Data, False = Data To Be Encoded Is Not Validation Data (Stores Encoded Data In Respective Variables) (Boolean)
+            is_evaluation_data     : True = Data To Be Encoded Is Evaluation Data, False = Data To Be Encoded Is Not Evaluation Data (Stores Encoded Data In Respective Variables) (Boolean)
 
         Outputs:
             primary_input_vector   : CSR Matrix or Numpy Array
@@ -114,7 +116,7 @@ class CrichtonDataLoader( DataLoader ):
             output_vector          : CSR Matrix or Numpy Array
     """
     def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True, pad_output = True,
-                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t', is_validation_data = False, is_evaluation_data = False ):
         # Check(s)
         if model_type == "open_discovery":
             self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Error: 'Crichton Data Format' Is Not Currently Supported For 'Open Discovery'", force_print = True )
@@ -372,10 +374,22 @@ class CrichtonDataLoader( DataLoader ):
 
         if keep_in_memory:
             self.Print_Log( "CrichtonDataLoader::Encode_Model_Data() - Storing In Memory" )
-            self.primary_inputs   = primary_inputs
-            self.secondary_inputs = secondary_inputs
-            self.tertiary_inputs  = tertiary_inputs
-            self.outputs          = outputs
+
+            if is_validation_data:
+                self.val_primary_inputs    = primary_inputs
+                self.val_secondary_inputs  = secondary_inputs
+                self.val_tertiary_inputs   = tertiary_inputs
+                self.val_outputs           = outputs
+            elif is_evaluation_data:
+                self.eval_primary_inputs   = primary_inputs
+                self.eval_secondary_inputs = secondary_inputs
+                self.eval_tertiary_inputs  = tertiary_inputs
+                self.eval_outputs          = outputs
+            else:
+                self.primary_inputs        = primary_inputs
+                self.secondary_inputs      = secondary_inputs
+                self.tertiary_inputs       = tertiary_inputs
+                self.outputs               = outputs
 
         return primary_inputs, secondary_inputs, tertiary_inputs, outputs
 
@@ -939,34 +953,6 @@ class CrichtonDataLoader( DataLoader ):
         return None
 
     """
-        Fetches Next Set Of Data Instances From File. (Assumes File Is Not Entirely Read Into Memory).
-
-        Inputs:
-            number_of_elements_to_fetch  : (Integer)
-
-        Outputs:
-            data_list                    : List Of Elements Read From File (String)
-    """
-    def Get_Next_Batch( self, file_path, number_of_elements_to_fetch ):
-        # Load Training File
-        if self.utils.Check_If_File_Exists( file_path ) == False:
-            self.Print_Log( "CrichtonDataLoader::Get_Next_Batch() - Error: Data File \"" + str( file_path ) + "\" Does Not Exist", force_print = True )
-            return [-1]
-
-        self.Print_Log( "CrichtonDataLoader::Get_Next_Batch() - Fetching The Next " + str( number_of_elements_to_fetch ) + " Elements" )
-
-        if self.Reached_End_Of_File():
-            self.Print_Log( "CrichtonDataLoader::Get_Next_Batch() - Reached EOF" )
-            return []
-
-        data_list = self.Read_Data( file_path, read_all_data = False, keep_in_memory = False, number_of_lines_to_read = number_of_elements_to_fetch )
-
-        self.Print_Log( "CrichtonDataLoader::Get_Next_Batch() - Fetched " + str( len( data_list ) ) + " Elements" )
-        self.Print_Log( "CrichtonDataLoader::Get_Next_Batch() - Complete" )
-
-        return data_list
-
-    """
         Reinitialize Token ID Values For Primary And Secondary ID Dictionaries
 
         Inputs:
@@ -1101,7 +1087,7 @@ class CrichtonDataLoader( DataLoader ):
                 outputs          = csr_matrix( outputs          )
 
         # Data Format: node_a\node_b\tnode_c\tjaccard_similarity
-        for line in data_list:
+        for idx, line in enumerate( data_list ):
             self.Print_Log( "CrichtonDataLoader::Worker_Thread_Function() - Thread ID: " + str( thread_id ) + " -> Data Line: " + str( line.strip() ) )
 
             if not line: break
@@ -1125,12 +1111,12 @@ class CrichtonDataLoader( DataLoader ):
             # Check(s)
             if not self.skip_out_of_vocabulary_words and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
                 self.Print_Log( "CrichtonDataLoader::Worker_Thread_Function() - Error Vectorizing Input/Output Data", force_print = True )
-                self.Print_Log( "                                     - Line: \"" + str( line ) + "\"", force_print = True )
+                self.Print_Log( "                                             - Line IDX: " + str( idx ) + " Line: \"" + str( line ) + "\"", force_print = True )
                 dest_array[thread_id] = None
                 return
             elif self.skip_out_of_vocabulary_words and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
                 self.Print_Log( "CrichtonDataLoader::Worker_Thread_Function() - Warning: Vectorizing Input/Output Data - Element Does Not Exist", force_print = True )
-                self.Print_Log( "                                     - Line: \"" + str( line ) + "\"", force_print = True )
+                self.Print_Log( "                                             - Line IDX: " + str( idx ) + " Line: \"" + str( line ) + "\"", force_print = True )
                 continue
 
             ##################

@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    01/15/2021                                                                   #
-#    Revised: 01/13/2022                                                                   #
+#    Revised: 07/12/2023                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD.                                              #
 #                                                                                          #
@@ -36,6 +36,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes TensorFlow GPU CUDA Checki
 3 = INFO, WARNING, and ERROR messages are not printed
 '''
 
+# Custom Modules
+from NNLBD.Models.Base import BaseModel
+from NNLBD.Misc        import Utils
+
+if not Utils().Check_For_Installed_Modules( ["numpy", "tensorflow"] ):
+    print( "MLPModel - Error: One Or More Required Modules Not Installed" )
+    exit()
+
 import tensorflow as tf
 #tf.logging.set_verbosity( tf.logging.ERROR )                       # TensorFlow v2.x
 tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow v1.x
@@ -43,25 +51,22 @@ tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow
 import numpy as np
 from tensorflow import keras
 
-# TensorFlow v2.x Support
-if re.search( r'2.\d+', tf.__version__ ):
-    import tensorflow.keras.backend as K
-    from tensorflow.keras import optimizers
-    from tensorflow.keras import regularizers
-    # from keras.callbacks import ModelCheckpoint
-    from tensorflow.keras.models import Model
-    from tensorflow.keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
 # TensorFlow v1.15.x Support
-else:
+if re.search( r'1.\d+', tf.__version__ ):
     import keras.backend as K
     from keras import optimizers
     from keras import regularizers
     # from keras.callbacks import ModelCheckpoint
     from keras.models import Model
-    from keras.layers import Dense, Activation, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
-
-# Custom Modules
-from NNLBD.Models.Base import BaseModel
+    from keras.layers import Dense, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
+# TensorFlow v2.x Support
+else:
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import optimizers
+    from tensorflow.keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import Dense, Input, Concatenate, Dropout, Embedding, Flatten, BatchNormalization, Average, Multiply, Lambda
 
 
 ############################################################################################
@@ -77,7 +82,7 @@ class MLPModel( BaseModel ):
                   prediction_threshold = 0.5, shuffle = True, use_csr_format = True, per_epoch_saving = False, use_gpu = True, device_name = "/gpu:0",
                   verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False, early_stopping_metric_monitor = "loss",
                   early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False, embedding_path = "", embedding_modification = "concatenate",
-                  final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001, use_cosine_annealing = False,
+                  final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, model_path = "", weight_decay = 0.0001, use_cosine_annealing = False,
                   cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, bilstm_dimension_size = 64, bilstm_merge_mode = "concat", skip_gpu_init = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, model_type = model_type, optimizer = optimizer,
                           activation_function = activation_function, loss_function = loss_function, number_of_hidden_dimensions = number_of_hidden_dimensions,
@@ -313,7 +318,7 @@ class MLPModel( BaseModel ):
     """
         Prints A Model Depiction In PNG Format
 
-        Ensure pydot and graphviz are installed before calling this function.
+        NOTE: Ensure pydot and graphviz are installed before calling this function.
     """
     def Plot_Model( self, with_shapes = False ):
         keras.utils.plot_model( self.model, "keras_model.png" ) if with_shapes == False else keras.utils.plot_model( self.model, "keras_model_with_info.png", show_shapes = True )

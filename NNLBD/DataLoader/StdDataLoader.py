@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    05/05/2020                                                                   #
-#    Revised: 05/21/2023                                                                   #
+#    Revised: 12/03/2023                                                                   #
 #                                                                                          #
 #    Standard Data Loader Classs For The NNLBD Package.                                    #
 #                                                                                          #
@@ -30,9 +30,9 @@
 
 
 # Standard Modules
-import itertools, re, scipy, threading, types
+import re, scipy, threading
 import numpy as np
-from scipy.sparse import csr_matrix, hstack, vstack
+from scipy.sparse import csr_matrix
 
 # Custom Modules
 from NNLBD.DataLoader import DataLoader
@@ -69,7 +69,7 @@ class StdDataLoader( DataLoader ):
             self.Print_Log( "StdDataLoader::Check_Data_File_Format() - Opening Data File From Path" )
 
             try:
-                read_file_handle = open( file_path, "r" )
+                read_file_handle = open( file_path, "r", encoding = "utf8" )
             except FileNotFoundError:
                 self.Print_Log( "StdDataLoader::Check_Data_File_Format() - Error: Unable To Open Data File \"" + str( file_path ) + "\"", force_print = True )
 
@@ -116,6 +116,8 @@ class StdDataLoader( DataLoader ):
             keep_in_memory         : True = Keep Model Data In Memory After Vectorizing, False = Discard Data After Vectorizing (Data Is Always Returned) (Boolean)
             number_of_threads      : Number Of Threads To Deploy For Data Vectorization (Integer)
             str_delimiter          : String Delimiter - Used To Separate Elements Within An Instance (String)
+            is_validation_data     : True = Data To Be Encoded Is Validation Data, False = Data To Be Encoded Is Not Validation Data (Stores Encoded Data In Respective Variables) (Boolean)
+            is_evaluation_data     : True = Data To Be Encoded Is Evaluation Data, False = Data To Be Encoded Is Not Evaluation Data (Stores Encoded Data In Respective Variables) (Boolean)
 
         Outputs:
             primary_input_vector   : CSR Matrix or Numpy Array
@@ -124,22 +126,23 @@ class StdDataLoader( DataLoader ):
             output_vector          : CSR Matrix or Numpy Array
     """
     def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, pad_inputs = True, pad_output = True,
-                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t', is_validation_data = False,
+                           is_evaluation_data = False ):
         # Check(s)
         if len( data_list ) == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: No Data Specified By User / Using Data Stored In Memory" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Warning: No Data Specified By User / Using Data Stored In Memory" )
             data_list = self.data_list
 
         if len( data_list ) == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Not Data To Vectorize / 'data_list' Is Empty", force_print = True )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error: Not Data To Vectorize / 'data_list' Is Empty", force_print = True )
             return None, None, None, None
 
         if number_of_threads < 1:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: Number Of Threads < 1 / Setting Number Of Threads = 1", force_print = True )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Warning: Number Of Threads < 1 / Setting Number Of Threads = 1", force_print = True )
             number_of_threads = 1
 
         if self.Check_Data_File_Format() == False:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Data Integrity Violation Found", force_print = True )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error: Data Integrity Violation Found", force_print = True )
             return None, None, None, None
 
         threads          = []
@@ -149,33 +152,33 @@ class StdDataLoader( DataLoader ):
         outputs          = []
 
         if self.Is_Embeddings_Loaded():
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Detected Loaded Embeddings / Setting 'pad_inputs' = False" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Detected Loaded Embeddings / Setting 'pad_inputs' = False" )
             pad_inputs = False
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Vectorizing Data Using Settings" )
-        self.Print_Log( "                                      - Model Type        : " + str( model_type         ) )
-        self.Print_Log( "                                      - Use CSR Format    : " + str( use_csr_format     ) )
-        self.Print_Log( "                                      - Pad Inputs        : " + str( pad_inputs         ) )
-        self.Print_Log( "                                      - Pad Output        : " + str( pad_output         ) )
-        self.Print_Log( "                                      - Stack Inputs      : " + str( stack_inputs       ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Vectorizing Data Using Settings" )
+        self.Print_Log( "                                   - Model Type        : " + str( model_type         ) )
+        self.Print_Log( "                                   - Use CSR Format    : " + str( use_csr_format     ) )
+        self.Print_Log( "                                   - Pad Inputs        : " + str( pad_inputs         ) )
+        self.Print_Log( "                                   - Pad Output        : " + str( pad_output         ) )
+        self.Print_Log( "                                   - Stack Inputs      : " + str( stack_inputs       ) )
 
         total_number_of_lines = len( data_list )
 
         if number_of_threads > total_number_of_lines:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: 'number_of_threads > len( data_list )' / Setting 'number_of_threads = total_number_of_lines'" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Warning: 'number_of_threads > len( data_list )' / Setting 'number_of_threads = total_number_of_lines'" )
             number_of_threads = total_number_of_lines
 
         lines_per_thread = int( ( total_number_of_lines + number_of_threads - 1 ) / number_of_threads )
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Number Of Threads: " + str( number_of_threads ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Lines Per Thread : " + str( lines_per_thread  ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Total Lines In File Data: " + str( total_number_of_lines ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Number Of Threads: " + str( number_of_threads ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Lines Per Thread : " + str( lines_per_thread  ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Total Lines In File Data: " + str( total_number_of_lines ) )
 
         ###########################################
         #          Start Worker Threads           #
         ###########################################
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Starting Worker Threads" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Starting Worker Threads" )
 
         # Create Storage Locations For Threaded Data Segments
         tmp_thread_data = [None for i in range( number_of_threads )]
@@ -193,7 +196,7 @@ class StdDataLoader( DataLoader ):
         #           Join Worker Threads           #
         ###########################################
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Waiting For Worker Threads To Finish" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Waiting For Worker Threads To Finish" )
 
         for thread in threads:
             thread.join()
@@ -206,13 +209,13 @@ class StdDataLoader( DataLoader ):
             if not self.output_is_embeddings: outputs = csr_matrix( outputs )
 
         if len( tmp_thread_data ) == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error Vectorizing Model Data / No Data Returned From Worker Threads", force_print = True )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error Vectorizing Model Data / No Data Returned From Worker Threads", force_print = True )
             return None, None, None, None
 
         # Concatenate Vectorized Model Data Segments From Threads
         for model_data in tmp_thread_data:
             if model_data is None or len( model_data ) < 4:
-                self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Expected At Least Four Vectorized Elements / Received None Or < 4", force_print = True )
+                self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error: Expected At Least Four Vectorized Elements / Received None Or < 4", force_print = True )
                 continue
 
             # Vectorized Inputs/Outputs
@@ -302,83 +305,95 @@ class StdDataLoader( DataLoader ):
             outputs          = np.asarray( outputs, dtype = np.float32 )
 
         if isinstance( primary_inputs, list ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Primary Input Length  : " + str( len( primary_inputs ) ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Primary Input Length  : " + str( len( primary_inputs ) ) )
         elif isinstance( primary_inputs, csr_matrix ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Primary Input Length  : " + str( primary_inputs.shape  ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Primary Input Length  : " + str( primary_inputs.shape  ) )
 
         if isinstance( secondary_inputs, list ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Secondary Input Length: " + str( len( secondary_inputs ) ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Secondary Input Length: " + str( len( secondary_inputs ) ) )
         elif isinstance( secondary_inputs, csr_matrix ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Secondary Input Length: " + str( secondary_inputs.shape  ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Secondary Input Length: " + str( secondary_inputs.shape  ) )
 
         if isinstance( tertiary_inputs, list ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Tertiary Input Length : " + str( len( tertiary_inputs ) ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Tertiary Input Length : " + str( len( tertiary_inputs ) ) )
         elif isinstance( tertiary_inputs, csr_matrix ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Tertiary Input Length : " + str( tertiary_inputs.shape  ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Tertiary Input Length : " + str( tertiary_inputs.shape  ) )
 
         if isinstance( outputs, list ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Output Length         : " + str( len( outputs ) ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Output Length         : " + str( len( outputs ) ) )
         elif isinstance( outputs, csr_matrix ):
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Output Length         : " + str( outputs.shape        ) )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Output Length         : " + str( outputs.shape        ) )
 
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Vectorized Primary Inputs  :\n" + str( primary_inputs   ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Vectorized Secondary Inputs:\n" + str( secondary_inputs ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Vectorized Tertiary Inputs :\n" + str( tertiary_inputs  ) )
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Vectorized Outputs         :\n" + str( outputs          ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Vectorized Primary Inputs  :\n" + str( primary_inputs   ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Vectorized Secondary Inputs:\n" + str( secondary_inputs ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Vectorized Tertiary Inputs :\n" + str( tertiary_inputs  ) )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Vectorized Outputs         :\n" + str( outputs          ) )
 
 
         # Clean-Up
         threads         = []
         tmp_thread_data = []
 
-        self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Complete" )
+        self.Print_Log( "StdDataLoader::Encode_Model_Data() - Complete" )
 
         #####################
         # List Final Checks #
         #####################
         if isinstance( primary_inputs, list ) and len( primary_inputs ) == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Primary Input Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error: Primary Input Matrix Is Empty" )
             return None, None, None, None
 
         if isinstance( secondary_inputs, list ) and len( secondary_inputs ) == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Secondary Input Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error: Secondary Input Matrix Is Empty" )
             return None, None, None, None
 
         # Only Crichton Data-sets Use A Tertiary Input, So This Matrix Is Not Guaranteed To Be Non-Empty
         if isinstance( tertiary_inputs, list ) and len( tertiary_inputs ) == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
 
         if isinstance( outputs, list ) and len( outputs ) == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: Outputs Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Warning: Outputs Matrix Is Empty" )
             return None, None, None, None
 
         ###########################
         # CSR Matrix Final Checks #
         ###########################
         if isinstance( primary_inputs, csr_matrix ) and primary_inputs.nnz == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Primary Input Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error: Primary Input Matrix Is Empty" )
             return None, None, None, None
 
         if isinstance( secondary_inputs, csr_matrix ) and secondary_inputs.nnz == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Error: Secondary Input Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Error: Secondary Input Matrix Is Empty" )
             return None, None, None, None
 
         # Only Crichton Data-sets Use A Tertiary Input, So This Matrix Is Not Guaranteed To Be Non-Empty
         if isinstance( tertiary_inputs, csr_matrix ) and tertiary_inputs.nnz == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Warning: Tertiary Input Matrix Is Empty" )
 
         if isinstance( outputs, csr_matrix ) and outputs.nnz == 0:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Warning: Outputs Matrix Is Empty" )
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Warning: Outputs Matrix Is Empty" )
             return None, None, None, None
 
         # These Can Be Saved Via DataLoader::Save_Vectorized_Model_Data() Function Call.
         if keep_in_memory:
-            self.Print_Log( "StdDataLoader::Vectorize_Model_Data() - Storing In Memory" )
-            self.primary_inputs   = primary_inputs
-            self.secondary_inputs = secondary_inputs
-            self.tertiary_inputs  = tertiary_inputs
-            self.outputs          = outputs
+            self.Print_Log( "StdDataLoader::Encode_Model_Data() - Storing In Memory" )
+
+            if is_validation_data:
+                self.val_primary_inputs    = primary_inputs
+                self.val_secondary_inputs  = secondary_inputs
+                self.val_tertiary_inputs   = tertiary_inputs
+                self.val_outputs           = outputs
+            elif is_evaluation_data:
+                self.eval_primary_inputs   = primary_inputs
+                self.eval_secondary_inputs = secondary_inputs
+                self.eval_tertiary_inputs  = tertiary_inputs
+                self.eval_outputs          = outputs
+            else:
+                self.primary_inputs        = primary_inputs
+                self.secondary_inputs      = secondary_inputs
+                self.tertiary_inputs       = tertiary_inputs
+                self.outputs               = outputs
 
         return primary_inputs, secondary_inputs, tertiary_inputs, outputs
 
@@ -1039,34 +1054,6 @@ class StdDataLoader( DataLoader ):
         return None
 
     """
-        Fetches Next Set Of Data Instances From File. (Assumes File Is Not Entirely Read Into Memory).
-
-        Inputs:
-            number_of_elements_to_fetch  : (Integer)
-
-        Outputs:
-            data_list                    : List Of Elements Read From File (String)
-    """
-    def Get_Next_Batch( self, file_path, number_of_elements_to_fetch ):
-        # Load Training File
-        if self.utils.Check_If_File_Exists( file_path ) == False:
-            self.Print_Log( "StdDataLoader::Get_Next_Batch() - Error: Data File \"" + str( file_path ) + "\" Does Not Exist", force_print = True )
-            return [-1]
-
-        self.Print_Log( "StdDataLoader::Get_Next_Batch() - Fetching The Next " + str( number_of_elements_to_fetch ) + " Elements" )
-
-        if self.Reached_End_Of_File():
-            self.Print_Log( "StdDataLoader::Get_Next_Batch() - Reached EOF" )
-            return []
-
-        data_list = self.Read_Data( file_path, read_all_data = False, keep_in_memory = False, number_of_lines_to_read = number_of_elements_to_fetch )
-
-        self.Print_Log( "StdDataLoader::Get_Next_Batch() - Fetched " + str( len( data_list ) ) + " Elements" )
-        self.Print_Log( "StdDataLoader::Get_Next_Batch() - Complete" )
-
-        return data_list
-
-    """
         Reinitialize Token ID Values For Primary And Secondary ID Dictionaries
 
         Inputs:
@@ -1142,7 +1129,7 @@ class StdDataLoader( DataLoader ):
 
         Inputs:
             thread_id              : Thread Identification Number (Integer)
-            data_list              : List Of String Instances To Vectorize (Data Chunk Determined By StdDataLoader::Vectorize_Model_Data() Function)
+            data_list              : List Of String Instances To Vectorize (Data Chunk Determined By StdDataLoader::Encode_Model_Data() Function)
             dest_array             : Placeholder For Threaded Function To Store Outputs (Do Not Modify) (List)
             model_type             : Model Type (String)
             use_csr_format         : True = Output Model Inputs/Output As Scipy CSR Matrices, False = Output Model Inputs/Outputs As Numpy Arrays
@@ -1158,7 +1145,7 @@ class StdDataLoader( DataLoader ):
             outputs                : CSR Matrix or Numpy Array
 
         Note:
-            Outputs Are Stored In A List Per Thread Which Is Managed By StdDataLoader::Vectorize_Model_Data() Function.
+            Outputs Are Stored In A List Per Thread Which Is Managed By StdDataLoader::Encode_Model_Data() Function.
 
     """
     def Worker_Thread_Function( self, thread_id, data_list, dest_array, model_type = "open_discovery", use_csr_format = False,
@@ -1204,7 +1191,7 @@ class StdDataLoader( DataLoader ):
                 if not self.output_is_embeddings: outputs = csr_matrix( outputs )
 
         # Data Format: Concept_A Concept_B Concept_C_1 ... Concept_C_N
-        for line in data_list:
+        for idx, line in enumerate( data_list ):
             self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Thread ID: " + str( thread_id ) + " -> Data Line: " + str( line.strip() ) )
 
             if not line: break
@@ -1227,12 +1214,12 @@ class StdDataLoader( DataLoader ):
             # Check(s)
             if self.skip_out_of_vocabulary_words == False and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
                 self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Error Vectorizing Input/Output Data", force_print = True )
-                self.Print_Log( "                                     - Line: \"" + str( line ) + "\"", force_print = True )
+                self.Print_Log( "                                        - Line IDX: " + str( idx ) + " Line: \"" + str( line ) + "\"", force_print = True )
                 dest_array[thread_id] = None
                 return
             elif self.skip_out_of_vocabulary_words and ( len( primary_input_array ) == 0 or len( secondary_input_array ) == 0 or len( output_array ) == 0 ):
                 self.Print_Log( "StdDataLoader::Worker_Thread_Function() - Warning: Vectorizing Input/Output Data - Element Does Not Exist", force_print = True )
-                self.Print_Log( "                                     - Line: \"" + str( line ) + "\"", force_print = True )
+                self.Print_Log( "                                        - Line IDX: " + str( idx ) + " Line: \"" + str( line ) + "\"", force_print = True )
                 continue
 
             ##################

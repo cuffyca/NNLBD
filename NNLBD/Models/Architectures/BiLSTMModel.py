@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/07/2020                                                                   #
-#    Revised: 01/13/2022                                                                   #
+#    Revised: 07/12/2023                                                                   #
 #                                                                                          #
 #    Generates A Neural Network Used For LBD.                                              #
 #                                                                                          #
@@ -36,6 +36,14 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'    # Removes TensorFlow GPU CUDA Checki
 3 = INFO, WARNING, and ERROR messages are not printed
 '''
 
+# Custom Modules
+from NNLBD.Models.Base import BaseModel
+from NNLBD.Misc        import Utils
+
+if not Utils().Check_For_Installed_Modules( ["numpy", "tensorflow"] ):
+    print( "BiLSTMModel - Error: One Or More Required Modules Not Installed" )
+    exit()
+
 import tensorflow as tf
 #tf.logging.set_verbosity( tf.logging.ERROR )                       # TensorFlow v2.x
 tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow v1.x
@@ -43,26 +51,22 @@ tf.compat.v1.logging.set_verbosity( tf.compat.v1.logging.ERROR )    # TensorFlow
 import numpy as np
 from tensorflow import keras
 
-# TensorFlow v2.x Support
-if re.search( r'2.\d+', tf.__version__ ):
-    import tensorflow.keras.backend as K
-    from tensorflow.keras import optimizers
-    from tensorflow.keras import regularizers
-    # from keras.callbacks import ModelCheckpoint
-    from tensorflow.keras.models import Model
-    from tensorflow.keras.layers import Activation, Average, BatchNormalization, Bidirectional, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, Multiply
 # TensorFlow v1.15.x Support
-else:
+if re.search( r'1.\d+', tf.__version__ ):
     import keras.backend as K
     from keras import optimizers
     from keras import regularizers
     # from keras.callbacks import ModelCheckpoint
     from keras.models import Model
-    from keras.layers import Activation, Average, BatchNormalization, Bidirectional, Concatenate, Dense, Dropout, Embedding, Flatten, Input, Lambda, LSTM, Multiply
-
-# Custom Modules
-from NNLBD.Models.Base import BaseModel
-
+    from keras.layers import BatchNormalization, Bidirectional, Dense, Embedding, Input, Lambda, LSTM
+# TensorFlow v2.x Support
+else:
+    import tensorflow.keras.backend as K
+    from tensorflow.keras import optimizers
+    from tensorflow.keras import regularizers
+    # from keras.callbacks import ModelCheckpoint
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import BatchNormalization, Bidirectional, Dense, Embedding, Input, Lambda, LSTM
 
 
 ############################################################################################
@@ -78,9 +82,9 @@ class BiLSTMModel( BaseModel ):
                   batch_size = 32, prediction_threshold = 0.5, shuffle = True, use_csr_format = True, per_epoch_saving = False, use_gpu = True,
                   device_name = "/gpu:0", verbose = 2, debug_log_file_handle = None, enable_tensorboard_logs = False, enable_early_stopping = False,
                   early_stopping_metric_monitor = "loss", early_stopping_persistence = 3, use_batch_normalization = False, trainable_weights = False,
-                  embedding_path = "", final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, weight_decay = 0.0001,
-                  use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, margin = 30.0, scale = 0.35,
-                  embedding_modification = "concatenate", skip_gpu_init = False ):
+                  embedding_path = "", final_layer_type = "dense", feature_scale_value = 1.0, learning_rate_decay = 0.004, model_path = "",
+                  weight_decay = 0.0001, use_cosine_annealing = False, cosine_annealing_min = 1e-6, cosine_annealing_max = 2e-4, margin = 30.0,
+                  scale = 0.35, embedding_modification = "concatenate", skip_gpu_init = False ):
         super().__init__( print_debug_log = print_debug_log, write_log_to_file = write_log_to_file, network_model = network_model, model_type = model_type,
                           momentum = momentum, bilstm_merge_mode = bilstm_merge_mode, optimizer = optimizer, activation_function = activation_function,
                           batch_size = batch_size, prediction_threshold = prediction_threshold, shuffle = shuffle, use_csr_format = use_csr_format,

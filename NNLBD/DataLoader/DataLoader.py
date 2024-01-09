@@ -6,7 +6,7 @@
 #    -------------------------------------------                                           #
 #                                                                                          #
 #    Date:    10/08/2020                                                                   #
-#    Revised: 05/21/2023                                                                   #
+#    Revised: 07/16/2023                                                                   #
 #                                                                                          #
 #    Base Data Loader Classs For The NNLBD Package.                                        #
 #                                                                                          #
@@ -37,7 +37,7 @@ from NNLBD.Misc import Utils
 class DataLoader( object ):
     def __init__( self, print_debug_log = False, write_log_to_file = False, shuffle = True, skip_out_of_vocabulary_words = False,
                   debug_log_file_handle = None, restrict_output = True, output_is_embeddings = False ):
-        self.version                      = 0.18
+        self.version                      = 0.19
         self.debug_log                    = print_debug_log                 # Options: True, False
         self.write_log                    = write_log_to_file               # Options: True, False
         self.debug_log_file_handle        = debug_log_file_handle           # Debug Log File Handle
@@ -57,9 +57,17 @@ class DataLoader( object ):
         self.number_of_output_tokens      = 0
         self.data_list                    = []
         self.primary_inputs               = []
+        self.val_primary_inputs           = []
+        self.eval_primary_inputs          = []
         self.secondary_inputs             = []
+        self.val_secondary_inputs         = []
+        self.eval_secondary_inputs        = []
         self.tertiary_inputs              = []
+        self.val_tertiary_inputs          = []
+        self.eval_tertiary_inputs         = []
         self.outputs                      = []
+        self.val_outputs                  = []
+        self.eval_outputs                 = []
         self.embeddings                   = []
         self.embeddings_loaded            = False
         self.simulate_embeddings_loaded   = False
@@ -72,7 +80,17 @@ class DataLoader( object ):
         self.embedding_type_list          = ["primary", "secondary", "tertiary", "output"]
         self.padding_token                = "<*>padding<*>"
         self.output_embeddings            = []
+        self.data_cache_dir               = "./.data_cache"
+        self.data_cache_hash_dict         = {}
         self.utils                        = Utils()
+
+        # Check For Data Cache Directory
+        if not Utils().Check_If_Path_Exists( str( self.data_cache_dir ) ):
+            Utils().Create_Path( str( self.data_cache_dir ) )
+            Utils().Write_Data_To_File( str( self.data_cache_dir ) + "/file_hash_list.txt", "" )
+        else:
+            file_hash_list = Utils().Read_Data( str( self.data_cache_dir ) + "/file_hash_list.txt" )
+            self.data_cache_hash_dict = { file_hash.split()[0] : file_hash.split()[1] for file_hash in file_hash_list }
 
         # Create Log File Handle
         if self.write_log and self.debug_log_file_handle is None:
@@ -82,6 +100,15 @@ class DataLoader( object ):
         Remove Variables From Memory
     """
     def __del__( self ):
+        # Write Data Cache Hash Dict To Cache Directory
+        data_cache_hash_dict = [ str( k ) + "<>" + str( v ) + "\n" for k, v in self.data_cache_hash_dict.items() ]
+        data_cache_hash_dict = "".join( data_cache_hash_dict )
+
+        if not Utils().Check_If_Path_Exists( str( self.data_cache_dir ) ):
+            Utils().Create_Path( str( self.data_cache_dir ) )
+
+        Utils().Write_Data_To_File( str( self.data_cache_dir ) + "/file_hash_list.txt", data_cache_hash_dict )
+
         self.Clear_Data()
         self.Close_Read_File_Handle()
         del self.utils
@@ -94,6 +121,21 @@ class DataLoader( object ):
     def Check_Data_File_Format( self, file_path = "", data_list = [], is_crichton_format = False, str_delimiter = '\t' ):
         self.Print_Log( "DataLoader::Check_Data_File_Format() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
+
+    """
+    """
+    def Pre_Encoding_Model_Data_Routine( self, file_path = "", model_type = "open_discovery" ):
+        file_hash = Utils().Get_Hash_Of_File( file_path = file_path )
+
+        if file_hash != -1 and file_hash in self.data_cache_hash_dict:
+            print( "Did Stuff" )
+
+        return False
+
+    """
+    """
+    def Post_Encoding_Model_Data_Routine( self, file_path = "", model_type = "open_discovery" ):
+        pass
 
     """
         Vectorized/Binarized Model Data - Used For Training/Evaluation Data
@@ -109,9 +151,11 @@ class DataLoader( object ):
             keep_in_memory         : True = Keep Model Data In Memory After Vectorizing, False = Discard Data After Vectorizing (Data Is Always Returned) (Boolean)
             number_of_threads      : Number Of Threads To Deploy For Data Vectorization (Integer)
             str_delimiter          : String Delimiter - Used To Separate Elements Within An Instance (String)
+            is_validation_data     : True = Data To Be Encoded Is Validation Data, False = Data To Be Encoded Is Not Validation Data (Stores Encoded Data In Respective Variables) (Boolean)
+            is_evaluation_data     : True = Data To Be Encoded Is Evaluation Data, False = Data To Be Encoded Is Not Evaluation Data (Stores Encoded Data In Respective Variables) (Boolean)
     """
     def Encode_Model_Data( self, data_list = [], model_type = "open_discovery", use_csr_format = False, is_crichton_format = False, pad_inputs = True, pad_output = True,
-                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t' ):
+                           stack_inputs = False, keep_in_memory = True, number_of_threads = 4, str_delimiter = '\t', is_validation_data = False, is_evaluation_data = False ):
         self.Print_Log( "DataLoader::Encode_Model_Data() - Called Parent Function / Not Implemented / Call Child Function", force_print = True )
         raise NotImplementedError
 
@@ -191,7 +235,7 @@ class DataLoader( object ):
         # Read All Data And Store In Memory
         if read_all_data == True:
             try:
-                with open( file_path, "r" ) as in_file:
+                with open( file_path, "r", encoding = "utf8" ) as in_file:
                     data_list = in_file.readlines()
             except FileNotFoundError:
                 self.Print_Log( "DataLoader::Read_Data() - Error: Unable To Open Data File \"" + str( file_path ) + "\"", force_print = True )
@@ -200,7 +244,10 @@ class DataLoader( object ):
                 in_file.close()
 
             # Check For File Data Type Header
-            if data_list[0] == "a_concept\tc_concept\tb_concepts\n":
+            if data_list[0] == "node1\tnode2\tnode3\tlabel\n":
+                self.Print_Log( "DataLoader::Read_Data() - Crichton Format" )
+                data_list = data_list[1:]
+            elif data_list[0] == "a_concept\tc_concept\tb_concepts\n":
                 self.Print_Log( "DataLoader::Read_Data() - Detected 'Open Discovery+' Data Format" )
                 self.file_data_header_type = "closed_discovery+"
                 data_list = data_list[1:]
@@ -222,7 +269,7 @@ class DataLoader( object ):
             # Open File If Not In Memory
             if self.read_file_handle is None:
                 try:
-                    self.read_file_handle = open( file_path, "r" )
+                    self.read_file_handle = open( file_path, "r", encoding = "utf8" )
                 except FileNotFoundError:
                     self.Print_Log( "DataLoader::Read_Data() - Error: Unable To Open Data File \"" + str( file_path ) + "\"", force_print = True )
                     return []
@@ -233,16 +280,16 @@ class DataLoader( object ):
                     line = self.read_file_handle.readline()
 
                     # Check For File Data Type Header
-                    if data_list[0] == "a_concept\tc_concept\tb_concepts\n":
+                    if line == "a_concept\tc_concept\tb_concepts\n":
                         self.file_data_header_type = "closed_discovery+"
                         continue
-                    elif data_list[0] == "a_concept\tb_concept\tc_concepts\n":
+                    elif line == "a_concept\tb_concept\tc_concepts\n":
                         self.file_data_header_type = "open_discovery+"
                         continue
-                    elif data_list[0] == "a_concept\tb_concept\tc_concept\n":
+                    elif line == "a_concept\tb_concept\tc_concept\n":
                         self.file_data_header_type = "open_discovery"
                         continue
-                    elif data_list[0] == "a_concept\tc_concept\tb_concept\n":
+                    elif line == "a_concept\tc_concept\tb_concept\n":
                         self.file_data_header_type = "closed_discovery"
                         continue
 
@@ -1386,11 +1433,27 @@ class DataLoader( object ):
 
     def Get_Primary_Inputs( self ):                 return self.primary_inputs
 
+    def Get_Val_Primary_Inputs( self ):             return self.val_primary_inputs
+
+    def Get_Eval_Primary_Inputs( self ):            return self.eval_primary_inputs
+
     def Get_Secondary_Inputs( self ):               return self.secondary_inputs
+
+    def Get_Val_Secondary_Inputs( self ):           return self.val_secondary_inputs
+
+    def Get_Eval_Secondary_Inputs( self ):          return self.eval_secondary_inputs
 
     def Get_Tertiary_Inputs( self ):                return self.tertiary_inputs
 
+    def Get_Val_Tertiary_Inputs( self ):            return self.val_tertiary_inputs
+
+    def Get_Eval_Tertiary_Inputs( self ):           return self.eval_tertiary_inputs
+
     def Get_Outputs( self ):                        return self.outputs
+
+    def Get_Val_Outputs( self ):                    return self.val_outputs
+
+    def Get_Eval_Outputs( self ):                   return self.eval_outputs
 
     def Get_Number_Of_Embeddings( self ):           return len( self.embeddings )
 
